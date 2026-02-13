@@ -11,25 +11,24 @@
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
+    <!-- Full-screen transition overlay -->
+    <div id="transition-overlay" class="transition-overlay hidden">
+      <div class="transition-content">
+        <div class="spinner transition-spinner"></div>
+        <p id="transition-message">Generating visuals...</p>
+      </div>
+    </div>
     <div class="app-shell">
       <!-- Top navigation bar -->
       <header class="app-header">
         <div class="header-left">
           <a href="/" class="brand" aria-label="ONYX home">
-            <img class="brand-logo brand-logo-light" src="/static/onyx-logo.png" alt="ONYX" />
-            <img class="brand-logo brand-logo-dark" src="/static/onyx-logo-dark.png" alt="ONYX" />
+            <img class="brand-logo brand-logo-light" src="/static/onyx-logo.png?v=5" alt="ONYX AI" />
+            <img class="brand-logo brand-logo-dark" src="/static/onyx-logo-dark.png?v=5" alt="ONYX AI" />
           </a>
         </div>
-        <nav class="header-nav hidden" id="header-nav">
-          <button class="nav-pill active" data-nav="overview">Dashboard</button>
-          <button class="nav-pill" data-nav="analytics">Analytics</button>
-          <button class="nav-pill" data-nav="data">Data</button>
-        </nav>
+        <div id="step-indicator" class="step-indicator hidden"></div>
         <div class="header-right">
-          <button id="back-to-menu" class="btn btn-ghost btn-sm" type="button">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-            Home
-          </button>
           <button id="theme-toggle" class="theme-toggle" type="button" title="Toggle theme">
             <div class="theme-toggle-track">
               <div class="theme-toggle-thumb">
@@ -38,22 +37,64 @@
               </div>
             </div>
           </button>
-          <div id="session-email" class="session-email"></div>
           <button id="login-btn" class="btn btn-primary btn-sm" type="button">Log in</button>
-          <button id="logout-btn" class="btn btn-ghost btn-sm hidden" type="button">Log out</button>
+          <div id="user-menu" class="user-menu hidden">
+            <button id="user-menu-trigger" class="user-menu-trigger" type="button">
+              <span id="user-avatar" class="user-avatar"></span>
+              <span id="user-email-display" class="user-email-display"></span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div id="user-dropdown" class="user-dropdown hidden">
+              <div class="user-dropdown-header">
+                <span id="user-avatar-lg" class="user-avatar user-avatar-lg"></span>
+                <div class="user-dropdown-info">
+                  <span id="user-dropdown-email" class="user-dropdown-email"></span>
+                  <span class="user-dropdown-label">Personal account</span>
+                </div>
+              </div>
+              <div class="user-dropdown-divider"></div>
+              <button id="logout-btn" class="user-dropdown-item user-dropdown-logout" type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Log out
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
-      <!-- Step indicator -->
-      <div id="step-indicator" class="step-indicator hidden"></div>
+      <!-- Collapsible sidebar -->
+      <aside id="app-sidebar" class="app-sidebar collapsed">
+        <div class="sidebar-rail">
+          <button id="sidebar-toggle" class="sidebar-toggle-btn" type="button" title="Toggle sidebar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <button id="sidebar-new-project" class="sidebar-new-btn" type="button" title="New project">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
+        <div class="sidebar-panel">
+          <div class="sidebar-panel-header">
+            <h3>Projects</h3>
+            <button id="sidebar-collapse" class="btn btn-ghost btn-sm" type="button" title="Collapse sidebar">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+          </div>
+          <div id="sidebar-project-list" class="sidebar-project-list"></div>
+        </div>
+      </aside>
 
       <main class="app-main">
         <!-- ========== PROJECTS / UPLOAD ========== -->
         <section id="projects-section" class="panel hidden">
           <div class="section-hero">
             <div class="hero-text">
-              <h1>Welcome to <img class="hero-logo hero-logo-light" src="/static/onyx-logo.png" alt="ONYX" /><img class="hero-logo hero-logo-dark" src="/static/onyx-logo-dark.png" alt="ONYX" /></h1>
+              <h1><img class="hero-logo hero-logo-light" src="/static/onyx-logo.png?v=5" alt="ONYX AI" /><img class="hero-logo hero-logo-dark" src="/static/onyx-logo-dark.png?v=5" alt="ONYX AI" /></h1>
               <p class="hero-subtitle">Upload your data and get an AI-powered dashboard in seconds.</p>
+              <div class="hero-features">
+                <div class="hero-feature"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> AI analyzes your data automatically</div>
+                <div class="hero-feature"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Choose your visual style</div>
+                <div class="hero-feature"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Get actionable insights</div>
+              </div>
             </div>
           </div>
 
@@ -73,49 +114,21 @@
               </div>
             </div>
             <div id="selected-files" class="file-chips hidden"></div>
-            <button id="upload-continue-btn" class="btn btn-primary btn-lg" type="button" disabled>Continue</button>
+            <button id="upload-continue-btn" class="btn btn-primary btn-lg" type="button" disabled>Generate Dashboard</button>
           </div>
 
-          <!-- Saved projects -->
-          <div class="projects-section-divider">
-            <span>or open a saved project</span>
-            <button id="refresh-projects" class="btn btn-ghost btn-sm" type="button">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            </button>
-          </div>
-          <div id="project-list" class="project-cards-grid"></div>
-          <div id="project-list-skeleton" class="project-cards-grid hidden">
-            <div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div>
-          </div>
-          <div id="projects-empty" class="empty-state hidden">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 7h8M8 11h5"/></svg>
-            <p>No saved projects yet</p>
-            <span class="empty-state-hint">Upload files above to create your first dashboard</span>
-          </div>
+          <!-- Project list now lives in the sidebar -->
+          <div id="project-list" class="project-cards-grid hidden"></div>
+          <div id="project-list-skeleton" class="project-cards-grid hidden"></div>
+          <div id="projects-empty" class="empty-state hidden"></div>
           <p id="project-login-hint" class="hint"></p>
-        </section>
-
-        <!-- ========== CATEGORY PICKER ========== -->
-        <section id="category-section" class="panel hidden">
-          <div class="section-header">
-            <div class="section-header-text">
-              <span class="section-tag">Step 2</span>
-              <h2>What type of data is this?</h2>
-              <p>Select a category so we can tailor your dashboard with the most relevant KPIs and visuals.</p>
-            </div>
-          </div>
-          <div id="category-grid" class="category-grid"></div>
-          <div id="category-questions" class="category-questions hidden"></div>
-          <div class="section-footer">
-            <button id="category-continue" class="btn btn-primary btn-lg" type="button">Continue</button>
-          </div>
         </section>
 
         <!-- ========== SETUP / NAMING ========== -->
         <section id="setup-section" class="panel hidden">
           <div class="section-header">
             <div class="section-header-text">
-              <span class="section-tag">Step 3</span>
+              <span class="section-tag">Step 2</span>
               <h2>Name your dashboard</h2>
               <p>Give your project a name before we generate the dashboard.</p>
             </div>
@@ -145,11 +158,39 @@
           </div>
         </section>
 
-        <!-- ========== DUEL ========== -->
-        <section id="duel-section" class="panel hidden">
+        <!-- ========== AI CHAT ========== -->
+        <section id="ai-chat-section" class="panel hidden">
           <div class="section-header">
             <div class="section-header-text">
-              <span class="section-tag">Step 4</span>
+              <span class="section-tag">Step 2</span>
+              <h2>AI Analysis</h2>
+              <p>Chat with our AI analyst to get a smarter dashboard tailored to your goals.</p>
+            </div>
+          </div>
+          <div class="ai-chat-container">
+            <div class="ai-chat-model-badge" id="ai-chat-model-badge"></div>
+            <div class="ai-chat-messages" id="ai-chat-messages"></div>
+            <div class="ai-chat-suggestions hidden" id="ai-chat-suggestions"></div>
+            <div class="ai-chat-plan hidden" id="ai-chat-plan"></div>
+            <div class="ai-chat-input-wrap">
+              <input type="text" id="ai-chat-input" class="ai-chat-input" placeholder="Type a response or click a suggestion above..." autocomplete="off" />
+              <button id="ai-chat-send" class="btn btn-primary btn-sm" type="button">Send</button>
+              <button id="ai-chat-generate" class="btn btn-outline btn-sm" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                Start Generating
+              </button>
+            </div>
+            <div class="ai-chat-actions">
+              <button id="ai-chat-done" class="btn btn-primary btn-sm hidden" type="button">Build Dashboard &rarr;</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ========== DUEL ========== -->
+        <section id="duel-section" class="panel hidden">
+          <div class="section-header" style="text-align:center">
+            <div class="section-header-text">
+              <span class="section-tag">Step 3</span>
               <h2>Pick your visuals</h2>
               <p>We generated chart options from your data. Choose the ones you like best.</p>
             </div>
@@ -164,6 +205,8 @@
               <span id="duel-picked-badge" class="duel-picked-badge">0 picked</span>
             </div>
           </div>
+
+          <div class="duel-round-context" id="duel-round-context"></div>
 
           <div class="duel-arena" id="duel-arena">
             <div class="duel-card" id="duel-card-a">
@@ -187,12 +230,13 @@
             </div>
           </div>
 
-          <p class="duel-hint">Click a chart to pick it — or skip both</p>
+          <p class="duel-hint">Click a chart to pick it, keep both, or skip</p>
           <div class="duel-actions">
+            <button id="duel-pick-both" class="btn btn-primary btn-xl duel-skip-btn" type="button">Keep Both</button>
             <button id="duel-skip" class="btn btn-outline btn-xl duel-skip-btn" type="button">Skip Both</button>
           </div>
 
-          <div class="section-footer">
+          <div class="section-footer" style="text-align:center">
             <button id="duel-done" class="btn btn-primary btn-lg" type="button" disabled>
               Done — Build Dashboard
               <span id="duel-done-count"></span>
@@ -253,13 +297,21 @@
         <!-- ========== DASHBOARD ========== -->
         <section id="dashboard-section" class="panel panel-dashboard hidden">
           <div class="dashboard-header">
-            <div class="dashboard-title">
-              <h2 id="dashboard-project-title">Dashboard</h2>
+            <div class="dashboard-header-row1">
+              <div class="dashboard-title" id="dashboard-title-wrap" title="Click to rename">
+                <h2 id="dashboard-project-title" class="editable-title">Dashboard</h2>
+                <svg class="edit-pencil" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </div>
+              <nav class="dashboard-nav-pills" id="dashboard-nav-pills">
+                <button class="nav-pill active" data-nav="overview">Dashboard</button>
+                <button class="nav-pill" data-nav="analytics">Key Insights</button>
+                <button class="nav-pill" data-nav="data">Data</button>
+              </nav>
             </div>
-            <div class="dashboard-actions">
-              <button id="generate-more" class="btn btn-primary btn-sm" type="button">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                Generate More
+            <div class="dashboard-toolbar">
+              <button id="update-data-btn" class="btn btn-outline btn-sm" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                Update Data
               </button>
               <button id="add-visual" class="btn btn-outline btn-sm" type="button">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -268,15 +320,23 @@
               <button id="refresh-dashboard" class="btn btn-outline btn-sm" type="button">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
               </button>
-              <button id="export-csv" class="btn btn-outline btn-sm" type="button" title="Export CSV">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <button id="export-csv" class="btn btn-outline btn-sm" type="button" title="Download snapshot">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
               </button>
-              <div class="dashboard-actions-divider"></div>
-              <button id="continue-save" class="btn btn-ghost btn-sm" type="button">Save</button>
+              <div class="dashboard-toolbar-spacer"></div>
+              <button id="dash-chat-toggle" class="btn btn-outline btn-sm" type="button" title="Toggle AI Assistant">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                AI Assistant
+              </button>
+              <span id="auto-save-status" class="auto-save-status"></span>
             </div>
           </div>
 
-          <div id="kpi-strip" class="kpi-strip"></div>
+          <div id="kpi-strip" class="kpi-strip hidden"></div>
+          <div id="insights-strip-wrap" class="insights-strip-wrap hidden">
+            <div class="insights-strip-heading">Key Insights</div>
+            <div id="insights-strip" class="insights-strip"></div>
+          </div>
 
           <div id="filter-bar" class="filter-bar hidden">
             <div class="filter-bar-dates" id="filter-bar-dates">
@@ -291,6 +351,17 @@
                 <input type="date" id="date-range-end" />
               </div>
             </div>
+            <div class="filter-bar-fields">
+              <select id="filter-column" class="filter-select">
+                <option value="">Filter by field…</option>
+              </select>
+              <select id="filter-value" class="filter-select" disabled>
+                <option value="">Select value…</option>
+              </select>
+              <button id="filter-add-btn" class="btn btn-outline btn-sm" type="button">Add</button>
+            </div>
+            <div id="active-filters" class="active-filters"></div>
+            <div id="filters-empty" class="filters-empty hidden"></div>
             <div class="filter-bar-meta">
               <span id="filter-count-badge" class="filter-count-badge hidden">0 filters</span>
               <button id="clear-all-filters" class="btn-link" type="button">Clear all</button>
@@ -324,7 +395,7 @@
             <div id="dashboard-empty" class="empty-state hidden">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
               <p>Your dashboard is empty</p>
-              <span class="empty-state-hint">Click "Generate More" to build your dashboard</span>
+              <span class="empty-state-hint">Use the AI Assistant to generate visuals</span>
             </div>
           </div>
 
@@ -356,32 +427,87 @@
           </div>
         </section>
       </main>
+
+      <!-- AI Assistant right sidebar -->
+      <aside id="dash-chat-panel" class="dash-chat-panel hidden">
+        <div class="dash-chat-header">
+          <span class="dash-chat-title">AI Assistant</span>
+          <button id="dash-chat-close" class="btn btn-icon btn-sm" type="button" title="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div id="dash-chat-messages" class="dash-chat-messages"></div>
+        <div id="dash-chat-suggestions" class="dash-chat-suggestions"></div>
+        <div class="dash-chat-input-wrap">
+          <textarea id="dash-chat-input" class="dash-chat-input" placeholder="Ask about your data or request a chart..." autocomplete="off" rows="1"></textarea>
+          <button id="dash-chat-send" class="btn btn-primary btn-sm" type="button">Send</button>
+        </div>
+      </aside>
     </div>
 
     <!-- Auth modal -->
     <div id="auth-modal" class="modal hidden">
-      <section id="auth-section" class="modal-card modal-card-wide">
-        <div class="modal-card-header">
-          <h3>Sign in to save your work</h3>
-          <button id="auth-close" class="btn btn-icon" type="button">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
+      <section id="auth-section" class="auth-modal-card">
+        <button id="auth-close" class="auth-close-btn" type="button">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+
+        <div class="auth-hero">
+          <img class="auth-logo auth-logo-light" src="/static/onyx-logo.png?v=5" alt="ONYX" />
+          <img class="auth-logo auth-logo-dark" src="/static/onyx-logo-dark.png?v=5" alt="ONYX" />
+          <h2 class="auth-title">Welcome back</h2>
+          <p class="auth-subtitle">Sign in to save dashboards and keep your projects across sessions.</p>
         </div>
-        <p class="modal-subtitle">Log in to keep projects saved across sessions, or continue as a guest.</p>
-        <div class="auth-forms">
-          <form id="login-form" class="auth-form">
-            <h4>Login</h4>
-            <label><span class="label-text">Email</span><input type="email" name="email" placeholder="you@email.com" required /></label>
-            <label><span class="label-text">Password</span><input type="password" name="password" placeholder="Your password" required /></label>
-            <button class="btn btn-primary btn-lg" type="submit">Log in</button>
-          </form>
-          <div class="auth-divider"><span>or</span></div>
-          <form id="register-form" class="auth-form">
-            <h4>Create account</h4>
-            <label><span class="label-text">Email</span><input type="email" name="email" placeholder="hello@domain.com" required /></label>
-            <label><span class="label-text">Password</span><input type="password" name="password" placeholder="Min 8 characters" minlength="8" required /></label>
-            <button class="btn btn-outline btn-lg" type="submit">Register</button>
-          </form>
+
+        <div id="auth-tab-bar" class="auth-tab-bar">
+          <button type="button" class="auth-tab active" data-tab="login">Sign in</button>
+          <button type="button" class="auth-tab" data-tab="register">Create account</button>
+        </div>
+
+        <div id="auth-error" class="auth-error hidden"></div>
+
+        <form id="login-form" class="auth-form">
+          <label class="auth-field">
+            <span class="auth-field-label">Email address</span>
+            <div class="auth-input-wrap">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              <input type="email" name="email" placeholder="you@email.com" autocomplete="email" required />
+            </div>
+          </label>
+          <label class="auth-field">
+            <span class="auth-field-label">Password</span>
+            <div class="auth-input-wrap">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <input type="password" name="password" placeholder="Your password" autocomplete="current-password" required />
+            </div>
+          </label>
+          <button class="btn btn-primary btn-lg auth-submit" type="submit">Sign in</button>
+        </form>
+
+        <form id="register-form" class="auth-form hidden">
+          <label class="auth-field">
+            <span class="auth-field-label">Email address</span>
+            <div class="auth-input-wrap">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              <input type="email" name="email" placeholder="hello@domain.com" autocomplete="email" required />
+            </div>
+          </label>
+          <label class="auth-field">
+            <span class="auth-field-label">Password</span>
+            <div class="auth-input-wrap">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <input type="password" name="password" placeholder="Min 8 characters" autocomplete="new-password" minlength="8" required />
+            </div>
+          </label>
+          <button class="btn btn-primary btn-lg auth-submit" type="submit">Create account</button>
+        </form>
+
+        <div class="auth-footer">
+          <div class="auth-divider-line"><span>Coming soon</span></div>
+          <button class="auth-social-btn" type="button" disabled>
+            <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+            Continue with Google
+          </button>
         </div>
       </section>
     </div>
@@ -398,10 +524,31 @@
       </div>
     </div>
 
+    <!-- Save dashboard modal -->
+    <div id="save-modal" class="modal hidden">
+      <div class="modal-card">
+        <div class="modal-card-header">
+          <h3>Save Dashboard</h3>
+          <button id="save-modal-close" class="btn btn-icon" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <form id="save-modal-form" class="save-modal-body">
+          <label><span class="label-text">Dashboard name (optional)</span><input type="text" id="save-modal-name" placeholder="My Dashboard" /></label>
+          <label><span class="label-text">Description (optional)</span><textarea id="save-modal-desc" rows="3" placeholder="Brief notes about this dashboard..."></textarea></label>
+          <div class="save-modal-actions">
+            <button type="button" id="save-modal-cancel" class="btn btn-outline">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Dashboard</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <div id="toast" class="toast hidden"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/gridstack@10.1.2/dist/gridstack-all.js"></script>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="/static/app.js"></script>
   </body>
 </html>

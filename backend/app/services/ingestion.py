@@ -184,6 +184,86 @@ def profile_dataframe(file_id: UUID, name: str, dataframe: pd.DataFrame) -> File
     )
 
 
+DICTIONARY_NAME_PATTERNS = [
+    "dictionary", "data_dictionary", "data dictionary", "codebook",
+    "metadata", "column_description", "column description", "field_description",
+    "field description", "schema", "data_dict", "data dict", "dd_",
+    "column_definitions", "field_definitions", "lookup", "legend",
+]
+
+
+def is_dictionary_file(filename: str) -> bool:
+    """Check if a file looks like a data dictionary based on its name."""
+    name_lower = Path(filename).stem.lower().replace("-", "_").replace(" ", "_")
+    return any(pat.replace(" ", "_") in name_lower for pat in DICTIONARY_NAME_PATTERNS)
+
+
+def parse_dictionary_file(stored_path: str, filename: str) -> dict:
+    """Parse a data dictionary file into a structured dict.
+
+    Returns: {
+        "source_file": filename,
+        "columns": {
+            "column_name": "description / definition",
+            ...
+        },
+        "raw_text": "full text if not tabular"
+    }
+    """
+    ext = Path(stored_path).suffix.lower()
+    result: dict = {"source_file": filename, "columns": {}, "raw_text": ""}
+
+    try:
+        if ext in {".csv", ".tsv", ".txt"}:
+            sep = "\t" if ext == ".tsv" else ","
+            try:
+                df = pd.read_csv(stored_path, sep=sep, low_memory=False)
+            except UnicodeDecodeError:
+                df = pd.read_csv(stored_path, sep=sep, low_memory=False, encoding="latin1")
+        elif ext in {".xlsx", ".xls"}:
+            df = pd.read_excel(stored_path, sheet_name=0)
+            if isinstance(df, dict):
+                df = next(iter(df.values()))
+        else:
+            # Try reading as plain text
+            try:
+                with open(stored_path, "r", encoding="utf-8") as f:
+                    result["raw_text"] = f.read()[:5000]
+            except Exception:
+                pass
+            return result
+
+        if df is not None and len(df) > 0:
+            cols_lower = [str(c).lower().strip() for c in df.columns]
+            # Try to find column name + description columns
+            name_col = None
+            desc_col = None
+            for i, c in enumerate(cols_lower):
+                if any(kw in c for kw in ["column", "field", "variable", "name", "attribute"]):
+                    name_col = i
+                    break
+            for i, c in enumerate(cols_lower):
+                if any(kw in c for kw in ["description", "definition", "meaning", "detail", "explanation", "note"]):
+                    desc_col = i
+                    break
+
+            if name_col is not None and desc_col is not None:
+                # Structured dictionary: column name → description
+                for _, row in df.iterrows():
+                    col_name = str(row.iloc[name_col]).strip()
+                    col_desc = str(row.iloc[desc_col]).strip()
+                    if col_name and col_name.lower() not in ("nan", "none", ""):
+                        result["columns"][col_name] = col_desc
+            else:
+                # Fallback: dump first few rows as raw text for AI to parse
+                result["raw_text"] = df.head(50).to_string(index=False)[:5000]
+
+    except Exception:
+        pass
+
+    return result
+
+
 def build_dataset_profile(file_records: list[DataFile]) -> DatasetProfile:
     file_profiles: list[FileProfile] = []
     for record in file_records:

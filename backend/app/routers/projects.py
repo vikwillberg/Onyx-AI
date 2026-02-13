@@ -7,7 +7,7 @@ from sqlmodel import Session, select
 from app.core.deps import GUEST_EMAIL, get_current_user
 from app.db import get_session
 from app.models import DataFile, Dataset, Project, User
-from app.schemas import DatasetCreate, DatasetRead, ProjectCreate, ProjectRead
+from app.schemas import DatasetCreate, DatasetRead, ProjectCreate, ProjectRead, ProjectUpdate
 from app.services.storage import delete_project_files
 
 router = APIRouter()
@@ -41,6 +41,28 @@ def create_project(
         business_category=payload.business_category,
         business_context=payload.business_context,
     )
+    session.add(project)
+    session.commit()
+    session.refresh(project)
+    return project
+
+
+@router.patch("/{project_id}", response_model=ProjectRead)
+def update_project(
+    project_id: UUID,
+    payload: ProjectUpdate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> Project:
+    project = get_project_or_404(session, current_user, project_id)
+    if payload.name is not None:
+        project.name = payload.name
+    if payload.description is not None:
+        project.description = payload.description
+    if payload.thumbnail_data_url is not None:
+        project.thumbnail_data_url = payload.thumbnail_data_url
+    if payload.chat_history_json is not None:
+        project.chat_history_json = payload.chat_history_json
     session.add(project)
     session.commit()
     session.refresh(project)

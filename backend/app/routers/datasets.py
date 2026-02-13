@@ -13,6 +13,8 @@ from app.core.deps import get_current_user
 from app.db import get_session
 from app.models import DataFile, Dataset, Project, User
 from app.schemas import (
+    AiChatRequest,
+    AiChatResponse,
     DatasetDetail,
     DatasetPreview,
     DatasetProfile,
@@ -23,9 +25,12 @@ from app.schemas import (
     MergeSuggestions,
     VisualSpec,
 )
+from app.services.llm import analyze_data_chat
 from app.services.ingestion import (
     generate_merge_suggestions,
+    is_dictionary_file,
     load_dataframe,
+    parse_dictionary_file,
     profile_dataframe,
     read_tabular_file,
     store_dataframe_parquet,
@@ -104,11 +109,29 @@ async def upload_dataset_files(
 
     data_files: list[DataFile] = []
     file_profiles: list[FileProfile] = []
+    dictionary_data: dict | None = None
 
     for upload in files:
         filename = upload.filename or "upload"
         file_id = uuid4()
         stored_path = save_upload_file(upload.file, filename, dataset.id, file_id)
+
+        # Detect and parse dictionary files separately
+        if is_dictionary_file(filename):
+            dictionary_data = parse_dictionary_file(stored_path, filename)
+            # Still store as a DataFile for reference, but mark it small
+            data_file = DataFile(
+                id=file_id,
+                dataset_id=dataset.id,
+                original_filename=filename,
+                stored_path=stored_path,
+                parquet_path=None,
+                row_count=0,
+                column_count=0,
+            )
+            data_files.append(data_file)
+            continue
+
         dataframe = read_tabular_file(stored_path)
         parquet_path = store_dataframe_parquet(dataset.id, file_id, dataframe)
 
@@ -125,6 +148,14 @@ async def upload_dataset_files(
         file_profiles.append(profile_dataframe(data_file.id, data_file.original_filename, dataframe))
 
     session.add_all(data_files)
+
+    # Store dictionary if found
+    if dictionary_data:
+        existing_dict = dataset.dictionary_json or {}
+        existing_cols = existing_dict.get("columns", {})
+        existing_cols.update(dictionary_data.get("columns", {}))
+        dictionary_data["columns"] = existing_cols
+        dataset.dictionary_json = dictionary_data
     existing_profiles: list[FileProfile] = []
     if dataset.profile_json:
         existing_profiles = DatasetProfile.model_validate(dataset.profile_json).files
@@ -348,3 +379,38 @@ def export_dataset_csv(
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.post("/{dataset_id}/ai-chat", response_model=AiChatResponse)
+def ai_chat(
+    dataset_id: UUID,
+    payload: AiChatRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> AiChatResponse:
+    """Conversational AI data analyst — one turn per call."""
+    dataset = get_dataset_or_404(session, current_user, dataset_id)
+    if not dataset.profile_json:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Dataset not profiled yet")
+
+    history = [{"role": m.role, "content": m.content} for m in payload.history]
+    reply, done, insights = analyze_data_chat(
+        profile_data=dataset.profile_json,
+        user_message=payload.message,
+        history=history,
+        dictionary_data=dataset.dictionary_json,
+    )
+
+    # If the AI is done, store insights on the project
+    if done and insights:
+        project = session.get(Project, dataset.project_id)
+        if project:
+            project.business_context = insights
+            if insights.get("business_category"):
+                project.business_category = insights["business_category"]
+            session.add(project)
+            session.commit()
+
+    from app.services.llm import llm_service
+    model_label = f"{llm_service.provider} / {llm_service._model}" if llm_service.enabled else None
+    return AiChatResponse(reply=reply, done=done, insights=insights, model_name=model_label)

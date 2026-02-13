@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
     groq_api_key: Optional[str] = None
     groq_model: str = "llama-3.3-70b-versatile"
+    gemini_api_key: Optional[str] = None
+    gemini_model: str = "gemini-2.0-flash"
     jwt_secret_key: str = "change-me"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 1440

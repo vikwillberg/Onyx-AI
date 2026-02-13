@@ -20,6 +20,8 @@ class Project(SQLModel, table=True):
     description: Optional[str] = None
     business_category: Optional[str] = None
     business_context: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    chat_history_json: Optional[list] = Field(default=None, sa_column=Column(JSON))
+    thumbnail_data_url: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -34,6 +36,7 @@ class Dataset(SQLModel, table=True):
     merged_path: Optional[str] = None
     sample_visuals_json: Optional[list[dict]] = Field(default=None, sa_column=Column(JSON))
     final_visuals_json: Optional[list[dict]] = Field(default=None, sa_column=Column(JSON))
+    dictionary_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
 
 
 class DataFile(SQLModel, table=True):

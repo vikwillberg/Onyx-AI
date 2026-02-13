@@ -37,12 +37,21 @@ class ProjectCreate(BaseModel):
     business_context: Optional[dict] = None
 
 
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    thumbnail_data_url: Optional[str] = None
+    chat_history_json: Optional[list] = None
+
+
 class ProjectRead(BaseModel):
     id: UUID
     name: str
     description: Optional[str] = None
     business_category: Optional[str] = None
     business_context: Optional[dict] = None
+    chat_history_json: Optional[list] = None
+    thumbnail_data_url: Optional[str] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -194,6 +203,7 @@ class DuelRound(BaseModel):
     round: int
     option_a: VisualSpec
     option_b: VisualSpec
+    round_label: Optional[str] = None
 
 
 class DuelPoolResponse(BaseModel):
@@ -203,5 +213,37 @@ class DuelPoolResponse(BaseModel):
     generated_at: datetime
 
 
+class DuelPoolRequest(BaseModel):
+    exclude_signatures: Optional[list[list]] = None
+
+
 class DuelPickRequest(BaseModel):
     picked_visuals: list[VisualSpec]
+
+
+class FilterRequest(BaseModel):
+    date_start: Optional[str] = None
+    date_end: Optional[str] = None
+    column_filters: Optional[list[dict]] = None
+
+
+class AiChatMessage(BaseModel):
+    role: str  # "user" or "assistant"
+    content: str
+
+
+class AiChatRequest(BaseModel):
+    message: str
+    history: list[AiChatMessage] = []
+
+
+class AiChatResponse(BaseModel):
+    reply: str
+    done: bool = False
+    insights: Optional[dict] = None
+    model_name: Optional[str] = None
+
+
+class AiVisualRequest(BaseModel):
+    prompt: str
+    history: list[AiChatMessage] = []

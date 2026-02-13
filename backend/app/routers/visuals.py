@@ -13,10 +13,13 @@ from app.core.deps import get_current_user
 from app.db import get_session
 from app.models import DataFile, Dataset, Project, User
 from app.schemas import (
+    AiVisualRequest,
     DuelPickRequest,
+    DuelPoolRequest,
     DuelPoolResponse,
     DuelRound,
     FileProfile,
+    FilterRequest,
     VisualCustomRequest,
     VisualMoreRequest,
     VisualResponse,
@@ -34,6 +37,7 @@ from app.services.visuals import (
     generate_more_visuals,
     generate_sample_visuals,
     pair_candidates,
+    rebuild_all_visuals,
 )
 
 router = APIRouter()
@@ -96,6 +100,7 @@ def sample_visuals(
 @router.post("/{dataset_id}/dashboard", response_model=VisualResponse)
 def dashboard_visuals(
     dataset_id: UUID,
+    max_visuals: int = 12,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> VisualResponse:
@@ -113,6 +118,7 @@ def dashboard_visuals(
     try:
         visuals = generate_dashboard_visuals(
             profile, dataframe,
+            max_visuals=max(1, min(max_visuals, 20)),
             business_category=business_category,
             business_context=business_context,
         )
@@ -126,6 +132,104 @@ def dashboard_visuals(
     session.commit()
 
     return VisualResponse(visuals=visuals, generated_at=datetime.utcnow())
+
+
+@router.post("/{dataset_id}/filter", response_model=VisualResponse)
+def filter_visuals(
+    dataset_id: UUID,
+    payload: FilterRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> VisualResponse:
+    """Re-compute visual data using filtered raw dataframe (date range + column filters)."""
+    dataset = get_dataset_or_404(session, current_user, dataset_id)
+    if not dataset.final_visuals_json:
+        raise HTTPException(status_code=400, detail="No visuals to filter")
+    try:
+        _profile, dataframe = get_dataset_dataframe(session, dataset)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to load data: {exc}")
+
+    existing = [VisualSpec(**v) for v in dataset.final_visuals_json]
+    rebuilt = rebuild_all_visuals(
+        existing, dataframe,
+        date_start=payload.date_start,
+        date_end=payload.date_end,
+        column_filters=payload.column_filters,
+    )
+    # Preserve layout config from existing visuals
+    for orig, reb in zip(existing, rebuilt):
+        if orig.config and orig.config.get("layout"):
+            reb_config = reb.config or {}
+            reb_config["layout"] = orig.config["layout"]
+            rebuilt[rebuilt.index(reb)] = reb.model_copy(update={"config": reb_config})
+
+    return VisualResponse(visuals=rebuilt, generated_at=datetime.utcnow())
+
+
+@router.post("/{dataset_id}/ai-generate", response_model=VisualResponse)
+def ai_generate_visual(
+    dataset_id: UUID,
+    payload: AiVisualRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> VisualResponse:
+    """Use LLM to interpret a user's visual request and build the actual chart."""
+    from app.services.llm import generate_visual_spec_from_request
+
+    dataset = get_dataset_or_404(session, current_user, dataset_id)
+    if not dataset.profile_json:
+        raise HTTPException(status_code=400, detail="Dataset not profiled yet")
+
+    history = [{"role": m.role, "content": m.content} for m in payload.history]
+    spec_dict = generate_visual_spec_from_request(
+        profile_data=dataset.profile_json,
+        user_request=payload.prompt,
+        history=history,
+        dictionary_data=dataset.dictionary_json,
+    )
+    if not spec_dict:
+        raise HTTPException(status_code=422, detail="Could not interpret visual request")
+
+    # Load dataframe
+    try:
+        _profile, dataframe = get_dataset_dataframe(session, dataset)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to load data: {exc}")
+
+    # Validate columns exist
+    col_names = set(dataframe.columns)
+    for key in ("x", "y", "values"):
+        col = spec_dict.get(key)
+        if col and col not in col_names:
+            spec_dict[key] = None
+
+    visual_type = spec_dict.get("type", "bar").lower()
+    if visual_type not in ALLOWED_TYPES:
+        visual_type = "bar"
+
+    spec = VisualSpec(
+        visual_id=build_visual_id(visual_type),
+        type=visual_type,
+        title=spec_dict.get("title", "AI Generated Chart"),
+        x=spec_dict.get("x"),
+        y=spec_dict.get("y"),
+        values=spec_dict.get("values"),
+        aggregation=spec_dict.get("aggregation"),
+    )
+
+    visual = apply_data_to_spec(spec, dataframe)
+    if not visual:
+        raise HTTPException(status_code=422, detail="Could not build visual from the interpreted specification")
+
+    # Persist to dataset
+    existing = dataset.final_visuals_json or []
+    existing.append(visual.model_dump())
+    dataset.final_visuals_json = existing
+    session.add(dataset)
+    session.commit()
+
+    return VisualResponse(visuals=[visual], generated_at=datetime.utcnow())
 
 
 @router.post("/{dataset_id}/final", response_model=VisualResponse)
@@ -297,6 +401,7 @@ def custom_visual(
 @router.post("/{dataset_id}/duel-pool", response_model=DuelPoolResponse)
 def duel_pool(
     dataset_id: UUID,
+    payload: Optional[DuelPoolRequest] = None,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> DuelPoolResponse:
@@ -311,6 +416,10 @@ def duel_pool(
     business_category = project.business_category if project else None
     business_context = project.business_context if project else None
 
+    exclude_sigs: set[tuple] = set()
+    if payload and payload.exclude_signatures:
+        exclude_sigs = {tuple(s) for s in payload.exclude_signatures}
+
     try:
         kpis, pool = generate_duel_pool(
             profile, dataframe,
@@ -320,6 +429,9 @@ def duel_pool(
     except Exception as exc:
         logger.error("Duel pool generation failed: %s\n%s", exc, traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Duel pool error: {exc}")
+
+    if exclude_sigs:
+        pool = [v for v in pool if (v.type, v.x, v.y, v.values, v.aggregation) not in exclude_sigs]
 
     rounds = pair_candidates(pool)
     duel_rounds = [DuelRound(**r) for r in rounds]
@@ -367,3 +479,20 @@ def duel_pick(
     session.commit()
 
     return VisualResponse(visuals=final_visuals, generated_at=datetime.utcnow())
+
+
+@router.get("/{dataset_id}/insights")
+def get_insights(
+    dataset_id: UUID,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Generate AI-powered natural language insights for the dashboard."""
+    dataset = get_dataset_or_404(session, current_user, dataset_id)
+    project = session.get(Project, dataset.project_id)
+    profile_data = dataset.profile_json or {}
+    business_context = project.business_context if project else {}
+
+    from app.services.llm import generate_dashboard_insights
+    insights = generate_dashboard_insights(profile_data, business_context or {})
+    return {"insights": insights}
