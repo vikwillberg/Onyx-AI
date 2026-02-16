@@ -31,10 +31,12 @@ from app.services.visuals import (
     ALLOWED_TYPES,
     apply_data_to_spec,
     build_visual_id,
+    dashboard_signature,
     generate_dashboard_visuals,
     generate_duel_pool,
     generate_final_visuals,
     generate_more_visuals,
+    generate_requested_visual,
     generate_sample_visuals,
     pair_candidates,
     rebuild_all_visuals,
@@ -470,8 +472,31 @@ def duel_pick(
         max_pool=0,
     )
 
-    # Combine KPIs + user-picked visuals (sent from frontend with full data)
-    final_visuals = kpis + payload.picked_visuals
+    requested_visual = generate_requested_visual(profile, dataframe, business_context)
+
+    # Combine KPIs + requested visual + user-picked visuals while de-duplicating.
+    final_visuals: list[VisualSpec] = []
+    seen: set[tuple] = set()
+
+    for visual in kpis:
+        sig = dashboard_signature(visual)
+        if sig in seen:
+            continue
+        seen.add(sig)
+        final_visuals.append(visual)
+
+    if requested_visual:
+        sig = dashboard_signature(requested_visual)
+        if sig not in seen:
+            seen.add(sig)
+            final_visuals.append(requested_visual)
+
+    for visual in payload.picked_visuals:
+        sig = dashboard_signature(visual)
+        if sig in seen:
+            continue
+        seen.add(sig)
+        final_visuals.append(visual)
 
     dataset.final_visuals_json = [v.model_dump() for v in final_visuals]
     dataset.sample_visuals_json = None

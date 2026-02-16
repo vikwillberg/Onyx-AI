@@ -320,6 +320,14 @@ def analyze_data_chat(
 
     Returns (reply_text, is_done, insights_dict_or_none).
     """
+    if not llm_service.enabled:
+        return (
+            "AI chat is not configured yet (missing GROQ/OpenAI/Gemini API key). "
+            "You can still click Start Generating to build a dashboard from your uploaded data.",
+            True,
+            None,
+        )
+
     profile_summary = build_profile_summary(profile_data, dictionary_data)
     dictionary_section = build_dictionary_section(dictionary_data)
     system = DATA_ANALYST_SYSTEM.format(profile_summary=profile_summary, dictionary_section=dictionary_section)

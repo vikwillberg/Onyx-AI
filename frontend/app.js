@@ -45,6 +45,7 @@ const state = {
   pendingStep: null,
   pendingFiles: [],
   authPrompted: false,
+  authModalContext: null,
   editingVisualId: null,
   theme: localStorage.getItem(THEME_KEY) || "light",
   businessCategory: null,
@@ -391,17 +392,26 @@ function setSectionVisibility(section, visible) {
   section.classList.toggle("hidden", !visible);
 }
 
-function openAuthModal() {
+function openAuthModal(options = {}) {
   if (!elements.authModal) return;
+  const {
+    tab = "login",
+    loginTitle = "Welcome back",
+    subtitle = "Sign in to save dashboards and keep your projects across sessions.",
+  } = options;
+  const activeTab = tab === "register" ? "register" : "login";
+  state.authModalContext = { loginTitle, subtitle };
   elements.authModal.classList.remove("hidden");
   /* Reset to login tab and clear errors */
   const authError = document.getElementById("auth-error");
   if (authError) authError.classList.add("hidden");
-  document.querySelectorAll(".auth-tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === "login"));
-  document.getElementById("login-form")?.classList.remove("hidden");
-  document.getElementById("register-form")?.classList.add("hidden");
+  document.querySelectorAll(".auth-tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === activeTab));
+  document.getElementById("login-form")?.classList.toggle("hidden", activeTab !== "login");
+  document.getElementById("register-form")?.classList.toggle("hidden", activeTab !== "register");
   const title = document.querySelector(".auth-title");
-  if (title) title.textContent = "Welcome back";
+  if (title) title.textContent = activeTab === "login" ? loginTitle : "Create your account";
+  const subtitleEl = document.querySelector(".auth-subtitle");
+  if (subtitleEl) subtitleEl.textContent = subtitle;
 }
 
 function closeAuthModal() {
@@ -493,6 +503,16 @@ function updateSaveSection() {
       "You are working as a guest. Log in to save this dashboard to your account for later.";
     elements.saveLoginCta.classList.remove("hidden");
   }
+}
+
+function promptAuthToSaveDashboard() {
+  if (state.token || state.authPrompted || !state.finalVisuals.length) return;
+  state.pendingStep = "save";
+  openAuthModal({
+    loginTitle: "Save your dashboard",
+    subtitle: "You're in guest mode. Sign in or create an account to save your dashboard progress and access it later.",
+  });
+  state.authPrompted = true;
 }
 
 function resetUploadFlow() {
@@ -1380,6 +1400,10 @@ function initAiChat() {
       appendChatBubble("assistant", reply);
       state.aiChatHistory.push({ role: "user", content: greeting });
       state.aiChatHistory.push({ role: "assistant", content: reply });
+
+      if (response.done && elements.aiChatGenerate) {
+        elements.aiChatGenerate.classList.remove("hidden");
+      }
 
       showSuggestionChips(buildDataAwareSuggestions(true));
     } catch (err) {
@@ -2584,6 +2608,13 @@ async function apiFetch(path, options = {}) {
       ...(options.headers || {}),
     },
   });
+  if (response.status === 401 && state.token) {
+    state.token = null;
+    state.email = null;
+    localStorage.removeItem("token");
+    localStorage.removeItem("email");
+    setAuthenticatedView();
+  }
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(errorText || "Request failed");
@@ -3263,6 +3294,7 @@ async function generateDashboardVisuals(options = {}) {
   state.selectedVisualIds = new Set();
   state.datasetDetail.final_visuals = response.visuals;
   renderDashboard();
+  promptAuthToSaveDashboard();
   if (!silent) {
     showToast("Dashboard ready");
   }
@@ -3281,6 +3313,7 @@ async function finalizeVisuals() {
   });
   state.finalVisuals = response.visuals;
   renderDashboard();
+  promptAuthToSaveDashboard();
   setStep("dashboard");
 }
 
@@ -3977,6 +4010,7 @@ async function finishDuel() {
     state.datasetDetail.final_visuals = state.finalVisuals;
     setStep("dashboard");
     renderDashboard();
+    promptAuthToSaveDashboard();
     showToast("Dashboard ready!");
   } catch (err) {
     console.error("Duel pick failed:", err);
@@ -4022,8 +4056,14 @@ function bindEvents() {
       document.getElementById("register-form")?.classList.toggle("hidden", target !== "register");
       const authError = document.getElementById("auth-error");
       if (authError) authError.classList.add("hidden");
+      const modalContext = state.authModalContext || {};
       const title = document.querySelector(".auth-title");
-      if (title) title.textContent = target === "login" ? "Welcome back" : "Create your account";
+      if (title) title.textContent = target === "login" ? (modalContext.loginTitle || "Welcome back") : "Create your account";
+      const subtitle = document.querySelector(".auth-subtitle");
+      if (subtitle) {
+        subtitle.textContent =
+          modalContext.subtitle || "Sign in to save dashboards and keep your projects across sessions.";
+      }
     });
   });
 

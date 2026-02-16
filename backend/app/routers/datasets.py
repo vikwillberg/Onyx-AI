@@ -58,6 +58,50 @@ def serialize_rows(rows: list[dict]) -> list[dict]:
     return serialized
 
 
+def _is_generic_build_confirmation(message: str) -> bool:
+    normalized = (message or "").strip().lower()
+    if not normalized:
+        return True
+    generic = {
+        "yes",
+        "yeah",
+        "yep",
+        "ok",
+        "okay",
+        "looks good",
+        "go ahead",
+        "build it",
+        "do it",
+        "start generating",
+        "generate",
+    }
+    if normalized in generic:
+        return True
+    if len(normalized.split()) <= 3 and any(token in normalized for token in ("build", "generate", "go")):
+        return True
+    return False
+
+
+def _fallback_primary_question(history: list[dict[str, str]], latest_user_message: str) -> str:
+    latest = (latest_user_message or "").strip()
+    if latest and not _is_generic_build_confirmation(latest):
+        return latest
+
+    for message in reversed(history):
+        if message.get("role") != "user":
+            continue
+        content = str(message.get("content") or "").strip()
+        if not content:
+            continue
+        if "just uploaded my data" in content.lower():
+            continue
+        if _is_generic_build_confirmation(content):
+            continue
+        return content
+
+    return latest or "Build a dashboard for this dataset"
+
+
 @router.get("/{dataset_id}", response_model=DatasetDetail)
 def get_dataset(
     dataset_id: UUID,
@@ -401,12 +445,17 @@ def ai_chat(
         dictionary_data=dataset.dictionary_json,
     )
 
-    # If the AI is done, store insights on the project
-    if done and insights:
+    # If the AI is done, store context on the project
+    if done:
         project = session.get(Project, dataset.project_id)
         if project:
-            project.business_context = insights
-            if insights.get("business_category"):
+            merged_context: dict = dict(project.business_context or {})
+            if isinstance(insights, dict):
+                merged_context.update(insights)
+            if not merged_context.get("primary_question"):
+                merged_context["primary_question"] = _fallback_primary_question(history, payload.message)
+            project.business_context = merged_context
+            if isinstance(insights, dict) and insights.get("business_category"):
                 project.business_category = insights["business_category"]
             session.add(project)
             session.commit()

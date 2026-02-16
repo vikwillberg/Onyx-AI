@@ -6,7 +6,7 @@ import pandas as pd
 
 from app.schemas import ColumnProfile, FileProfile, VisualSpec
 from app.services.ingestion import to_serializable
-from app.services.llm import llm_service
+from app.services.llm import generate_visual_spec_from_request, llm_service
 
 ALLOWED_TYPES = {"bar", "line", "pie", "scatter", "histogram", "table", "map"}
 AGGREGATIONS = {"count", "mean", "sum", "median"}
@@ -2051,6 +2051,10 @@ def generate_dashboard_visuals(
     ):
         _append_visual(kpi_visual)
 
+    requested_visual = generate_requested_visual(profile, dataframe, business_context)
+    if requested_visual:
+        _append_visual(requested_visual)
+
     # --- Template-driven visuals (if a business category template exists) ---
     if template:
         for tmpl_vis in template.get("must_have_visuals", []):
@@ -2233,6 +2237,60 @@ def generate_dashboard_visuals(
                                                         preferred_aggregation(m.name) if m else "count", "bar"))
 
     return visuals
+
+
+def build_requested_visual_spec(
+    profile: FileProfile,
+    business_context: Optional[dict] = None,
+) -> Optional[VisualSpec]:
+    if not llm_service.enabled or not business_context:
+        return None
+
+    primary_question = str(business_context.get("primary_question") or "").strip()
+    if not primary_question:
+        return None
+
+    profile_data = {"files": [profile.model_dump(mode="json")]}
+    spec_dict = generate_visual_spec_from_request(
+        profile_data=profile_data,
+        user_request=primary_question,
+        history=None,
+    )
+    if not spec_dict:
+        return None
+
+    visual_type = str(spec_dict.get("type", "")).lower()
+    if visual_type not in ALLOWED_TYPES:
+        return None
+
+    aggregation = spec_dict.get("aggregation")
+    if aggregation and aggregation not in AGGREGATIONS:
+        aggregation = None
+
+    title = str(spec_dict.get("title") or "Requested Analysis")
+    return VisualSpec(
+        visual_id=build_visual_id(visual_type),
+        type=visual_type,
+        title=title,
+        x=spec_dict.get("x"),
+        y=spec_dict.get("y"),
+        values=spec_dict.get("values"),
+        aggregation=aggregation,
+    )
+
+
+def generate_requested_visual(
+    profile: FileProfile,
+    dataframe: pd.DataFrame,
+    business_context: Optional[dict] = None,
+) -> Optional[VisualSpec]:
+    requested_spec = build_requested_visual_spec(profile, business_context)
+    if not requested_spec:
+        return None
+    visual = apply_data_to_spec(requested_spec, dataframe)
+    if not visual or not visual.data:
+        return None
+    return visual
 
 
 def apply_data_to_spec(spec: VisualSpec, dataframe: pd.DataFrame) -> Optional[VisualSpec]:
@@ -2632,6 +2690,20 @@ def generate_duel_pool(
         if sig not in signatures:
             signatures.add(sig)
             specs.append(spec)
+
+    requested_spec = build_requested_visual_spec(profile, business_context)
+    if requested_spec:
+        add_spec(requested_spec)
+
+    if max_pool > 0:
+        context_llm_specs = llm_dashboard_plan(
+            profile,
+            business_category=business_category,
+            business_context=business_context,
+            max_visuals=min(max_pool, 8),
+        )
+        for llm_spec in context_llm_specs:
+            add_spec(llm_spec)
 
     # Template must-have visuals get priority (added first)
     if template:
