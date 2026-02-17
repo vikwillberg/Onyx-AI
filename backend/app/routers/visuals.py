@@ -521,3 +521,37 @@ def get_insights(
     from app.services.llm import generate_dashboard_insights
     insights = generate_dashboard_insights(profile_data, business_context or {})
     return {"insights": insights}
+
+
+@router.get("/{dataset_id}/narrative")
+def get_narrative_insights(
+    dataset_id: UUID,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Generate a narrative story with insights paired with supporting visuals."""
+    dataset = get_dataset_or_404(session, current_user, dataset_id)
+    project = session.get(Project, dataset.project_id)
+    profile_data = dataset.profile_json or {}
+    business_context = project.business_context if project else {}
+
+    from app.services.llm import generate_narrative_insights
+    from app.services.visuals import generate_visual_data
+    
+    narrative = generate_narrative_insights(profile_data, business_context or {})
+    
+    # Generate actual visual data for each insight
+    for insight in narrative.get("insights", []):
+        visual_spec = insight.get("visual", {})
+        if visual_spec and visual_spec.get("type"):
+            try:
+                visual_data = generate_visual_data(
+                    visual_spec,
+                    profile_data,
+                    dataset.stored_path,
+                )
+                insight["visual_data"] = visual_data
+            except Exception:
+                insight["visual_data"] = None
+    
+    return narrative

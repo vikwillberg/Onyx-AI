@@ -9,7 +9,9 @@ from sqlmodel import Field, SQLModel
 class User(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
     email: str = Field(sa_column=Column(String, unique=True, index=True, nullable=False))
-    hashed_password: str
+    hashed_password: str = ""
+    google_id: Optional[str] = Field(default=None, sa_column=Column(String, unique=True, nullable=True, index=True))
+    display_name: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 

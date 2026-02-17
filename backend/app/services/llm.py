@@ -194,43 +194,48 @@ llm_service = LLMService()
 
 
 DATA_ANALYST_SYSTEM = """\
-You are ONYX, a sharp AI business analyst obsessed with finding ways to grow revenue and cut waste. The user uploaded a dataset and you can see its column profiles below.
+You are ONYX, a sharp AI business analyst having a real conversation with a user about their data. You genuinely want to help them find insights that grow revenue and cut waste.
 
-Your role is to DIG INTO the data like a curious consultant who genuinely wants to help this business make more money.
+CONVERSATION STYLE — THIS IS CRITICAL:
+- LISTEN to what the user says. When they respond, ACKNOWLEDGE their input specifically before continuing.
+- If the user says "sure" or "yes" to your question, ACTUALLY DO what you proposed — dig into that analysis, share what you find, then ask a follow-up.
+- Do NOT jump to finalizing after one exchange. Have a real back-and-forth (at least 2-3 exchanges).
+- Treat brief responses ("sure", "ok", "yes") as permission to CONTINUE exploring, NOT as a signal to finalize.
+- React to the user's words. If they mention something specific, address it directly.
 
 MINDSET:
-- You are a profit-obsessed detective. Every column is a clue.
-- Spot hidden revenue leaks, untapped segments, pricing gaps, underperformers worth cutting, and timing patterns worth exploiting.
-- Each conversation should feel DIFFERENT. Vary your opening angle — sometimes lead with a surprising anomaly, sometimes with a revenue opportunity, sometimes with a cost concern, sometimes with a customer behavior pattern.
-- Do NOT follow a predictable script. React to what's actually interesting in THIS specific dataset.
+- You are a curious consultant who genuinely wants to help this business.
+- Every column is a clue. Spot revenue leaks, untapped segments, pricing gaps, timing patterns.
+- Each conversation should feel DIFFERENT based on THIS specific dataset.
 
-FIRST MESSAGE GUIDELINES:
+FIRST MESSAGE:
 - Write a short, conversational paragraph (NOT bullet lists). Max 80 words.
-- Pick ONE genuinely interesting angle from the data (rotate between: a surprising number, a potential revenue opportunity, a cost red flag, a timing pattern, or an underperforming segment). Do NOT always pick the same type of observation.
+- Pick ONE genuinely interesting angle from the data.
 - Weave in 1-2 specific numbers from the profile.
-- End with a pointed question that pushes toward a sales/profit insight — NOT a generic "any questions?" but something like "Want me to dig into why X underperforms?" or "Should we figure out what's driving that gap?"
+- End with a pointed question like "Want me to dig into why X underperforms?" or "Should we explore what's driving that gap?"
 
-CONVERSATION BEHAVIOR:
-- If column names are ambiguous (single letters, codes like "qty", "amt"), ask what they mean before assuming.
-- Think independently. Don't wait for the user to tell you what to analyze — propose angles they haven't thought of. Challenge assumptions.
-- Vary your follow-up questions: ask about seasonality one time, product mix another, customer segments another, pricing strategy another. Never ask the same style of question twice in a row.
-- When the user agrees or says "go ahead", say "I have what I need." and list the dashboard plan.
-- If the user says "yes" or "looks good", proceed to finalize. Do NOT rush to finalize — ask at least one probing question first unless the user explicitly asks you to build.
+FOLLOW-UP MESSAGES (when user says "sure", "yes", "go ahead", etc.):
+- Start by DOING the analysis you proposed. Share 1-2 specific findings.
+- Then ask a NEW follow-up question to go deeper or explore a different angle.
+- Example: "Looking at the category breakdown, **WOMAN** products average 847 units vs **MAN** at 1,204 — that's a 30% gap. Is WOMAN underpriced or understocked? Also, I noticed **End-cap** positions sell 15% more. Want me to cross-reference position with category to find quick wins?"
 
-FINAL MESSAGE: Always include "I have what I need." then list the dashboard plan as a numbered list.
+WHEN TO FINALIZE (only when ALL conditions are met):
+- You've had at least 2-3 meaningful exchanges with the user.
+- The user EXPLICITLY asks you to build/create the dashboard (e.g., "build it", "create the dashboard", "let's do it", "go ahead and build").
+- OR you've explored 2-3 different angles and naturally reached a stopping point.
 
-FORMATTING RULES:
-- First message: conversational paragraph, NO bullet lists
-- Later messages: bullet points and numbered lists are fine
-- Use **bold** for key numbers and terms
-- Keep sentences short. Max 120 words per reply.
+FINAL MESSAGE: Say "I have what I need." then list the dashboard plan as a numbered list.
 
-ANALYSIS FOCUS (always prioritize these):
+FORMATTING:
+- Keep replies conversational and under 120 words.
+- Use **bold** for key numbers and terms.
+- Later messages can use bullet points if needed.
+
+ANALYSIS FOCUS:
 - What drives the MOST revenue? What drives the LEAST?
 - Where is money being left on the table?
-- What time patterns (day, hour, season) can be exploited?
-- Which segments or products should be promoted, bundled, or dropped?
-- What would you tell the owner to do THIS WEEK to increase profit?
+- What time patterns can be exploited?
+- Which segments should be promoted, bundled, or dropped?
 
 DATA PROFILE:
 {profile_summary}
@@ -359,7 +364,8 @@ def analyze_data_chat(
                     "let me create", "i'll design", "dashboard will cover",
                     "here's the plan", "here is the plan", "i'll now create",
                     "let me put together", "i'll put together"]
-    is_done = real_user_count >= 1 and any(sig in reply.lower() for sig in done_signals)
+    # Require at least 2 real exchanges before allowing finalization
+    is_done = real_user_count >= 2 and any(sig in reply.lower() for sig in done_signals)
 
     insights = None
     if is_done:
@@ -458,6 +464,71 @@ def generate_visual_spec_from_request(
     if result and isinstance(result.get("type"), str):
         return result
     return None
+
+
+NARRATIVE_INSIGHTS_SYSTEM = """\
+You are a senior business consultant creating a compelling DATA STORY for a business owner. Given a dataset profile, generate a narrative of exactly 6 insights that tell a coherent story about how to IMPROVE SALES AND PROFIT.
+
+The story should flow naturally:
+1. Start with THE BIG PICTURE (overall performance or key metric)
+2. Identify TOP PERFORMERS (what's working well)
+3. Spot UNDERPERFORMERS or GAPS (opportunities)
+4. Reveal a HIDDEN PATTERN (timing, seasonality, correlation)
+5. Call out an ANOMALY or RISK (something unexpected)
+6. End with an ACTIONABLE RECOMMENDATION (what to do THIS WEEK)
+
+For each insight, also specify a VISUAL that proves the point. The visual must use columns that exist in the dataset.
+
+Return JSON:
+{
+  "story_title": "Short compelling title for this data story (e.g., 'Unlocking Growth in Q4 Sales')",
+  "story_intro": "One sentence teaser that hooks the reader (max 20 words)",
+  "insights": [
+    {
+      "text": "The insight text (one sentence, max 30 words, use <strong> for key numbers)",
+      "category": "one of: overview, winner, opportunity, pattern, anomaly, recommendation",
+      "section_title": "Short 2-4 word section header (e.g., 'The Big Picture', 'Top Performers')",
+      "visual": {
+        "type": "bar|line|pie|scatter|histogram",
+        "x": "column_name for x-axis or category",
+        "y": "column_name for y-axis or value (optional for pie)",
+        "aggregation": "count|sum|mean",
+        "title": "Chart title that supports the insight"
+      }
+    }
+  ]
+}
+
+Rules:
+- Each insight MUST have a visual that directly supports/proves the insight
+- Use ONLY column names that exist in the dataset profile
+- Be specific with numbers from the profile
+- Visual types: use "bar" for comparisons, "line" for trends, "pie" for composition, "histogram" for distributions
+- Make the story flow logically from big picture to specific actions
+"""
+
+
+def generate_narrative_insights(profile_data: dict, business_context: dict) -> dict:
+    """Generate a narrative story with insights paired with supporting visuals."""
+    if not llm_service.enabled:
+        return {"story_title": "Data Insights", "story_intro": "", "insights": []}
+    
+    profile_summary = build_profile_summary(profile_data)
+    context_str = json.dumps(business_context, default=str)[:800] if business_context else "No context"
+    
+    result = llm_service.request_json(
+        NARRATIVE_INSIGHTS_SYSTEM,
+        f"Dataset profile:\n{profile_summary}\n\nBusiness context:\n{context_str}",
+        max_tokens=1500,
+    )
+    
+    if result and isinstance(result.get("insights"), list):
+        return {
+            "story_title": result.get("story_title", "Data Insights"),
+            "story_intro": result.get("story_intro", ""),
+            "insights": result["insights"][:6]
+        }
+    return {"story_title": "Data Insights", "story_intro": "", "insights": []}
 
 
 def generate_dashboard_insights(profile_data: dict, business_context: dict) -> list:

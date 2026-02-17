@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 1440
     cors_origins: list[str] = ["http://localhost:3000"]
+    google_client_id: Optional[str] = None
+    google_client_secret: Optional[str] = None
+    google_redirect_uri: Optional[str] = None
 
     model_config = SettingsConfigDict(env_file=ENV_FILES, case_sensitive=False)
 

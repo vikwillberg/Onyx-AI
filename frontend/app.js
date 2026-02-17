@@ -460,6 +460,12 @@ function setStep(step) {
   /* Persist session on every step change */
   saveSession();
   updateStepIndicator(step);
+
+  /* Show contextual tips on first visit to each step */
+  if (step === "projects" || step === "upload") showContextualTip("#projects-section", "upload");
+  else if (step === "ai-chat") showContextualTip("#ai-chat-section", "chat");
+  else if (step === "duel") showContextualTip("#duel-section", "duel");
+  else if (step === "dashboard") showContextualTip("#dashboard-section", "dashboard");
 }
 
 const STEP_ORDER = ["upload", "ai-chat", "duel", "dashboard"];
@@ -735,48 +741,208 @@ function renderKpiStrip() {
   }).join("");
 }
 
-/* ===== Insights Strip ===== */
-const INSIGHT_CATEGORY_META = {
-  trend:          { icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`, label: "Trend" },
-  comparison:     { icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`, label: "Comparison" },
-  anomaly:        { icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`, label: "Anomaly" },
-  recommendation: { icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z"/></svg>`, label: "Recommendation" },
-  distribution:   { icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>`, label: "Distribution" },
+/* ===== Narrative Story Insights ===== */
+const STORY_CATEGORY_ICONS = {
+  overview:       `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>`,
+  winner:         `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>`,
+  opportunity:    `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`,
+  pattern:        `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
+  anomaly:        `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>`,
+  recommendation: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z"/></svg>`,
 };
+
 async function renderInsightsStrip() {
   if (!elements.insightsStrip) return;
   elements.insightsStrip.innerHTML = "";
   const wrap = document.getElementById("insights-strip-wrap");
+  if (wrap) wrap.classList.remove("hidden");
 
   if (state.currentDataset) {
-    /* Show loading skeleton while fetching */
-    elements.insightsStrip.innerHTML = Array.from({ length: 4 }, () =>
-      `<div class="insight-card insight-skeleton"><div class="skeleton-line skeleton-short"></div><div class="skeleton-line"></div><div class="skeleton-line skeleton-med"></div></div>`
-    ).join("");
+    /* Show loading skeleton for narrative story */
+    elements.insightsStrip.innerHTML = `
+      <div class="narrative-container narrative-skeleton">
+        <div class="narrative-header">
+          <div class="skeleton-block skeleton-title"></div>
+          <div class="skeleton-block skeleton-intro"></div>
+        </div>
+        <div class="narrative-loading">
+          <div class="narrative-spinner"></div>
+          <span>Generating your data story...</span>
+        </div>
+        ${Array.from({ length: 3 }, (_, i) => `
+          <div class="story-section" data-section="${i + 1}" data-category="overview">
+            <div class="skeleton-block skeleton-text"></div>
+            <div class="skeleton-block skeleton-chart"></div>
+          </div>
+        `).join("")}
+      </div>`;
+    
     try {
-      const resp = await apiFetch(`/visuals/${state.currentDataset.id}/insights`);
+      const resp = await apiFetch(`/visuals/${state.currentDataset.id}/narrative`);
       elements.insightsStrip.innerHTML = "";
+      
       if (resp.insights && resp.insights.length) {
-        resp.insights.slice(0, 8).forEach((item) => {
-          const text = typeof item === "string" ? item : (item.text || JSON.stringify(item));
-          const category = (typeof item === "object" && item.category) ? item.category : "trend";
-          const meta = INSIGHT_CATEGORY_META[category] || INSIGHT_CATEGORY_META.trend;
-          const card = document.createElement("div");
-          card.className = `insight-card insight-cat-${category}`;
-          card.innerHTML = `
-            <div class="insight-visual">${meta.icon}</div>
-            <div class="insight-body">
-              <div class="insight-label">${meta.label}</div>
-              <div class="insight-text">${text}</div>
-            </div>`;
-          elements.insightsStrip.appendChild(card);
+        const container = document.createElement("div");
+        container.className = "narrative-container";
+        
+        /* Story Header */
+        container.innerHTML = `
+          <div class="narrative-header">
+            <h2 class="narrative-title">${resp.story_title || "Your Data Story"}</h2>
+            <p class="narrative-intro">${resp.story_intro || "Insights to grow your business"}</p>
+          </div>
+        `;
+        
+        /* Story Sections */
+        resp.insights.forEach((insight, index) => {
+          const category = insight.category || "overview";
+          const icon = STORY_CATEGORY_ICONS[category] || STORY_CATEGORY_ICONS.overview;
+          const sectionTitle = insight.section_title || category.charAt(0).toUpperCase() + category.slice(1);
+          const visualSpec = insight.visual || {};
+          const visualData = insight.visual_data;
+          
+          const section = document.createElement("div");
+          section.className = "story-section";
+          section.dataset.section = index + 1;
+          section.dataset.category = category;
+          
+          const chartId = `story-chart-${index}`;
+          section.innerHTML = `
+            <div class="story-section-header">
+              <div class="story-section-icon">${icon}</div>
+              <div class="story-section-title">${sectionTitle}</div>
+            </div>
+            <div class="story-insight-text">${insight.text || ""}</div>
+            ${visualData ? `
+              <div class="story-visual">
+                <div class="story-visual-title">${visualSpec.title || "Supporting Data"}</div>
+                <div class="story-chart chart" id="${chartId}"></div>
+              </div>
+            ` : ""}
+          `;
+          container.appendChild(section);
+          
+          /* Render the chart after adding to DOM */
+          if (visualData) {
+            requestAnimationFrame(() => {
+              const chartEl = document.getElementById(chartId);
+              if (chartEl) {
+                renderStoryChart(chartEl, visualSpec, visualData);
+              }
+            });
+          }
         });
+        
+        elements.insightsStrip.appendChild(container);
         return;
       }
-    } catch (_e) { /* fall through */ }
+    } catch (e) {
+      console.warn("Narrative insights failed, trying fallback:", e);
+      /* Fallback to simple insights */
+      try {
+        const fallback = await apiFetch(`/visuals/${state.currentDataset.id}/insights`);
+        elements.insightsStrip.innerHTML = "";
+        if (fallback.insights && fallback.insights.length) {
+          const container = document.createElement("div");
+          container.className = "narrative-container";
+          container.innerHTML = `<div class="narrative-header"><h2 class="narrative-title">Key Insights</h2></div>`;
+          fallback.insights.slice(0, 6).forEach((item, i) => {
+            const text = typeof item === "string" ? item : (item.text || "");
+            const category = item.category || "overview";
+            const icon = STORY_CATEGORY_ICONS[category] || STORY_CATEGORY_ICONS.overview;
+            const section = document.createElement("div");
+            section.className = "story-section";
+            section.dataset.section = i + 1;
+            section.dataset.category = category;
+            section.innerHTML = `
+              <div class="story-section-header">
+                <div class="story-section-icon">${icon}</div>
+                <div class="story-section-title">${category}</div>
+              </div>
+              <div class="story-insight-text">${text}</div>
+            `;
+            container.appendChild(section);
+          });
+          elements.insightsStrip.appendChild(container);
+          return;
+        }
+      } catch (_) { /* fall through */ }
+    }
   }
 
   if (wrap) wrap.classList.add("hidden");
+}
+
+function renderStoryChart(container, spec, data) {
+  if (!container || !data || !data.length) return;
+  try {
+    const theme = PLOTLY_THEMES[state.theme] || PLOTLY_THEMES.dark;
+    const palette = getActivePalette();
+    let plotData = [];
+    const chartType = spec.type || "bar";
+    
+    if (chartType === "bar") {
+      const sorted = [...data].sort((a, b) => (Number(b[spec.y]) || 0) - (Number(a[spec.y]) || 0)).slice(0, 10);
+      plotData = [{
+        type: "bar",
+        x: sorted.map((r) => r[spec.x]),
+        y: sorted.map((r) => Number(r[spec.y]) || 0),
+        marker: { color: sorted.map((_, i) => palette[i % palette.length]), cornerradius: 4 },
+        hoverinfo: "x+y",
+      }];
+    } else if (chartType === "line") {
+      plotData = [{
+        type: "scatter", mode: "lines+markers",
+        x: data.map((r) => r[spec.x]),
+        y: data.map((r) => r[spec.y]),
+        line: { color: palette[0], width: 2, shape: "spline" },
+        marker: { color: palette[0], size: 5 },
+        fill: "tozeroy", fillcolor: palette[0] + "20",
+        hoverinfo: "x+y",
+      }];
+    } else if (chartType === "pie") {
+      plotData = [{
+        type: "pie",
+        labels: data.map((r) => r[spec.x]),
+        values: data.map((r) => r[spec.y] || r.count || r.value),
+        textinfo: "label+percent",
+        textposition: "inside", hole: 0.4,
+        marker: { colors: palette },
+        hoverinfo: "label+value+percent",
+      }];
+    } else if (chartType === "histogram") {
+      plotData = [{
+        type: "bar",
+        x: data.map((r) => r.bin || r[spec.x]),
+        y: data.map((r) => r.count || r[spec.y]),
+        marker: { color: palette[2] || palette[0], cornerradius: 3 },
+        hoverinfo: "x+y",
+      }];
+    } else if (chartType === "scatter") {
+      plotData = [{
+        type: "scatter", mode: "markers",
+        x: data.map((r) => r[spec.x]),
+        y: data.map((r) => r[spec.y]),
+        marker: { color: palette[0], size: 8, opacity: 0.7 },
+        hoverinfo: "x+y",
+      }];
+    }
+    
+    const layout = {
+      margin: { t: 10, r: 20, b: 40, l: 50 },
+      paper_bgcolor: "rgba(0,0,0,0)",
+      plot_bgcolor: "rgba(0,0,0,0)",
+      font: { family: "Inter", color: theme.font, size: 11 },
+      autosize: true,
+      showlegend: false,
+      xaxis: { automargin: true, gridcolor: theme.grid, zeroline: false, tickfont: { size: 10 } },
+      yaxis: { automargin: true, gridcolor: theme.grid, zeroline: false, tickfont: { size: 10 } },
+      hovermode: "closest",
+      bargap: 0.2,
+    };
+    
+    Plotly.newPlot(container, plotData, layout, { responsive: true, displayModeBar: false });
+  } catch (_e) { /* silent */ }
 }
 
 /* ===== Nav Pills (Overview / Key Insights / Data) ===== */
@@ -2168,42 +2334,41 @@ function getDefaultTileLayout(visual) {
 
   if (visual.type === "table") {
     if (isSummaryTable) {
-      return { w: 6, h: 4 };
+      return { w: 6, h: 3 };
     }
     if (columns >= 6) {
-      return { w: 12, h: 5 };
+      return { w: 12, h: 3 };
     }
-    return { w: 6, h: 4 };
+    return { w: 6, h: 3 };
   }
 
-  /* Line charts are hero visuals — full width, taller for readability */
+  /* Line charts — half width by default, can be resized */
   if (visual.type === "line") {
-    return { w: 12, h: 4 };
+    return { w: 6, h: 3 };
   }
 
   if (visual.type === "scatter") {
-    return { w: 6, h: 4 };
+    return { w: 6, h: 3 };
   }
 
   if (visual.type === "bar") {
-    if (dataCount > 10) return { w: 6, h: 5 };
-    if (dataCount > 6) return { w: 6, h: 4 };
-    return { w: 6, h: 4 };
+    if (dataCount > 10) return { w: 6, h: 3 };
+    return { w: 4, h: 3 };
   }
 
   if (visual.type === "pie") {
-    return { w: 6, h: 4 };
+    return { w: 4, h: 3 };
   }
 
   if (visual.type === "histogram") {
-    return { w: 6, h: 4 };
+    return { w: 4, h: 3 };
   }
 
   if (visual.type === "map") {
-    return { w: 8, h: 5 };
+    return { w: 6, h: 3 };
   }
 
-  return { w: 6, h: 3 };
+  return { w: 4, h: 3 };
 }
 
 function pickPrimaryVisual(visuals = []) {
@@ -2249,13 +2414,14 @@ function seedDashboardLayout(visuals = []) {
   const charts = visuals.filter((visual) => !layoutMap.has(visual.visual_id));
   if (!charts.length) return layoutMap;
 
-  /* Pack charts in a clean grid: full-width for line/map, 2-column (6+6) for others */
+  /* Pack charts in a clean grid: 3-column (4+4+4) for most, 6 for line/scatter, 12 for wide tables */
   let x = 0;
   let rowHeight = 0;
   charts.forEach((visual) => {
     const defaults = getDefaultTileLayout(visual);
-    const isWide = visual.type === "line" || visual.type === "map" || (visual.type === "table" && (visual.config?.columns?.length || 0) >= 6);
-    const w = isWide ? 12 : 6;
+    const isWideTable = visual.type === "table" && (visual.config?.columns?.length || 0) >= 6;
+    const isMedium = visual.type === "line" || visual.type === "scatter" || visual.type === "map";
+    const w = isWideTable ? 12 : isMedium ? 6 : 4;
     const h = defaults.h;
     if (x + w > totalColumns) {
       yOffset += rowHeight;
@@ -2886,6 +3052,7 @@ async function selectDataset(dataset, options = {}) {
 
 function renderProjectList() {
   renderSidebarProjects();
+  updateSidebarUser();
   if (!elements.projectList) return;
   elements.projectList.innerHTML = "";
   elements.projectListSkeleton?.classList.add("hidden");
@@ -2947,6 +3114,57 @@ function toggleSidebar(forceState) {
   localStorage.setItem(SIDEBAR_PREF_KEY, isExpanded ? "expanded" : "collapsed");
 }
 
+function closeMobileSidebar() {
+  const sidebar = elements.appSidebar;
+  const overlay = document.getElementById("sidebar-overlay");
+  if (sidebar) sidebar.classList.remove("mobile-open");
+  if (overlay) overlay.classList.add("hidden");
+}
+
+/* ===== Contextual Tips ===== */
+const TUTORIAL_KEY = "onyx_tutorial_seen";
+const TUTORIAL_TIPS = {
+  upload: "Drop your CSV or Excel file here to get started. Our AI will analyze your data automatically.",
+  chat: "Chat with our AI analyst to explore your data. Ask questions or click suggestions to guide the analysis.",
+  duel: "Choose your preferred chart style for each data insight. Click the one you like better.",
+  dashboard: "Your dashboard is ready! Drag tiles to rearrange, click 'Key Insights' for the data story, or use the AI Assistant for more charts.",
+  insights: "This is your data story — AI-generated insights paired with supporting visuals to help grow your business.",
+};
+
+function getTutorialState() {
+  try { return JSON.parse(localStorage.getItem(TUTORIAL_KEY) || "{}"); } catch { return {}; }
+}
+function markTipSeen(key) {
+  const s = getTutorialState();
+  s[key] = true;
+  localStorage.setItem(TUTORIAL_KEY, JSON.stringify(s));
+}
+function showContextualTip(containerSelector, tipKey) {
+  const seen = getTutorialState();
+  if (seen[tipKey]) return;
+  const container = document.querySelector(containerSelector);
+  if (!container) return;
+  const existing = container.querySelector(".contextual-tip");
+  if (existing) return;
+  const tip = document.createElement("div");
+  tip.className = "contextual-tip";
+  tip.setAttribute("role", "status");
+  tip.innerHTML = `
+    <svg class="contextual-tip-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+    <span class="contextual-tip-text">${TUTORIAL_TIPS[tipKey]}</span>
+    <button class="contextual-tip-dismiss" type="button" aria-label="Dismiss tip">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  `;
+  tip.querySelector(".contextual-tip-dismiss").addEventListener("click", () => {
+    markTipSeen(tipKey);
+    tip.style.opacity = "0";
+    tip.style.transform = "translateY(-8px)";
+    setTimeout(() => tip.remove(), 200);
+  });
+  container.prepend(tip);
+}
+
 function renderSidebarProjects() {
   if (!elements.sidebarProjectList) return;
   elements.sidebarProjectList.innerHTML = "";
@@ -2959,28 +3177,20 @@ function renderSidebarProjects() {
   state.projects.forEach((project) => {
     const summary = state.projectSummaries[project.id] || {};
     const createdAt = formatProjectDate(summary.createdAt || project.created_at);
-    const category = project.business_category;
-    const catLabel = category ? CATEGORIES.find((c) => c.key === category)?.label || category : "";
     const isActive = state.currentProject?.id === project.id;
 
     const item = document.createElement("button");
     item.className = `sidebar-project-item${isActive ? " active" : ""}`;
     item.type = "button";
 
-    const thumbUrl = project.thumbnail_data_url || null;
-    const thumbHtml = thumbUrl
-      ? `<div class="sidebar-project-thumb"><img src="${thumbUrl}" alt="" loading="lazy" /></div>`
-      : `<div class="sidebar-project-thumb"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>`;
-
     item.innerHTML = `
+      <div class="sidebar-project-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      </div>
       <div class="sidebar-project-info">
         <span class="sidebar-project-name">${project.name}</span>
-        <div class="sidebar-project-meta">
-          ${catLabel ? `<span class="sidebar-project-badge">${catLabel}</span>` : ""}
-          <span class="sidebar-project-date">${createdAt}</span>
-        </div>
+        <span class="sidebar-project-date">${createdAt}</span>
       </div>
-      ${thumbHtml}
       <span class="sidebar-project-delete" title="Delete project">&times;</span>
     `;
     item.addEventListener("click", (e) => {
@@ -2993,6 +3203,34 @@ function renderSidebarProjects() {
     });
     elements.sidebarProjectList.appendChild(item);
   });
+}
+
+function updateSidebarUser() {
+  const userEl = document.getElementById("sidebar-user");
+  if (!userEl) return;
+  
+  if (state.user) {
+    const name = state.user.display_name || state.user.email?.split("@")[0] || "User";
+    userEl.innerHTML = `
+      <div class="sidebar-user-avatar">
+        <span style="font-size:0.8rem;font-weight:600;">${name.charAt(0).toUpperCase()}</span>
+      </div>
+      <div class="sidebar-user-info">
+        <span class="sidebar-user-name">${name}</span>
+        <span class="sidebar-user-plan">Pro</span>
+      </div>
+    `;
+  } else {
+    userEl.innerHTML = `
+      <div class="sidebar-user-avatar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </div>
+      <div class="sidebar-user-info">
+        <span class="sidebar-user-name">Guest</span>
+        <span class="sidebar-user-plan">Free</span>
+      </div>
+    `;
+  }
 }
 
 function renderDatasetList() {
@@ -3412,8 +3650,8 @@ function renderDashboard() {
   }
   state.grid = GridStack.init({
     float: false,
-    cellHeight: 100,
-    margin: 8,
+    cellHeight: 80,
+    margin: 6,
     handle: ".tile-header",
     animate: true,
     column: 12,
@@ -4149,9 +4387,39 @@ function bindEvents() {
   /* Sidebar */
   elements.sidebarToggle?.addEventListener("click", () => toggleSidebar());
   elements.sidebarCollapse?.addEventListener("click", () => toggleSidebar(false));
-  elements.sidebarNewProject?.addEventListener("click", () => { toggleSidebar(false); startNewAnalysis(); });
+  elements.sidebarNewProject?.addEventListener("click", () => { closeMobileSidebar(); toggleSidebar(false); startNewAnalysis(); });
   const savedSidebar = localStorage.getItem(SIDEBAR_PREF_KEY);
   if (savedSidebar === "expanded") toggleSidebar(true);
+
+  /* Mobile hamburger menu */
+  document.getElementById("mobile-menu-btn")?.addEventListener("click", () => {
+    const sidebar = elements.appSidebar;
+    const overlay = document.getElementById("sidebar-overlay");
+    if (!sidebar) return;
+    sidebar.classList.add("mobile-open");
+    if (overlay) overlay.classList.remove("hidden");
+  });
+  document.getElementById("sidebar-overlay")?.addEventListener("click", closeMobileSidebar);
+
+  /* Google OAuth login */
+  document.getElementById("google-login-btn")?.addEventListener("click", () => {
+    window.location.href = `${API_BASE}/auth/google/login`;
+  });
+
+  /* Mobile bottom navigation */
+  document.querySelectorAll(".mobile-nav-item").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const nav = btn.dataset.nav;
+      document.querySelectorAll(".mobile-nav-item").forEach((b) => b.classList.toggle("active", b === btn));
+      if (nav === "home") { setStep("projects"); }
+      else if (nav === "dashboard" && state.currentDataset) { setStep("dashboard"); switchNavTab("overview"); }
+      else if (nav === "insights" && state.currentDataset) { setStep("dashboard"); switchNavTab("insights"); }
+      else if (nav === "profile") {
+        if (state.token) { const d = document.getElementById("user-dropdown"); if (d) d.classList.toggle("hidden"); }
+        else openAuthModal();
+      }
+    });
+  });
 
   /* Drag-drop zone */
   initDropZone();
@@ -4512,6 +4780,15 @@ function bindEvents() {
 }
 
 async function init() {
+  /* Handle Google OAuth redirect — pick up token from URL */
+  const urlParams = new URLSearchParams(window.location.search);
+  const oauthToken = urlParams.get("token");
+  if (oauthToken) {
+    state.token = oauthToken;
+    localStorage.setItem("token", oauthToken);
+    window.history.replaceState({}, "", "/");
+  }
+
   applyTheme(state.theme);
   setAuthenticatedView();
   bindEvents();
