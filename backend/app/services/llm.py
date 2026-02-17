@@ -235,7 +235,7 @@ DATA PROFILE:
 INSIGHT_EXTRACTION_SYSTEM = """\
 You are a senior data analyst. Given the conversation between a user and an AI analyst about a dataset, extract structured insights that will drive a DIVERSE, ACTIONABLE dashboard.
 
-The dashboard MUST NOT be one-dimensional. Even if the user asked about one specific thing, the dashboard should ALSO include broader business context.
+CRITICAL: If the user asked a specific question (e.g. "Show me subscription cost trends over time"), that question MUST be captured EXACTLY in "primary_question" and MUST be the FIRST item in "analysis_areas". The dashboard will prioritize this.
 
 Return JSON with:
 {
@@ -243,7 +243,7 @@ Return JSON with:
   "key_metrics": ["list of ALL numeric column names worth tracking as KPIs"],
   "segments": ["list of ALL categorical column names useful for grouping/comparison"],
   "time_column": "name of the main date/time column or null",
-  "primary_question": "the specific question the user wants answered",
+  "primary_question": "the EXACT specific question or request the user made — copy their words as closely as possible",
   "analysis_areas": [
     {
       "area": "short name like 'Product Performance' or 'Revenue Trends'",
@@ -252,11 +252,13 @@ Return JSON with:
       "columns_involved": ["col1", "col2"]
     }
   ],
-  "goals": ["list of 4-6 diverse analysis goals covering different aspects of the business"],
+  "goals": ["list of 4-6 diverse analysis goals — user's specific question FIRST, then broader insights"],
   "business_category": "best category: ecommerce, saas, finance, healthcare, marketing, hr, logistics, restaurant, retail, education, general"
 }
 
 RULES:
+- primary_question: Extract the user's EXACT request. If they said "Show me X trends over time", write exactly that. Do NOT generalize or rephrase it.
+- analysis_areas[0]: MUST directly address the user's primary_question.
 - analysis_areas MUST contain at least 4 different areas (e.g., trends, comparisons, distributions, top performers).
 - goals MUST include the user's specific question PLUS broader business insights.
 - key_metrics should include ALL numeric columns that represent money, counts, or quantities.
@@ -372,21 +374,22 @@ def analyze_data_chat(
 
 
 DASHBOARD_INSIGHTS_SYSTEM = """\
-You are a senior data analyst. Given a dataset profile and business context, generate exactly 8 high-impact insights.
+You are a senior business consultant. Given a dataset profile and business context, generate exactly 8 high-impact insights that help the owner GROW REVENUE and REDUCE COSTS.
 
 Rules:
 - Each insight is a JSON object with "text" (the insight sentence) and "category" (one of: "trend", "comparison", "anomaly", "recommendation", "distribution").
 - Each insight text must be ONE sentence, maximum 25 words.
 - Reference ONE specific number or comparison per insight (e.g. "$1,234", "23%", "Tuesday").
-- Focus on the most actionable or surprising findings only — skip obvious or generic observations.
+- Focus on ACTIONABLE findings — what can the business owner DO about it?
 - Use HTML <strong> tags around the single most important number or term in the text.
 - Do NOT repeat similar insights. Each must cover a different angle and ideally a different category.
+- At least 2 insights MUST be "recommendation" category with specific actions the owner can take THIS WEEK.
 
 Category guide:
 - "trend": patterns over time or growth/decline
 - "comparison": differences between groups or categories
 - "anomaly": unusual or unexpected values
-- "recommendation": actionable business suggestion
+- "recommendation": actionable business suggestion (promote X, stock up on Y, staff up on Z day)
 - "distribution": data spread, concentration, or composition
 
 Example:
@@ -395,7 +398,8 @@ Example:
   {"text": "<strong>Pepperoni 18\\"</strong> has 42% profit margin but ranks only 5th in popularity", "category": "anomaly"},
   {"text": "Orders spike <strong>3x</strong> between 11am-1pm on weekdays", "category": "comparison"},
   {"text": "Top 3 products account for <strong>68%</strong> of total revenue", "category": "distribution"},
-  {"text": "Consider promoting <strong>Gift Cards</strong> — highest margin at 35% but lowest sales volume", "category": "recommendation"}
+  {"text": "Promote <strong>Gift Cards</strong> more — highest margin at 35% but lowest sales volume", "category": "recommendation"},
+  {"text": "Bundle <strong>USB-C cables</strong> with laptops — both sell well but rarely together", "category": "recommendation"}
 ]}
 Only use data that can reasonably be inferred from the profile. Be specific, quantitative, and concise.
 """

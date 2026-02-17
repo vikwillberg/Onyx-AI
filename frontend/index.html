@@ -339,33 +339,28 @@
           </div>
 
           <div id="filter-bar" class="filter-bar hidden">
-            <div class="filter-bar-dates" id="filter-bar-dates">
-              <button class="filter-pill active" data-preset="all">All Time</button>
-              <button class="filter-pill" data-preset="week">This Week</button>
-              <button class="filter-pill" data-preset="month">This Month</button>
-              <button class="filter-pill" data-preset="year">This Year</button>
-              <button class="filter-pill" data-preset="custom">Custom</button>
+            <div class="filter-bar-row">
+              <div class="filter-bar-dates" id="filter-bar-dates"></div>
               <div id="custom-date-range" class="custom-date-range hidden">
                 <input type="date" id="date-range-start" />
                 <span>to</span>
                 <input type="date" id="date-range-end" />
               </div>
-            </div>
-            <div class="filter-bar-fields">
-              <select id="filter-column" class="filter-select">
-                <option value="">Filter by field…</option>
-              </select>
-              <select id="filter-value" class="filter-select" disabled>
-                <option value="">Select value…</option>
-              </select>
-              <button id="filter-add-btn" class="btn btn-outline btn-sm" type="button">Add</button>
+              <div class="filter-bar-spacer"></div>
+              <div class="filter-bar-fields">
+                <select id="filter-column" class="filter-select">
+                  <option value="">Select field</option>
+                </select>
+                <select id="filter-value" class="filter-select" disabled>
+                  <option value="">Select value</option>
+                </select>
+                <button id="filter-add-btn" class="btn btn-primary btn-sm" type="button">Add</button>
+              </div>
+              <span id="filter-count-badge" class="filter-count-badge hidden">0 active</span>
+              <button id="clear-all-filters" class="btn-link" type="button">Clear all</button>
             </div>
             <div id="active-filters" class="active-filters"></div>
             <div id="filters-empty" class="filters-empty hidden"></div>
-            <div class="filter-bar-meta">
-              <span id="filter-count-badge" class="filter-count-badge hidden">0 filters</span>
-              <button id="clear-all-filters" class="btn-link" type="button">Clear all</button>
-            </div>
           </div>
 
           <!-- Add visual modal -->

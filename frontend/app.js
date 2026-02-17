@@ -1089,6 +1089,7 @@ async function applyServerFilters() {
       state.finalVisuals = state._unfilteredVisuals;
       state._unfilteredVisuals = null;
     }
+    state._serverFilterApplied = false;
     renderDashboard();
     return;
   }
@@ -1111,10 +1112,12 @@ async function applyServerFilters() {
     if (resp.visuals) {
       /* Merge layout from current grid into filtered results */
       state.finalVisuals = mergeVisualLayouts(resp.visuals, state._unfilteredVisuals || state.finalVisuals);
+      state._serverFilterApplied = true;
       renderDashboard();
     }
   } catch (err) {
     console.error("Filter rebuild failed:", err);
+    state._serverFilterApplied = false;
     renderDashboard();
   }
   _filterBusy = false;
@@ -1922,6 +1925,10 @@ function applyDashboardFilters(rows = []) {
     const dateColumns = getActiveProfileColumns().datetime;
     if (dateColumns.length) {
       filtered = filtered.filter((row) => {
+        /* Only filter rows that actually contain a datetime column;
+           if no datetime column exists in this row, keep it (can't filter). */
+        const hasDateCol = dateColumns.some((col) => col in row && row[col]);
+        if (!hasDateCol) return true;
         return dateColumns.some((col) => {
           const val = row[col];
           if (!val) return false;
@@ -2083,27 +2090,27 @@ function getDefaultTileLayout(visual) {
     return { w: 6, h: 4 };
   }
 
-  /* Line charts are hero visuals — give them prominent sizing */
+  /* Line charts are hero visuals — full width, taller for readability */
   if (visual.type === "line") {
-    return { w: 8, h: 3 };
+    return { w: 12, h: 4 };
   }
 
   if (visual.type === "scatter") {
-    return { w: 6, h: 3 };
+    return { w: 6, h: 4 };
   }
 
   if (visual.type === "bar") {
-    if (dataCount > 10) return { w: 6, h: 4 };
-    if (dataCount > 6) return { w: 6, h: 3 };
-    return { w: 6, h: 3 };
+    if (dataCount > 10) return { w: 6, h: 5 };
+    if (dataCount > 6) return { w: 6, h: 4 };
+    return { w: 6, h: 4 };
   }
 
   if (visual.type === "pie") {
-    return { w: 4, h: 3 };
+    return { w: 6, h: 4 };
   }
 
   if (visual.type === "histogram") {
-    return { w: 6, h: 3 };
+    return { w: 6, h: 4 };
   }
 
   if (visual.type === "map") {
@@ -2132,82 +2139,47 @@ function seedDashboardLayout(visuals = []) {
   const topTiles = [...kpis, ...summaryTables];
   let yOffset = 0;
 
+  /* KPIs row — evenly distributed */
   if (topTiles.length) {
     const perRow = Math.min(4, topTiles.length);
     const w = Math.floor(totalColumns / perRow);
-    const rowHeight = topTiles.reduce((maxHeight, visual) => {
-      const { h } = getDefaultTileLayout(visual);
-      return Math.max(maxHeight, h);
-    }, 2);
     topTiles.forEach((visual, index) => {
       const row = Math.floor(index / perRow);
       const col = index % perRow;
       const tileHeight = getDefaultTileLayout(visual).h;
       layoutMap.set(visual.visual_id, {
         x: col * w,
-        y: yOffset + row * rowHeight,
+        y: yOffset + row * (tileHeight + 0),
         w,
         h: tileHeight,
       });
+      if (col === perRow - 1 || index === topTiles.length - 1) {
+        yOffset = Math.max(yOffset, yOffset + (row + 1) * tileHeight);
+      }
     });
-    yOffset += Math.ceil(topTiles.length / perRow) * rowHeight;
+    yOffset = Math.ceil(topTiles.length / perRow) * (getDefaultTileLayout(topTiles[0]).h);
   }
 
   const charts = visuals.filter((visual) => !layoutMap.has(visual.visual_id));
-  if (!charts.length) {
-    return layoutMap;
-  }
+  if (!charts.length) return layoutMap;
 
-  const remaining = [...charts];
-  const primary = pickPrimaryVisual(remaining);
-  if (primary) {
-    const primaryIndex = remaining.findIndex((visual) => visual.visual_id === primary.visual_id);
-    if (primaryIndex >= 0) {
-      remaining.splice(primaryIndex, 1);
+  /* Pack charts in a clean grid: full-width for line/map, 2-column (6+6) for others */
+  let x = 0;
+  let rowHeight = 0;
+  charts.forEach((visual) => {
+    const defaults = getDefaultTileLayout(visual);
+    const isWide = visual.type === "line" || visual.type === "map" || (visual.type === "table" && (visual.config?.columns?.length || 0) >= 6);
+    const w = isWide ? 12 : 6;
+    const h = defaults.h;
+    if (x + w > totalColumns) {
+      yOffset += rowHeight;
+      x = 0;
+      rowHeight = 0;
     }
-    const primaryDefaults = getDefaultTileLayout(primary);
-    const primaryWidth = 6;
-    const sideWidth = Math.floor((totalColumns - primaryWidth) / 2);
-    const primaryHeight = Math.max(primaryDefaults.h, 4);
-    const topHeight = Math.ceil(primaryHeight / 2);
-    const bottomHeight = Math.max(primaryHeight - topHeight, 2);
-
-    layoutMap.set(primary.visual_id, {
-      x: sideWidth,
-      y: yOffset,
-      w: primaryWidth,
-      h: primaryHeight,
-    });
-
-    const sideSlots = [
-      { x: 0, y: yOffset, w: sideWidth, h: topHeight },
-      { x: 0, y: yOffset + topHeight, w: sideWidth, h: bottomHeight },
-      { x: sideWidth + primaryWidth, y: yOffset, w: sideWidth, h: topHeight },
-      { x: sideWidth + primaryWidth, y: yOffset + topHeight, w: sideWidth, h: bottomHeight },
-    ];
-
-    const sideCharts = remaining.splice(0, sideSlots.length);
-    sideCharts.forEach((visual, index) => {
-      layoutMap.set(visual.visual_id, sideSlots[index]);
-    });
-
-    let gridY = yOffset + primaryHeight;
-    let rowHeight = 0;
-    let x = 0;
-    remaining.forEach((visual) => {
-      const defaults = getDefaultTileLayout(visual);
-      const w = Math.min(defaults.w, 6);
-      const h = defaults.h;
-      if (x + w > totalColumns) {
-        gridY += rowHeight || h;
-        x = 0;
-        rowHeight = 0;
-      }
-      layoutMap.set(visual.visual_id, { x, y: gridY, w, h });
-      x += w;
-      rowHeight = Math.max(rowHeight, h);
-    });
-  }
+    layoutMap.set(visual.visual_id, { x, y: yOffset, w, h });
+    x += w;
+    rowHeight = Math.max(rowHeight, h);
+  });
 
   return layoutMap;
 }
@@ -3354,9 +3326,9 @@ function renderDashboard() {
   }
   state.grid = GridStack.init({
     float: false,
-    cellHeight: 120,
-    margin: 12,
-    handle: ".grid-stack-item-content",
+    cellHeight: 100,
+    margin: 8,
+    handle: ".tile-header",
     animate: true,
     column: 12,
     resizable: { handles: "e,s,se" },
@@ -3488,9 +3460,11 @@ function buildPlotlyLayout(visual, container, plotData) {
   };
 
   /* Detect y-axis column format for smart tick formatting */
+  /* Histograms always have Count on y-axis — never apply currency/percentage formatting */
+  const isHistogram = visual.type === "histogram";
   const yCol = visual.y || visual.values || "";
   const backendIsCurrency = visual.config?.is_currency === true;
-  const yFmt = backendIsCurrency ? "currency" : detectColumnFormat(yCol);
+  const yFmt = isHistogram ? "count" : (backendIsCurrency ? "currency" : detectColumnFormat(yCol));
   let yTickPrefix = "";
   let yTickSuffix = "";
   let yTickFormat = "";
@@ -3522,7 +3496,7 @@ function buildPlotlyLayout(visual, container, plotData) {
           t: 10,
           b: showPieLegend && isCompact ? 70 : 28,
         }
-      : { l: leftMargin, r: 20, t: 10, b: isHorizontalBar ? 30 : 44 },
+      : { l: leftMargin, r: 20, t: 10, b: isHorizontalBar ? 30 : 52 },
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(0,0,0,0)",
     font: { family: "Inter", color: theme.font },
@@ -3539,7 +3513,7 @@ function buildPlotlyLayout(visual, container, plotData) {
         : { text: axisTitles.x, standoff: 8, font: axisTitleFont },
       tickprefix: isHorizontalBar ? yTickPrefix : "",
       tickformat: isHorizontalBar ? (yTickFormat || undefined) : undefined,
-      tickangle: (!isHorizontalBar && (visual.type === "histogram" || (visual.type === "bar" && dataCount > 6))) ? -35 : undefined,
+      tickangle: (!isHorizontalBar && (visual.type === "histogram" || (visual.type === "bar" && dataCount > 8))) ? -35 : undefined,
     },
     yaxis: {
       automargin: true,
@@ -3562,7 +3536,7 @@ function buildPlotlyLayout(visual, container, plotData) {
     showlegend: isPie && showPieLegend,
     uniformtext: { minsize: 9, mode: "hide" },
     hovermode: "closest",
-    bargap: 0.28,
+    bargap: 0.22,
     colorway: getActivePalette(),
   };
 }
@@ -3577,7 +3551,8 @@ function renderVisual(visual, container) {
   }
   const isDuel = state.step === "duel";
   if (!isDuel) container.style.height = "100%";
-  const filteredData = isDuel ? rawData : applyDashboardFilters(rawData);
+  /* Skip client-side filtering when the server already rebuilt visuals with filtered data */
+  const filteredData = isDuel || state._serverFilterApplied ? rawData : applyDashboardFilters(rawData);
   if (!filteredData.length) {
     container.innerHTML = "<p>No data available for this visual.</p>";
     return;
@@ -3718,8 +3693,8 @@ function renderVisual(visual, container) {
         mode: "lines+markers",
         x: data.map((row) => row[visual.x]),
         y: data.map((row) => row[visual.y]),
-        line: { color: lineColor, width: 2.5, shape: "spline" },
-        marker: { color: lineColor, size: 4 },
+        line: { color: lineColor, width: 3, shape: "spline" },
+        marker: { color: lineColor, size: 5 },
         hovertemplate: hoverTemplate,
         fill: "tozeroy",
         fillcolor: lineColor + "18",
@@ -3727,6 +3702,7 @@ function renderVisual(visual, container) {
     ];
   } else if (visual.type === "scatter") {
     const palette = getActivePalette();
+    const scatterColor = palette[0] || "#b45309";
     const yVals = data.map((row) => Number(row[visual.y]) || 0);
     plotData = [
       {
@@ -3735,11 +3711,10 @@ function renderVisual(visual, container) {
         x: data.map((row) => row[visual.x]),
         y: yVals,
         marker: {
-          color: yVals,
-          colorscale: [[0, palette[1] || "#0d9488"], [1, palette[0] || "#b45309"]],
-          size: 8,
-          opacity: 0.75,
-          line: { color: theme.line, width: 0.5 },
+          color: scatterColor,
+          size: 7,
+          opacity: 0.7,
+          line: { color: theme.font, width: 0.5 },
         },
         hovertemplate: hoverTemplate,
       },
@@ -3750,23 +3725,19 @@ function renderVisual(visual, container) {
     const palette = getActivePalette();
     const baseColor = palette[2] || "#8b5cf6";
     const bins = data.map((row) => row.bin);
-    // Bubble chart: x = bin label, y = count, size = count
-    const sizeRef = 2 * maxCount / (40 ** 2);
+    const barColors = counts.map((c) => {
+      const alpha = 0.4 + 0.6 * (c / maxCount);
+      return baseColor + Math.round(alpha * 255).toString(16).padStart(2, "0");
+    });
     plotData = [
       {
-        type: "scatter",
-        mode: "markers",
+        type: "bar",
         x: bins,
         y: counts,
         marker: {
-          size: counts.map((c) => Math.max(c, maxCount * 0.04)),
-          sizemode: "area",
-          sizeref: sizeRef || 0.1,
-          sizemin: 6,
-          color: counts,
-          colorscale: [[0, baseColor + "44"], [1, baseColor]],
-          showscale: false,
+          color: barColors,
           line: { color: baseColor, width: 1 },
+          cornerradius: 3,
         },
         text: counts.map((c, i) => `${bins[i]}: ${c.toLocaleString()}`),
         hovertemplate: "%{text}<extra></extra>",

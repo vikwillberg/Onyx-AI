@@ -22,6 +22,13 @@ IDENTIFIER_HINTS = ("id", "uuid", "guid", "key")
 STRONG_ID_SUFFIXES = ("_id", " id")
 # Internal columns added by the system that should never appear in visuals
 EXCLUDED_COLUMNS = {"_source_file"}
+# Columns whose names suggest street addresses — produce unreadable charts
+ADDRESS_HINTS = (
+    "address", "street", "addr", "zip_code", "postal", "zipcode",
+    "postal_code", "zip", "suite", "apartment", "apt",
+)
+# Max unique values for a categorical column to be usable in bar/pie charts
+CHART_CATEGORY_MAX = 20
 TIME_HINTS = (
     "date",
     "time",
@@ -821,6 +828,16 @@ def is_year_like_column(column: ColumnProfile) -> bool:
     return False
 
 
+def is_address_column(column: ColumnProfile, row_count: int) -> bool:
+    """Detect columns whose names suggest street addresses — these produce unreadable charts."""
+    lower_name = column.name.lower().strip()
+    if not any(hint in lower_name for hint in ADDRESS_HINTS):
+        return False
+    # Address columns typically have very high cardinality
+    unique, ratio = column_cardinality(column, row_count)
+    return unique > 10 or ratio > 0.3
+
+
 def is_categorical_candidate(column: ColumnProfile, row_count: int) -> bool:
     if column.inferred_type in {"categorical", "boolean"}:
         return True
@@ -1210,8 +1227,13 @@ def rank_categorical_columns(profile: FileProfile) -> list[ColumnProfile]:
             continue
         if is_identifier_column(column, row_count):
             continue
+        if is_address_column(column, row_count):
+            continue
         unique, _ = column_cardinality(column, row_count)
         if unique < 2:
+            continue
+        # Skip columns with too many unique values — they produce unreadable charts
+        if unique > CHART_CATEGORY_MAX:
             continue
         scored.append((score_categorical_column(column, row_count), column))
     scored.sort(key=lambda item: item[0], reverse=True)
@@ -1358,6 +1380,7 @@ def build_histogram_visual(dataframe: pd.DataFrame, column: str) -> Optional[Vis
         values=column,
         aggregation="count",
         data=serialize_records(data),
+        config={"is_currency": False},
     )
 
 
@@ -1594,12 +1617,13 @@ def build_kpi_visuals(
     # Date range KPI — format dates nicely
     if datetime_cols and len(visuals) < limit:
         dt_col = datetime_cols[0]
-        if dt_col.min_value and dt_col.max_value:
-            def _fmt_date(raw: str) -> str:
+        if dt_col.min_value is not None and dt_col.max_value is not None:
+            def _fmt_date(raw) -> str:
                 try:
-                    from datetime import datetime as _dt
-                    d = _dt.fromisoformat(str(raw).replace("Z", "+00:00"))
-                    return d.strftime("%b %d, %Y")
+                    ts = pd.Timestamp(raw)
+                    if pd.isna(ts):
+                        return str(raw)[:10]
+                    return ts.strftime("%b %d, %Y")
                 except Exception:
                     return str(raw)[:10]
             visuals.append(build_kpi_visual(
@@ -1618,10 +1642,17 @@ def build_kpi_visuals(
             continue
         metric_is_currency = is_currency_column(metric.name)
         trend = compute_kpi_trend(dataframe, metric.name, datetime_col, aggregation, review_frequency)
+        # Build smart title: avoid redundant prefixes like "Total Total Price"
+        agg_label = aggregation_title(aggregation)
+        col_title = format_col_title(metric.name)
+        if col_title.lower().startswith(agg_label.lower()):
+            kpi_title = col_title
+        else:
+            kpi_title = f"{agg_label} {col_title}"
         kpi = build_kpi_visual(
-            f"{aggregation_title(aggregation)} {format_col_title(metric.name)}",
+            kpi_title,
             value,
-            subtitle=aggregation_title(aggregation),
+            subtitle=agg_label,
             is_currency=metric_is_currency,
         )
         if kpi.config is None:
@@ -2036,10 +2067,10 @@ def generate_dashboard_visuals(
         signatures.add(signature)
         type_counts[visual.type] = type_counts.get(visual.type, 0) + 1
 
-    # Ideal chart mix targets (excluding KPIs)
+    # Ideal chart mix targets (excluding KPIs) — prioritize actionable types
     chart_slots = max_visuals - KPI_LIMIT
-    ideal_mix = {"line": max(2, chart_slots // 4), "pie": 1, "bar": max(2, chart_slots // 4),
-                 "histogram": 1, "scatter": 1, "table": 1}
+    ideal_mix = {"line": 2, "bar": max(2, chart_slots // 3), "pie": 1,
+                 "histogram": 1, "scatter": 0, "table": 1}
 
     def needs_type(t: str) -> bool:
         return count_type(t) < ideal_mix.get(t, 2)
@@ -2377,7 +2408,7 @@ def llm_dashboard_plan(
     context_parts = []
     if business_context:
         if business_context.get("primary_question"):
-            context_parts.append(f"User's primary question: {business_context['primary_question']}")
+            context_parts.append(f"PRIORITY — User specifically asked: \"{business_context['primary_question']}\"\nThe FIRST 1-2 visuals MUST directly answer this question.")
         if business_context.get("analysis_areas"):
             areas = business_context["analysis_areas"]
             area_strs = [f"- {a.get('area', '?')}: {a.get('description', '')}" for a in areas if isinstance(a, dict)]
@@ -2396,23 +2427,32 @@ def llm_dashboard_plan(
     context_str = "\n".join(context_parts)
 
     system_prompt = (
-        "You are an expert data analyst designing a DIVERSE, ACTIONABLE dashboard. "
-        "CRITICAL RULE: You MUST use a VARIETY of chart types. "
-        "Do NOT generate all bar charts — that makes the dashboard look monotonous.\n\n"
-        "MANDATORY chart type distribution:\n"
-        "- 2-3 LINE charts (time-series trends — use datetime columns for x-axis)\n"
-        "- 1-2 BAR charts (comparisons, rankings)\n"
-        "- 1 PIE chart (proportions/shares — use low-cardinality categorical column)\n"
-        "- 1 HISTOGRAM (value distribution — use a numeric column in 'values' field)\n"
-        "- 1 SCATTER plot (correlation between two numeric columns)\n"
-        "- 0-1 TABLE (summary/leaderboard for high-cardinality data)\n\n"
-        "Each visual MUST answer a DIFFERENT business question and cover different analysis dimensions: "
-        "trends over time, segmentation, top/bottom performers, distributions, correlations.\n\n"
+        "You are a senior business analyst designing an ACTIONABLE dashboard that helps "
+        "the business owner understand HOW to grow revenue and reduce costs.\n\n"
+        "GOAL: Every visual MUST answer a specific business question. Think like a consultant:\n"
+        "- Which products/services drive the most revenue?\n"
+        "- How is revenue trending over time? Growing or declining?\n"
+        "- What are the busiest days/hours? Where should we staff up?\n"
+        "- Which customer segments or regions are most valuable?\n"
+        "- What's the distribution of order values? Are there outlier opportunities?\n\n"
+        "CHART TYPE MIX (use a variety):\n"
+        "- 1-2 LINE charts (revenue/sales trends over time — use datetime columns for x-axis)\n"
+        "- 2-3 BAR charts (rankings: top products, revenue by category, sales by day)\n"
+        "- 1 PIE chart (revenue share by category — use column with 3-7 unique values)\n"
+        "- 0-1 HISTOGRAM (distribution of order values or prices)\n"
+        "- 0-1 TABLE (top performers leaderboard)\n\n"
+        "BLACKLIST — NEVER use these as chart categories:\n"
+        "- Address columns (street, address, zip, postal code)\n"
+        "- ID columns (order_id, customer_id, transaction_id)\n"
+        "- Columns with >15 unique text values (they make unreadable charts)\n\n"
+        "TITLE STYLE: Use business questions as titles, e.g.:\n"
+        "- 'Which Products Drive the Most Revenue?' instead of 'Revenue by Product'\n"
+        "- 'How Are Sales Trending?' instead of 'Total Price over Order Date'\n\n"
         "Return JSON with a 'visuals' array. Each visual must have: "
         "type (one of: bar, line, pie, scatter, histogram, table), "
-        "title (descriptive, business-friendly — should tell the user what insight they get), "
-        "x (column name for x-axis/category — for line charts use a datetime column), "
-        "y (column name for y-axis/value — for scatter use second numeric column), "
+        "title (business question or clear insight label), "
+        "x (column name for x-axis/category), "
+        "y (column name for y-axis/value), "
         "values (column name for pie values or histogram distribution), "
         "aggregation (one of: count, sum, mean, median). "
         "ONLY use column names from the provided list. "
@@ -2626,6 +2666,43 @@ def generate_more_visuals(
 # Duel-mode: generate a large pool of candidates and pair them for user picks
 # ---------------------------------------------------------------------------
 
+def is_useless_visual(visual: VisualSpec) -> bool:
+    """Return True if a visual is useless and should be skipped.
+
+    Detects: single-value pies, single-bar histograms, near-empty data.
+    """
+    if not visual.data or len(visual.data) < 1:
+        return True
+    if visual.type == "pie":
+        # Single-slice pie (e.g. "Yes 100%") is useless
+        if len(visual.data) <= 1:
+            return True
+        # All-same-value pie is useless
+        val_key = visual.values or "count"
+        vals = [row.get(val_key, 0) for row in visual.data if row.get(val_key, 0)]
+        if len(vals) <= 1:
+            return True
+    if visual.type == "histogram":
+        # Single-bar histogram means all values are the same — useless
+        if len(visual.data) <= 1:
+            return True
+        # If one bin has >95% of the data, it's not a useful distribution
+        counts = [row.get("count", 0) for row in visual.data]
+        total = sum(counts)
+        if total > 0 and max(counts) / total > 0.95:
+            return True
+    if visual.type == "line":
+        # Line chart with <= 2 data points is useless
+        if len(visual.data) <= 2:
+            return True
+    return False
+
+
+def _insight_key(x_col: Optional[str], metric_col: Optional[str], agg: Optional[str]) -> str:
+    """Return a key identifying a unique data insight (ignoring chart type)."""
+    return f"{x_col or ''}|{metric_col or ''}|{agg or ''}"
+
+
 def generate_duel_pool(
     profile: FileProfile,
     dataframe: pd.DataFrame,
@@ -2633,9 +2710,10 @@ def generate_duel_pool(
     business_context: Optional[dict] = None,
     max_pool: int = 30,
 ) -> tuple[list[VisualSpec], list[VisualSpec]]:
-    """Generate a large pool of candidate visuals for duel mode.
+    """Generate insight groups for duel mode.
 
-    Returns (kpis, pool) where kpis are auto-included and pool is for dueling.
+    Each insight is represented as 2-3 different chart types showing the SAME data.
+    Returns (kpis, pool) where pool contains all visuals grouped by insight.
     """
     row_count = max(profile.row_count, 1)
     numeric_cols = rank_numeric_columns(profile)
@@ -2648,7 +2726,6 @@ def generate_duel_pool(
     derivations = template.get("auto_derive", []) if template else []
     if derivations and datetime_cols:
         dataframe = auto_derive_columns(dataframe, datetime_cols, derivations)
-        # Re-profile to pick up derived columns
         derived_profile = profile.model_copy()
         for col_name in ["hour_of_day", "day_of_week"]:
             if col_name in dataframe.columns and not any(c.name == col_name for c in derived_profile.columns):
@@ -2660,7 +2737,7 @@ def generate_duel_pool(
         numeric_cols = rank_numeric_columns(profile)
         categorical_cols = rank_categorical_columns(profile)
 
-    # --- AI / heuristic derived columns (date diffs, ratios, extractions) ---
+    # --- AI / heuristic derived columns ---
     smart_derivations = suggest_derived_columns(profile)
     if smart_derivations:
         from app.services.ingestion import profile_series as _profile_series
@@ -2681,49 +2758,122 @@ def generate_duel_pool(
     time_col = datetime_cols[0] if datetime_cols else None
     kpis = build_kpi_visuals(profile, dataframe, datetime_col=time_col.name if time_col else None)
 
-    # --- Build candidate specs covering ALL column combos ---
-    specs: list[VisualSpec] = []
-    signatures: set[tuple] = set()
+    if max_pool == 0:
+        return kpis, []
 
-    def add_spec(spec: VisualSpec) -> None:
-        sig = visual_signature(spec)
-        if sig not in signatures:
-            signatures.add(sig)
-            specs.append(spec)
+    # === INSIGHT-BASED POOL GENERATION ===
+    # Each "insight" = a specific data question (e.g. "Revenue by Category")
+    # For each insight, generate 2-3 chart types so the duel compares
+    # the SAME data shown in DIFFERENT ways.
 
-    requested_spec = build_requested_visual_spec(profile, business_context)
-    if requested_spec:
-        add_spec(requested_spec)
+    from collections import defaultdict as _dd
+    insight_groups: dict[str, list[VisualSpec]] = _dd(list)
 
-    if max_pool > 0:
-        context_llm_specs = llm_dashboard_plan(
-            profile,
-            business_category=business_category,
-            business_context=business_context,
-            max_visuals=min(max_pool, 8),
-        )
-        for llm_spec in context_llm_specs:
-            add_spec(llm_spec)
+    def _add_to_group(key: str, spec: VisualSpec) -> None:
+        """Add a realized visual to its insight group (skip useless ones)."""
+        try:
+            visual = apply_data_to_spec(spec, dataframe)
+        except Exception:
+            return
+        if visual and visual.data and not is_useless_visual(visual):
+            # Avoid duplicate chart types within the same insight
+            existing_types = {v.type for v in insight_groups[key]}
+            if visual.type not in existing_types:
+                insight_groups[key].append(visual)
 
-    # Template must-have visuals get priority (added first)
-    if template:
-        for tmpl_vis in template.get("must_have_visuals", []):
-            vis = _build_template_visual(
-                tmpl_vis, profile, dataframe,
-                numeric_cols, categorical_cols, datetime_cols,
-            )
-            if vis:
-                add_spec(vis)
+    # --- Insight type 1: Time-series (datetime × numeric) → line + bar ---
+    for dt_col in datetime_cols:
+        dt_name = dt_col.name
+        # Count over time
+        key = _insight_key(dt_name, None, "count")
+        _add_to_group(key, VisualSpec(
+            visual_id=build_visual_id("line"), type="line",
+            title=f"Count over {format_col_title(dt_name)}",
+            x=dt_name, aggregation="count",
+        ))
+        _add_to_group(key, VisualSpec(
+            visual_id=build_visual_id("bar"), type="bar",
+            title=f"Count over {format_col_title(dt_name)}",
+            x=dt_name, aggregation="count",
+        ))
 
-    # Derived column visuals (day_of_week, hour_of_day)
+        # Each numeric metric over time
+        for metric in numeric_cols[:4]:
+            agg = preferred_aggregation(metric.name)
+            label = f"{aggregation_title(agg)} {format_col_title(metric.name)}"
+            key = _insight_key(dt_name, metric.name, agg)
+            _add_to_group(key, VisualSpec(
+                visual_id=build_visual_id("line"), type="line",
+                title=f"{label} over {format_col_title(dt_name)}",
+                x=dt_name, y=metric.name, aggregation=agg,
+            ))
+            _add_to_group(key, VisualSpec(
+                visual_id=build_visual_id("bar"), type="bar",
+                title=f"{label} by {format_col_title(dt_name)}",
+                x=dt_name, y=metric.name, aggregation=agg,
+            ))
+
+    # --- Insight type 2: Category breakdown (categorical × numeric) → bar + pie + table ---
+    for cat in categorical_cols[:5]:
+        unique, _ = column_cardinality(cat, row_count)
+        cat_name = cat.name
+
+        # Count by category
+        key = _insight_key(cat_name, None, "count")
+        if unique <= BAR_CATEGORY_LIMIT:
+            _add_to_group(key, VisualSpec(
+                visual_id=build_visual_id("bar"), type="bar",
+                title=f"Count by {format_col_title(cat_name)}",
+                x=cat_name, aggregation="count",
+            ))
+        if unique <= PIE_CATEGORY_LIMIT:
+            _add_to_group(key, VisualSpec(
+                visual_id=build_visual_id("pie"), type="pie",
+                title=f"Share by {format_col_title(cat_name)}",
+                x=cat_name, aggregation="count",
+            ))
+
+        # Each numeric metric by category
+        for metric in numeric_cols[:3]:
+            agg = preferred_aggregation(metric.name)
+            label = f"{aggregation_title(agg)} {format_col_title(metric.name)}"
+            key = _insight_key(cat_name, metric.name, agg)
+            if unique <= BAR_CATEGORY_LIMIT:
+                _add_to_group(key, VisualSpec(
+                    visual_id=build_visual_id("bar"), type="bar",
+                    title=f"{label} by {format_col_title(cat_name)}",
+                    x=cat_name, y=metric.name, aggregation=agg,
+                ))
+            if unique <= PIE_CATEGORY_LIMIT:
+                _add_to_group(key, VisualSpec(
+                    visual_id=build_visual_id("pie"), type="pie",
+                    title=f"{format_col_title(metric.name)} by {format_col_title(cat_name)}",
+                    x=cat_name, values=metric.name, aggregation=agg,
+                ))
+            # Summary table variant
+            vis = build_summary_table_visual(dataframe, cat_name, metric.name, agg)
+            if vis and not is_useless_visual(vis):
+                existing_types = {v.type for v in insight_groups[key]}
+                if "table" not in existing_types:
+                    insight_groups[key].append(vis)
+
+    # --- Insight type 3: Distribution (numeric) → histogram (standalone, not paired) ---
+    for metric in numeric_cols[:3]:
+        key = _insight_key(None, metric.name, "distribution")
+        vis = build_histogram_visual(dataframe, metric.name)
+        if vis and not is_useless_visual(vis):
+            insight_groups[key].append(vis)
+
+    # --- Insight type 4: Derived column visuals ---
     if "day_of_week" in dataframe.columns:
         value_metric = numeric_cols[0] if numeric_cols else None
         derived_val = value_metric.name if value_metric else None
         derived_agg = preferred_aggregation(derived_val) if derived_val else "count"
         dow_title = "Revenue by Day of Week" if derived_val else "Orders by Day of Week"
         vis = build_day_of_week_visual(dataframe, derived_val, derived_agg, dow_title)
-        if vis:
-            add_spec(vis)
+        if vis and not is_useless_visual(vis):
+            key = _insight_key("day_of_week", derived_val, derived_agg)
+            insight_groups[key].append(vis)
 
     if "hour_of_day" in dataframe.columns:
         value_metric = numeric_cols[0] if numeric_cols else None
@@ -2731,183 +2881,16 @@ def generate_duel_pool(
         derived_agg = preferred_aggregation(derived_val) if derived_val else "count"
         hod_title = "Revenue by Hour" if derived_val else "Orders by Hour of Day"
         vis = build_hour_of_day_visual(dataframe, derived_val, derived_agg, hod_title)
-        if vis:
-            add_spec(vis)
+        if vis and not is_useless_visual(vis):
+            key = _insight_key("hour_of_day", derived_val, derived_agg)
+            insight_groups[key].append(vis)
 
-    # Line charts: every numeric × datetime (preferred aggregation only)
-    for dt_col in datetime_cols:
-        add_spec(VisualSpec(
-            visual_id=build_visual_id("line"),
-            type="line",
-            title=f"Count over {format_col_title(dt_col.name)}",
-            x=dt_col.name,
-            aggregation="count",
-        ))
-        for metric in numeric_cols:
-            agg = preferred_aggregation(metric.name)
-            add_spec(VisualSpec(
-                visual_id=build_visual_id("line"),
-                type="line",
-                title=f"{aggregation_title(agg)} {format_col_title(metric.name)} over {format_col_title(dt_col.name)}",
-                x=dt_col.name,
-                y=metric.name,
-                aggregation=agg,
-            ))
-
-    # Bar charts for time-series data (to pair against line charts in duel)
-    for dt_col in datetime_cols:
-        for metric in numeric_cols[:3]:
-            agg = preferred_aggregation(metric.name)
-            add_spec(VisualSpec(
-                visual_id=build_visual_id("bar"),
-                type="bar",
-                title=f"{aggregation_title(agg)} {format_col_title(metric.name)} over {format_col_title(dt_col.name)}",
-                x=dt_col.name,
-                y=metric.name,
-                aggregation=agg,
-            ))
-
-    # Bar charts: limit to top 3 categoricals × top 2 numerics (avoid bar explosion)
-    bar_cats = categorical_cols[:3]
-    bar_metrics = numeric_cols[:2]
-    for cat in bar_cats:
-        unique, _ = column_cardinality(cat, row_count)
-        if unique > BAR_CATEGORY_LIMIT * 3:
-            continue
-        add_spec(VisualSpec(
-            visual_id=build_visual_id("bar"),
-            type="bar",
-            title=f"Count by {format_col_title(cat.name)}",
-            x=cat.name,
-            aggregation="count",
-        ))
-        for metric in bar_metrics:
-            agg = preferred_aggregation(metric.name)
-            add_spec(VisualSpec(
-                visual_id=build_visual_id("bar"),
-                type="bar",
-                title=f"{aggregation_title(agg)} {format_col_title(metric.name)} by {format_col_title(cat.name)}",
-                x=cat.name,
-                y=metric.name,
-                aggregation=agg,
-            ))
-
-    # Pie charts: low-cardinality categoricals (with value-based variants)
-    for cat in categorical_cols:
-        unique, _ = column_cardinality(cat, row_count)
-        if unique > PIE_CATEGORY_LIMIT:
-            continue
-        add_spec(VisualSpec(
-            visual_id=build_visual_id("pie"),
-            type="pie",
-            title=f"Share by {format_col_title(cat.name)}",
-            x=cat.name,
-            aggregation="count",
-        ))
-        for metric in numeric_cols:
-            agg = preferred_aggregation(metric.name)
-            add_spec(VisualSpec(
-                visual_id=build_visual_id("pie"),
-                type="pie",
-                title=f"{format_col_title(metric.name)} by {format_col_title(cat.name)}",
-                x=cat.name,
-                values=metric.name,
-                aggregation=agg,
-            ))
-
-    # Histograms: every numeric
-    for metric in numeric_cols:
-        add_spec(VisualSpec(
-            visual_id=build_visual_id("hist"),
-            type="histogram",
-            title=f"Distribution of {format_col_title(metric.name)}",
-            values=metric.name,
-            aggregation="count",
-        ))
-
-    # Scatter: every numeric pair
-    for i, m1 in enumerate(numeric_cols):
-        for m2 in numeric_cols[i + 1:]:
-            add_spec(VisualSpec(
-                visual_id=build_visual_id("scatter"),
-                type="scatter",
-                title=f"{format_col_title(m2.name)} vs {format_col_title(m1.name)}",
-                x=m1.name,
-                y=m2.name,
-            ))
-
-    # Summary tables: high-cardinality categoricals
-    for cat in categorical_cols:
-        unique, _ = column_cardinality(cat, row_count)
-        if unique >= 8:
-            val = numeric_cols[0].name if numeric_cols else None
-            agg = preferred_aggregation(val) if val else "count"
-            vis = build_summary_table_visual(dataframe, cat.name, val, agg)
-            if vis:
-                add_spec(vis)
-
-    # Apply data to all specs
+    # --- Collect all visuals into a flat pool ---
     pool: list[VisualSpec] = []
-    for spec in specs:
-        try:
-            visual = apply_data_to_spec(spec, dataframe)
-        except Exception:
-            continue
-        if visual and visual.data:
-            pool.append(visual)
+    for group in insight_groups.values():
+        pool.extend(group)
 
-    # Minimum-pool guarantee: if pool is too small, add extra fallbacks
-    MIN_POOL_SIZE = 6
-    if len(pool) < MIN_POOL_SIZE:
-        pool_sigs = {visual_signature(v) for v in pool}
-        for metric in numeric_cols:
-            if len(pool) >= MIN_POOL_SIZE:
-                break
-            vis = build_histogram_visual(dataframe, metric.name)
-            if vis and visual_signature(vis) not in pool_sigs:
-                pool.append(vis)
-                pool_sigs.add(visual_signature(vis))
-        for i, m1 in enumerate(numeric_cols):
-            if len(pool) >= MIN_POOL_SIZE:
-                break
-            for m2 in numeric_cols[i + 1:]:
-                if len(pool) >= MIN_POOL_SIZE:
-                    break
-                vis = build_scatter_visual(dataframe, m1.name, m2.name)
-                if vis and visual_signature(vis) not in pool_sigs:
-                    pool.append(vis)
-                    pool_sigs.add(visual_signature(vis))
-
-    # --- Type-balanced pool selection ---
-    # Prevent any single type from dominating the duel pool
-    from collections import defaultdict as _dd
-    type_buckets: dict[str, list[VisualSpec]] = _dd(list)
-    for v in pool:
-        type_buckets[v.type].append(v)
-
-    # Round-robin across types to build a balanced pool
-    balanced: list[VisualSpec] = []
-    type_order = ["line", "pie", "histogram", "scatter", "bar", "table"]
-    active_types = [t for t in type_order if t in type_buckets]
-    # Also include types not in the predefined order
-    for t in type_buckets:
-        if t not in active_types:
-            active_types.append(t)
-    max_per_type = max(max_pool // max(len(active_types), 1), 2)
-    indices = {t: 0 for t in active_types}
-    while len(balanced) < max_pool:
-        added_any = False
-        for t in active_types:
-            if indices[t] < len(type_buckets[t]) and indices[t] < max_per_type:
-                balanced.append(type_buckets[t][indices[t]])
-                indices[t] += 1
-                added_any = True
-                if len(balanced) >= max_pool:
-                    break
-        if not added_any:
-            break
-
-    return kpis, balanced
+    return kpis, pool
 
 
 def _visual_col_key(v: VisualSpec) -> str:
@@ -2955,35 +2938,35 @@ def pair_candidates(
 ) -> list[dict]:
     """Arrange pool visuals into duel pairs.
 
-    Strategy: show the SAME data in DIFFERENT chart styles so the user picks
-    their preferred visual representation for each insight.
+    STRICT RULE: Both options in a round MUST show the SAME insight
+    (same data columns) with DIFFERENT chart types. This lets the user
+    choose their preferred visualization style for each insight.
 
-    1. Pair visuals that use the SAME columns but DIFFERENT chart types.
-    2. Pair visuals that use similar columns (same x) but different type/agg.
-    3. Fall back to different-column pairs for remaining slots.
+    Visuals that have no same-insight partner (e.g. standalone histograms)
+    are NOT included in duel rounds.
     """
     if len(pool) < 2:
         return [{"round": 1, "option_a": pool[0], "option_b": pool[0], "round_label": ""}] if pool else []
 
+    # Group visuals by their data insight (same columns, same aggregation, different chart type)
+    from collections import defaultdict
+    insight_groups: dict[str, list[int]] = defaultdict(list)
+    for i, v in enumerate(pool):
+        metric_col = v.y or v.values or ""
+        key = f"{v.x or ''}|{metric_col}|{v.aggregation or ''}"
+        insight_groups[key].append(i)
+
     pairs: list[dict] = []
     used: set[int] = set()
 
-    # Pass 1 (PRIORITY): same columns, different chart type
-    # Group by data columns (x, y/values) ignoring chart type
-    # Normalize: pie uses 'values' where bar uses 'y', treat them as equivalent
-    from collections import defaultdict
-    col_groups: dict[str, list[int]] = defaultdict(list)
-    for i, v in enumerate(pool):
-        metric_col = v.y or v.values or ""
-        key = f"{v.x or ''}|{metric_col}"
-        col_groups[key].append(i)
-
-    for key, indices in col_groups.items():
+    # Only create rounds from groups that have ≥2 different chart types
+    for key, indices in insight_groups.items():
         if len(pairs) >= max_rounds:
             break
         if len(indices) < 2:
             continue
-        # Find pairs with different types within this group
+
+        # Find pairs with different types within this insight group
         for ii in range(len(indices)):
             if len(pairs) >= max_rounds:
                 break
@@ -2997,39 +2980,16 @@ def pair_candidates(
                 a, b = pool[idx_a], pool[idx_b]
                 if a.type != b.type:
                     label = _build_round_label(a, b)
-                    pairs.append({"round": len(pairs) + 1, "option_a": a, "option_b": b, "round_label": label})
+                    pairs.append({
+                        "round": len(pairs) + 1,
+                        "option_a": a,
+                        "option_b": b,
+                        "round_label": label,
+                    })
                     used.update([idx_a, idx_b])
                     break
 
-    # Pass 2: same x-column, different type (looser match - y/values may differ)
-    for i in range(len(pool)):
-        if i in used or len(pairs) >= max_rounds:
-            continue
-        for j in range(i + 1, len(pool)):
-            if j in used:
-                continue
-            a, b = pool[i], pool[j]
-            same_x = a.x and a.x == b.x
-            if same_x and a.type != b.type:
-                label = _build_round_label(a, b)
-                pairs.append({"round": len(pairs) + 1, "option_a": a, "option_b": b, "round_label": label})
-                used.update([i, j])
-                break
-
-    # Pass 3: pair any remaining unpaired visuals (different data perspectives)
-    remaining = [i for i in range(len(pool)) if i not in used]
-    for k in range(0, len(remaining) - 1, 2):
-        if len(pairs) >= max_rounds:
-            break
-        i, j = remaining[k], remaining[k + 1]
-        a, b = pool[i], pool[j]
-        label = _build_round_label(a, b)
-        pairs.append({"round": len(pairs) + 1, "option_a": a, "option_b": b, "round_label": label})
-
-    if len(remaining) % 2 == 1 and len(pairs) < max_rounds:
-        last = remaining[-1]
-        pairs.append({"round": len(pairs) + 1, "option_a": pool[last], "option_b": pool[last], "round_label": ""})
-
+    # Re-number rounds sequentially
     for idx, pair in enumerate(pairs[:max_rounds]):
         pair["round"] = idx + 1
 
