@@ -1,4 +1,6 @@
+import csv
 import itertools
+import logging
 import re
 from datetime import datetime
 from pathlib import Path
@@ -6,6 +8,8 @@ from typing import Optional
 from uuid import UUID
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 from app.models import DataFile
 from app.schemas import ColumnProfile, DatasetProfile, FileProfile, MergeSuggestion, MergeSuggestions
@@ -22,24 +26,93 @@ def normalize_column_name(name: str) -> str:
     return cleaned
 
 
+def _detect_csv_separator(path: str, encoding: str = "utf-8") -> str:
+    """Sniff the first few KB of a CSV file to detect the delimiter."""
+    try:
+        with open(path, "r", encoding=encoding, errors="replace") as fh:
+            sample = fh.read(8192)
+        dialect = csv.Sniffer().sniff(sample, delimiters=",;\t|")
+        return dialect.delimiter
+    except Exception:
+        return ","
+
+
+def _read_csv_auto(path: str) -> pd.DataFrame:
+    """Read a CSV/TSV/TXT file with auto-detected delimiter and encoding."""
+    for encoding in ("utf-8", "utf-8-sig", "latin1", "cp1252"):
+        try:
+            sep = _detect_csv_separator(path, encoding)
+            df = pd.read_csv(path, sep=sep, low_memory=False, encoding=encoding)
+            # If sniffing produced only 1 column but the file clearly has more,
+            # retry with common delimiters as fallback
+            if len(df.columns) <= 1 and len(df) > 0:
+                for fallback_sep in (";", "\t", "|"):
+                    if fallback_sep == sep:
+                        continue
+                    try:
+                        df2 = pd.read_csv(path, sep=fallback_sep, low_memory=False, encoding=encoding)
+                        if len(df2.columns) > len(df.columns):
+                            df = df2
+                            break
+                    except Exception:
+                        continue
+            return df
+        except UnicodeDecodeError:
+            continue
+    # Last resort: latin1 with comma
+    return pd.read_csv(path, sep=",", low_memory=False, encoding="latin1")
+
+
+def _clean_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    """Post-read data cleaning: strip whitespace, coerce numeric columns, drop empty rows/cols."""
+    if df.empty:
+        return df
+
+    # Strip whitespace from column names
+    df.columns = [str(c).strip() for c in df.columns]
+
+    # Drop fully empty rows and columns
+    df = df.dropna(how="all").dropna(axis=1, how="all")
+
+    for col in df.columns:
+        # Strip whitespace from string values
+        if df[col].dtype == object:
+            df[col] = df[col].map(lambda x: x.strip() if isinstance(x, str) else x)
+
+        # Try to coerce string columns that are actually numeric
+        if df[col].dtype == object:
+            non_null = df[col].dropna()
+            if non_null.empty:
+                continue
+            # Remove common currency/thousand formatting for coercion test
+            test = non_null.astype(str).str.replace(r"[\$€£,\s]", "", regex=True)
+            coerced = pd.to_numeric(test, errors="coerce")
+            # If at least 80% of non-null values convert to numbers, treat as numeric
+            if coerced.notna().sum() / max(len(non_null), 1) >= 0.8:
+                df[col] = pd.to_numeric(
+                    df[col].astype(str).str.replace(r"[\$€£,\s]", "", regex=True),
+                    errors="coerce",
+                )
+
+    df = df.reset_index(drop=True)
+    return df
+
+
 def read_tabular_file(path: str, sheet_name: Optional[str] = None) -> pd.DataFrame:
     ext = Path(path).suffix.lower()
     if ext in {".xlsx", ".xls"}:
         result = pd.read_excel(path, sheet_name=sheet_name or 0)
         if isinstance(result, dict):
             result = next(iter(result.values()))
-        return result
+        return _clean_dataframe(result)
     if ext == ".xlsb":
         result = pd.read_excel(path, sheet_name=sheet_name or 0, engine="pyxlsb")
         if isinstance(result, dict):
             result = next(iter(result.values()))
-        return result
+        return _clean_dataframe(result)
     if ext in {".csv", ".tsv", ".txt"}:
-        sep = "\t" if ext == ".tsv" else ","
-        try:
-            return pd.read_csv(path, sep=sep, low_memory=False)
-        except UnicodeDecodeError:
-            return pd.read_csv(path, sep=sep, low_memory=False, encoding="latin1")
+        df = _read_csv_auto(path)
+        return _clean_dataframe(df)
     raise ValueError(f"Unsupported file type: {ext}")
 
 
@@ -215,11 +288,10 @@ def parse_dictionary_file(stored_path: str, filename: str) -> dict:
 
     try:
         if ext in {".csv", ".tsv", ".txt"}:
-            sep = "\t" if ext == ".tsv" else ","
             try:
-                df = pd.read_csv(stored_path, sep=sep, low_memory=False)
-            except UnicodeDecodeError:
-                df = pd.read_csv(stored_path, sep=sep, low_memory=False, encoding="latin1")
+                df = _read_csv_auto(stored_path)
+            except Exception:
+                df = pd.read_csv(stored_path, sep=",", low_memory=False, encoding="latin1")
         elif ext in {".xlsx", ".xls"}:
             df = pd.read_excel(stored_path, sheet_name=0)
             if isinstance(df, dict):

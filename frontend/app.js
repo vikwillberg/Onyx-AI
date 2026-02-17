@@ -457,8 +457,9 @@ function setStep(step) {
     switchNavTab("overview");
     openDashChat();
   }
-  updateStepIndicator(step);
+  /* Persist session on every step change */
   saveSession();
+  updateStepIndicator(step);
 }
 
 const STEP_ORDER = ["upload", "ai-chat", "duel", "dashboard"];
@@ -1564,18 +1565,103 @@ function appendDashChatBubble(role, html) {
 
 function renderMiniPreview(container, visual) {
   if (!container || !visual.data?.length) return;
-  /* Reuse the full renderVisual to get an accurate preview, then compact it */
+  /* Render a compact chart directly with mini-friendly Plotly layout */
   try {
     container.classList.add("chart");
-    renderVisual(visual, container);
-    /* After rendering, override Plotly layout for compact size */
-    const plotEl = container.querySelector(".js-plotly-plot") || container;
-    if (plotEl && plotEl.layout) {
-      Plotly.relayout(plotEl, {
-        margin: { t: 6, r: 6, b: 22, l: 28 },
-        showlegend: false,
-      });
+    container.innerHTML = "";
+
+    const data = visual.data;
+    const theme = PLOTLY_THEMES[state.theme] || PLOTLY_THEMES.dark;
+    const palette = getActivePalette();
+    let plotData = [];
+
+    const xCol = visual.x || "";
+    const yCol = visual.y || visual.values || "count";
+
+    /* Truncate long labels for the mini preview */
+    const truncate = (s, max) => {
+      if (!s) return s;
+      const str = String(s);
+      return str.length > max ? str.slice(0, max - 1) + "…" : str;
+    };
+
+    if (visual.type === "bar") {
+      const sorted = [...data].sort((a, b) => (Number(b[yCol]) || 0) - (Number(a[yCol]) || 0)).slice(0, 8);
+      plotData = [{
+        type: "bar",
+        x: sorted.map((r) => truncate(r[xCol], 12)),
+        y: sorted.map((r) => Number(r[yCol]) || 0),
+        marker: { color: sorted.map((_, i) => palette[i % palette.length]), cornerradius: 3 },
+        hoverinfo: "x+y",
+      }];
+    } else if (visual.type === "line") {
+      plotData = [{
+        type: "scatter", mode: "lines+markers",
+        x: data.map((r) => r[visual.x]),
+        y: data.map((r) => r[visual.y]),
+        line: { color: palette[0], width: 2, shape: "spline" },
+        marker: { color: palette[0], size: 3 },
+        fill: "tozeroy", fillcolor: palette[0] + "18",
+        hoverinfo: "x+y",
+      }];
+    } else if (visual.type === "pie") {
+      plotData = [{
+        type: "pie",
+        labels: data.map((r) => truncate(r[visual.x], 14)),
+        values: data.map((r) => r[visual.values || "count"]),
+        textinfo: data.length <= 4 ? "label+percent" : "percent",
+        textposition: "inside", hole: 0.45,
+        marker: { colors: palette, line: { color: theme.font, width: 0.5 } },
+        hoverinfo: "label+value+percent",
+      }];
+    } else if (visual.type === "scatter") {
+      plotData = [{
+        type: "scatter", mode: "markers",
+        x: data.map((r) => r[visual.x]),
+        y: data.map((r) => Number(r[visual.y]) || 0),
+        marker: { color: palette[0], size: 4, opacity: 0.7 },
+        hoverinfo: "x+y",
+      }];
+    } else if (visual.type === "histogram") {
+      plotData = [{
+        type: "bar",
+        x: data.map((r) => r.bin),
+        y: data.map((r) => r.count),
+        marker: { color: palette[2] || palette[0], cornerradius: 2 },
+        hoverinfo: "x+y",
+      }];
+    } else {
+      /* Fallback: use full renderVisual for unsupported types */
+      renderVisual(visual, container);
+      return;
     }
+
+    const isPie = visual.type === "pie";
+    const miniLayout = {
+      margin: isPie ? { t: 4, r: 4, b: 4, l: 4 } : { t: 8, r: 10, b: 36, l: 40 },
+      paper_bgcolor: "rgba(0,0,0,0)",
+      plot_bgcolor: "rgba(0,0,0,0)",
+      font: { family: "Inter", color: theme.font, size: 9 },
+      autosize: true,
+      showlegend: false,
+      xaxis: {
+        automargin: true, gridcolor: theme.grid, zeroline: false,
+        tickfont: { size: 9, color: theme.axisTick },
+        title: "", tickangle: -30,
+      },
+      yaxis: {
+        automargin: true, gridcolor: theme.grid, zeroline: false,
+        tickfont: { size: 9, color: theme.axisTick },
+        title: "",
+      },
+      hovermode: "closest",
+      bargap: 0.25,
+    };
+
+    Plotly.newPlot(container, plotData, miniLayout, {
+      responsive: true, displayModeBar: false, staticPlot: false,
+    });
+    requestAnimationFrame(() => Plotly.Plots.resize(container));
   } catch (_e) { /* silent */ }
 }
 
@@ -4427,7 +4513,6 @@ function bindEvents() {
 
 async function init() {
   applyTheme(state.theme);
-  setStep("upload");
   setAuthenticatedView();
   bindEvents();
   elements.projectListSkeleton?.classList.remove("hidden");
@@ -4445,11 +4530,22 @@ async function init() {
     elements.projectListSkeleton?.classList.add("hidden");
   }
 
-  // Restore previous session if available
+  // Restore previous session if available (works for both auth and non-auth users)
   const saved = loadSession();
-  if (saved && saved.projectId && saved.datasetId && state.token) {
+  if (saved && saved.projectId && saved.datasetId) {
     try {
-      const project = state.projects.find((p) => p.id === saved.projectId);
+      // For authenticated users, find project in loaded list
+      let project = state.projects.find((p) => p.id === saved.projectId);
+      
+      // For non-authenticated users or if project not in list, try to fetch directly
+      if (!project && saved.projectId) {
+        try {
+          project = await apiFetch(`/projects/${saved.projectId}`);
+        } catch (_e) {
+          project = null;
+        }
+      }
+      
       if (project) {
         state.currentProject = project;
         const datasets = await apiFetch(`/projects/${project.id}/datasets`);
@@ -4462,13 +4558,27 @@ async function init() {
           state.finalVisuals = detail.final_visuals || [];
           state.businessContext = project.business_context || {};
           state.businessCategory = project.business_category || null;
+          updateCurrentProjectName();
+          
+          // Restore to the saved step if it's valid
+          const validSteps = ["dashboard", "ai-chat", "duel"];
           if (saved.step === "dashboard" && state.finalVisuals.length) {
             setStep("dashboard");
             renderDashboard();
-          } else {
-            setStep("upload");
+            return;
+          } else if (saved.step === "ai-chat") {
+            setStep("ai-chat");
+            return;
+          } else if (saved.step === "duel") {
+            // For duel, go back to dashboard if visuals exist, otherwise upload
+            if (state.finalVisuals.length) {
+              setStep("dashboard");
+              renderDashboard();
+            } else {
+              setStep("upload");
+            }
+            return;
           }
-          return;
         }
       }
     } catch (_e) {
