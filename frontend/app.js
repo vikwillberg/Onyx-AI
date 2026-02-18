@@ -61,6 +61,9 @@ const state = {
   aiChatHistory: [],
   aiChatDone: false,
   aiChatBusy: false,
+  selectedModelKey: localStorage.getItem("onyx_model") || "llama-groq",
+  availableModels: [],
+  focusedVisualId: null,
 };
 
 const CHART_COLORS = {
@@ -167,10 +170,17 @@ const elements = {
   selectedVisuals: document.getElementById("selected-visuals"),
   dashboardGrid: document.getElementById("dashboard-grid"),
   toast: document.getElementById("toast"),
-  uploadDropZone: document.getElementById("upload-drop-zone"),
   uploadFiles: document.getElementById("upload-files"),
   selectedFiles: document.getElementById("selected-files"),
-  uploadContinueBtn: document.getElementById("upload-continue-btn"),
+  homeInput: document.getElementById("home-input"),
+  homeSendBtn: document.getElementById("home-send-btn"),
+  homeSuggestions: document.getElementById("home-suggestions"),
+  homeChatMessages: document.getElementById("home-chat-messages"),
+  homeChatArea: document.getElementById("home-chat-area"),
+  homeWelcome: document.getElementById("home-welcome"),
+  homeDropZone: document.getElementById("home-drop-zone"),
+  homeProjectsWrap: document.getElementById("home-projects-wrap"),
+  uploadContinueBtn: null,
   projectSetupForm: document.getElementById("project-setup-form"),
   projectSetupCard: document.getElementById("project-setup-card"),
   dataPreviewCard: document.getElementById("data-preview-card"),
@@ -256,14 +266,14 @@ const elements = {
 
 const stepSections = {
   upload: [elements.projectsSection],
-  "ai-chat": [elements.aiChatSection],
-  duel: [elements.duelSection],
+  "ai-chat": [elements.projectsSection],
+  duel: [elements.projectsSection],
   dataset: [elements.datasetSection],
   merge: [elements.mergeSection],
   dashboard: [elements.dashboardSection],
   save: [elements.saveSection],
 };
-const allStepSections = Object.values(stepSections).flat();
+const allStepSections = [...new Set(Object.values(stepSections).flat())];
 
 /* ===== Auto-save ===== */
 let _autoSaveTimer = null;
@@ -320,6 +330,15 @@ function applyTheme(theme) {
   state.theme = nextTheme;
   document.body.dataset.theme = nextTheme;
   localStorage.setItem(THEME_KEY, nextTheme);
+  updateSidebarThemeIcon();
+}
+
+function updateSidebarThemeIcon() {
+  const isDark = state.theme === "dark";
+  const label = document.getElementById("sidebar-theme-label");
+  if (label) label.textContent = isDark ? "Dark mode" : "Light mode";
+  document.querySelectorAll(".sidebar-icon-sun").forEach((el) => { el.style.display = isDark ? "none" : ""; });
+  document.querySelectorAll(".sidebar-icon-moon").forEach((el) => { el.style.display = isDark ? "" : "none"; });
 }
 
 function toggleTheme() {
@@ -438,38 +457,26 @@ function setStep(step) {
   if (step === "dashboard") {
     renderKpiStrip();
     updateFilterBar();
-    requestAnimationFrame(() => {
-      elements.dashboardGrid
-        ?.querySelectorAll(".chart")
-        .forEach((chart) => Plotly.Plots.resize(chart));
-    });
-    setTimeout(() => {
-      elements.dashboardGrid
-        ?.querySelectorAll(".chart")
-        .forEach((chart) => Plotly.Plots.resize(chart));
-    }, 300);
+    resizeDashCharts();
   }
   const showFilterBar = step === "dashboard";
   elements.filterBar?.classList.toggle("hidden", !showFilterBar);
   elements.kpiStrip?.classList.toggle("hidden", !showFilterBar);
-  /* Reset to overview tab when entering dashboard, auto-open AI Assistant */
-  if (step === "dashboard") {
-    switchNavTab("overview");
-    openDashChat();
-  }
+  /* Dashboard step is handled by enterDashboardMode() — setStep just manages section visibility */
+  if (step === "dashboard") switchNavTab("overview");
   /* Persist session on every step change */
   saveSession();
-  updateStepIndicator(step);
 
-  /* Show contextual tips on first visit to each step */
-  if (step === "projects" || step === "upload") showContextualTip("#projects-section", "upload");
-  else if (step === "ai-chat") showContextualTip("#ai-chat-section", "chat");
-  else if (step === "duel") showContextualTip("#duel-section", "duel");
-  else if (step === "dashboard") showContextualTip("#dashboard-section", "dashboard");
+  /* Home sub-phases: show/hide parts of home section */
+  if (step === "upload") {
+    if (elements.homeWelcome) elements.homeWelcome.classList.remove("hidden");
+    if (elements.homeChatArea) elements.homeChatArea.classList.add("hidden");
+    if (elements.homeSendBtn) elements.homeSendBtn.disabled = !state.pendingFiles.length && !elements.homeInput?.value.trim();
+  } else if (step === "ai-chat") {
+    if (elements.homeWelcome) elements.homeWelcome.classList.add("hidden");
+    if (elements.homeChatArea) elements.homeChatArea.classList.remove("hidden");
+  }
 }
-
-const STEP_ORDER = ["upload", "ai-chat", "duel", "dashboard"];
-const STEP_LABELS = { upload: "Upload", "ai-chat": "AI Analysis", duel: "Pick Visuals", dashboard: "Dashboard" };
 
 const CATEGORY_COLORS = {
   restaurant: ["#dc2626", "#ea580c", "#d97706", "#ca8a04", "#65a30d", "#16a34a", "#0d9488", "#0284c7", "#7c3aed", "#db2777", "#f43f5e", "#fb923c"],
@@ -485,20 +492,6 @@ const CATEGORY_COLORS = {
   real_estate: ["#059669", "#10b981", "#0d9488", "#0284c7", "#2563eb", "#d97706", "#b45309", "#78350f", "#64748b", "#6366f1", "#ef4444", "#f59e0b"],
 };
 
-function updateStepIndicator(step) {
-  if (!elements.stepIndicator) return;
-  const idx = STEP_ORDER.indexOf(step);
-  if (idx < 0 || (step === "dashboard" && state.savedDashboard)) {
-    elements.stepIndicator.classList.add("hidden");
-    return;
-  }
-  elements.stepIndicator.classList.remove("hidden");
-  elements.stepIndicator.innerHTML = STEP_ORDER.map((s, i) => {
-    const cls = i < idx ? "completed" : i === idx ? "active" : "";
-    const connector = i < STEP_ORDER.length - 1 ? '<div class="step-connector"></div>' : "";
-    return `<div class="step-item ${cls}"><div class="step-num">${i + 1}</div><div class="step-label">${STEP_LABELS[s]}</div></div>${connector}`;
-  }).join("");
-}
 
 function updateSaveSection() {
   if (!elements.saveStatus) return;
@@ -532,7 +525,8 @@ function resetUploadFlow() {
   if (elements.datasetNameHint) elements.datasetNameHint.textContent = "";
   if (elements.dataPreviewCard) elements.dataPreviewCard.classList.add("hidden");
   if (elements.inlineCategoryWrap) elements.inlineCategoryWrap.classList.add("hidden");
-  if (elements.uploadContinueBtn) { elements.uploadContinueBtn.disabled = true; elements.uploadContinueBtn.classList.remove("btn-loading"); }
+  showGenerateDashboardRow(false);
+  if (elements.homeSendBtn) elements.homeSendBtn.disabled = true;
 }
 
 /* ===== Confirmation Dialog ===== */
@@ -574,21 +568,54 @@ function initDropZone() {
 function handleFilesSelected(files) {
   state.pendingFiles = files;
   showFileChips(files);
-  if (elements.uploadContinueBtn) elements.uploadContinueBtn.disabled = false;
-  showDataPreview(files[0]);
+  if (elements.homeSendBtn) elements.homeSendBtn.disabled = files.length === 0;
+}
+
+const FILE_DOC_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+const DICT_PATTERNS_CHIP = ["dictionary", "data_dict", "codebook", "metadata", "column_desc", "field_desc", "schema", "lookup", "legend"];
+
+function getFileTypeLabel(filename) {
+  const ext = filename.split(".").pop()?.toLowerCase();
+  const map = { csv: "CSV", tsv: "TSV", xlsx: "Excel", xls: "Excel", xlsb: "Excel", json: "JSON" };
+  return map[ext] || (ext?.toUpperCase() || "FILE");
+}
+
+function truncateFilename(name, maxLen = 18) {
+  const noExt = name.replace(/\.[^.]+$/, "");
+  if (noExt.length <= maxLen) return noExt;
+  const half = Math.floor(maxLen / 2) - 1;
+  return noExt.slice(0, half) + "…" + noExt.slice(-half);
+}
+
+function buildAttachCardHTML(filename, isDict = false) {
+  const typeLabel = getFileTypeLabel(filename);
+  const shortName = truncateFilename(filename);
+  return `<div class="chat-attach-card${isDict ? " file-chip-dict" : ""}">
+    <span class="chat-attach-name">${shortName}</span>
+    <div class="chat-attach-type-row">
+      <span class="chat-attach-type-icon">${FILE_DOC_SVG}</span>
+      <span class="chat-attach-type-label">${typeLabel}</span>
+    </div>
+  </div>`;
 }
 
 function showFileChips(files) {
   if (!elements.selectedFiles) return;
   if (!files.length) { elements.selectedFiles.innerHTML = ""; elements.selectedFiles.classList.add("hidden"); return; }
   elements.selectedFiles.classList.remove("hidden");
-  const DICT_PATTERNS = ["dictionary", "data_dict", "codebook", "metadata", "column_desc", "field_desc", "schema", "lookup", "legend"];
   elements.selectedFiles.innerHTML = files.map((f, i) => {
-    const size = f.size < 1024 ? `${f.size} B` : f.size < 1048576 ? `${(f.size / 1024).toFixed(1)} KB` : `${(f.size / 1048576).toFixed(1)} MB`;
+    const typeLabel = getFileTypeLabel(f.name);
+    const shortName = truncateFilename(f.name);
     const stem = f.name.replace(/\.[^.]+$/, "").toLowerCase().replace(/[-\s]/g, "_");
-    const isDict = DICT_PATTERNS.some((p) => stem.includes(p));
-    const badge = isDict ? '<span class="file-chip-badge">📖 Dictionary</span>' : '';
-    return `<div class="file-chip${isDict ? ' file-chip-dict' : ''}">${badge}<span>${f.name}</span><span class="file-chip-size">${size}</span><span class="file-chip-remove" data-idx="${i}">&times;</span></div>`;
+    const isDict = DICT_PATTERNS_CHIP.some((p) => stem.includes(p));
+    return `<div class="file-chip${isDict ? ' file-chip-dict' : ''}">
+      <span class="file-chip-name">${shortName}</span>
+      <div class="file-chip-type-row">
+        <span class="file-chip-type-icon">${FILE_DOC_SVG}</span>
+        <span class="file-chip-type-label">${typeLabel}</span>
+      </div>
+      <span class="file-chip-remove" data-idx="${i}">&times;</span>
+    </div>`;
   }).join("");
   elements.selectedFiles.querySelectorAll(".file-chip-remove").forEach((btn) => {
     btn.addEventListener("click", (e) => {
@@ -596,7 +623,7 @@ function showFileChips(files) {
       state.pendingFiles.splice(Number(btn.dataset.idx), 1);
       showFileChips(state.pendingFiles);
       if (!state.pendingFiles.length) {
-        if (elements.uploadContinueBtn) elements.uploadContinueBtn.disabled = true;
+        if (elements.homeSendBtn && !elements.homeInput?.value.trim()) elements.homeSendBtn.disabled = true;
         if (elements.inlineCategoryWrap) elements.inlineCategoryWrap.classList.add("hidden");
       }
     });
@@ -1328,74 +1355,92 @@ async function exportDashboardSnapshot() {
 }
 
 /* ===== AI Chat ===== */
-function simpleMarkdown(text) {
-  // Convert simple markdown patterns to HTML for AI messages
-  let html = text
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-  // Convert bullet/numbered lists into proper HTML lists
-  const lines = html.split("\n");
-  let inList = false;
-  const out = [];
-  for (const line of lines) {
-    const trimmed = line.trim();
-    const isBullet = /^[-•]\s/.test(trimmed);
-    const isNumbered = /^\d+\.\s/.test(trimmed);
-    if (isBullet || isNumbered) {
-      if (!inList) { out.push("<ul style='margin:2px 0;padding-left:18px'>"); inList = true; }
-      const content = trimmed.replace(/^[-•]\s*/, "").replace(/^\d+\.\s*/, "");
-      out.push(`<li>${content}</li>`);
-    } else {
-      if (inList) { out.push("</ul>"); inList = false; }
-      if (trimmed === "") {
-        out.push("<br>");
-      } else {
-        out.push(`<span>${trimmed}</span>`);
-      }
-    }
-  }
-  if (inList) out.push("</ul>");
-  return out.join("");
+function appendChatBubble(role, text) {
+  return appendHomeBubble(role, text);
 }
 
-function appendChatBubble(role, text) {
-  if (!elements.aiChatMessages) return;
+/* Render Gemini-style file attachment cards as a right-aligned user bubble */
+function appendFileAttachBubble(files) {
+  const container = elements.homeChatMessages;
+  if (!container || !files?.length) return;
+  if (elements.homeChatArea) elements.homeChatArea.classList.remove("hidden");
+  if (elements.homeWelcome) elements.homeWelcome.classList.add("hidden");
+  const wrap = document.createElement("div");
+  wrap.className = "home-chat-bubble user";
+  const inner = document.createElement("div");
+  inner.style.cssText = "display:flex;flex-direction:column;align-items:flex-end;gap:6px;max-width:75%";
+  files.forEach((f) => {
+    const stem = f.name.replace(/\.[^.]+$/, "").toLowerCase().replace(/[-\s]/g, "_");
+    const isDict = DICT_PATTERNS_CHIP.some((p) => stem.includes(p));
+    inner.innerHTML += buildAttachCardHTML(f.name, isDict);
+  });
+  wrap.appendChild(inner);
+  container.appendChild(wrap);
+  elements.homeChatArea?.scrollTo({ top: elements.homeChatArea.scrollHeight, behavior: "smooth" });
+}
+
+/* Show/hide the Generate Dashboard button row */
+function showGenerateDashboardRow(visible) {
+  const row = document.getElementById("generate-dashboard-row");
+  if (!row) return;
+  row.classList.toggle("hidden", !visible);
+}
+
+/* ONYX spark icon SVG (accent colored) */
+const AI_SPARK_SVG = `<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C12 2 13.5 7.5 16 10C18.5 12.5 22 12 22 12C22 12 18.5 11.5 16 14C13.5 16.5 12 22 12 22C12 22 10.5 16.5 8 14C5.5 11.5 2 12 2 12C2 12 5.5 12.5 8 10C10.5 7.5 12 2 12 2Z"/></svg>`;
+
+function appendHomeBubble(role, text) {
+  const container = elements.homeChatMessages;
+  if (!container) return null;
+  if (elements.homeChatArea) elements.homeChatArea.classList.remove("hidden");
+  if (elements.homeWelcome) elements.homeWelcome.classList.add("hidden");
   const bubble = document.createElement("div");
-  bubble.className = `ai-chat-bubble ${role}`;
+  bubble.className = `home-chat-bubble ${role}`;
   if (role === "typing") {
-    bubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+    /* AI icon + animated dots */
+    bubble.innerHTML = `<div class="home-chat-ai-icon">${AI_SPARK_SVG}</div><div class="typing-dots"><span></span><span></span><span></span></div>`;
   } else if (role === "assistant") {
-    bubble.innerHTML = simpleMarkdown(text);
+    /* AI icon + body wrapper */
+    const icon = document.createElement("div");
+    icon.className = "home-chat-ai-icon";
+    icon.innerHTML = AI_SPARK_SVG;
+    const body = document.createElement("div");
+    body.className = "home-chat-bubble-body";
+    body.innerHTML = simpleMarkdown(text);
+    bubble.appendChild(icon);
+    bubble.appendChild(body);
   } else {
-    bubble.textContent = text;
+    /* User message: pill on the right */
+    const pill = document.createElement("span");
+    pill.textContent = text;
+    bubble.appendChild(pill);
   }
-  elements.aiChatMessages.appendChild(bubble);
-  elements.aiChatMessages.scrollTo({ top: elements.aiChatMessages.scrollHeight, behavior: "smooth" });
+  container.appendChild(bubble);
+  const chatArea = elements.homeChatArea;
+  if (chatArea) requestAnimationFrame(() => chatArea.scrollTo({ top: chatArea.scrollHeight, behavior: "smooth" }));
   return bubble;
 }
 
 function showSuggestionChips(chips) {
-  if (!elements.aiChatSuggestions) return;
-  elements.aiChatSuggestions.innerHTML = "";
+  const container = elements.homeSuggestions;
+  if (!container) return;
+  container.innerHTML = "";
   chips.forEach((label) => {
     const btn = document.createElement("button");
-    btn.className = "ai-chat-chip";
+    btn.className = "home-suggestion-chip";
+    btn.type = "button";
     btn.textContent = label;
     btn.addEventListener("click", () => {
-      elements.aiChatSuggestions.classList.add("hidden");
-      if (elements.aiChatInput) elements.aiChatInput.value = label;
-      sendAiChat();
+      container.innerHTML = "";
+      if (elements.homeInput) elements.homeInput.value = label;
+      sendHomeChat();
     });
-    elements.aiChatSuggestions.appendChild(btn);
+    container.appendChild(btn);
   });
-  elements.aiChatSuggestions.classList.remove("hidden");
 }
 
 function hideSuggestionChips() {
-  if (elements.aiChatSuggestions) {
-    elements.aiChatSuggestions.classList.add("hidden");
-    elements.aiChatSuggestions.innerHTML = "";
-  }
+  if (elements.homeSuggestions) elements.homeSuggestions.innerHTML = "";
 }
 
 function isLikelyIdentifier(col, rowCount) {
@@ -1503,6 +1548,7 @@ async function sendAiChat() {
       body: JSON.stringify({
         message: msg,
         history: state.aiChatHistory.slice(0, -1),
+        model_key: state.selectedModelKey || null,
       }),
     });
 
@@ -1517,8 +1563,8 @@ async function sendAiChat() {
         state.businessContext = response.insights;
         state.businessCategory = response.insights.business_category || null;
       }
-      // Show the Start Generating button but keep chat open for more input
-      if (elements.aiChatGenerate) elements.aiChatGenerate.classList.remove("hidden");
+      state.aiChatDone = true;
+      await autoBuildDashboard();
     } else if (!state.aiChatDone) {
       const userMsgCount = state.aiChatHistory.filter((m) => m.role === "user").length;
       if (userMsgCount <= 2) {
@@ -1531,18 +1577,93 @@ async function sendAiChat() {
     console.error("AI chat error:", err);
   } finally {
     state.aiChatBusy = false;
+    if (elements.homeSendBtn) elements.homeSendBtn.disabled = false;
   }
+}
+
+/* ===== HOME CHAT: Combined upload + AI chat handler ===== */
+async function sendHomeChat() {
+  if (state.aiChatBusy) return;
+  const inputEl = elements.homeInput;
+  const msg = inputEl?.value.trim();
+  const hasFiles = state.pendingFiles.length > 0;
+  const hasDataset = Boolean(state.currentDataset);
+
+  if (!msg && !hasFiles) {
+    showToast("Type a message or attach a file to get started");
+    return;
+  }
+
+  hideSuggestionChips();
+  if (inputEl) inputEl.value = "";
+  if (elements.homeSendBtn) elements.homeSendBtn.disabled = true;
+  autoResizeHomeInput();
+
+  if (hasFiles && !hasDataset) {
+    // Upload files first, then start chat
+    if (msg) appendHomeBubble("user", msg);
+    /* Render Gemini-style attachment cards in chat bubble */
+    appendFileAttachBubble(state.pendingFiles);
+    const typingBubble = appendHomeBubble("typing", "");
+    try {
+      const projectName = toSuggestedName(state.pendingFiles[0]?.name) || "New project";
+      await createProjectWithUpload(projectName, "", state.pendingFiles, { skipDuel: true });
+      typingBubble?.remove();
+      showToast("Files uploaded — analyzing data…");
+      if (elements.selectedFiles) { elements.selectedFiles.innerHTML = ""; elements.selectedFiles.classList.add("hidden"); }
+      state.pendingFiles = [];
+      /* Fix 3: refresh project sidebar immediately so the chat is saved before dashboard builds */
+      loadProjects().catch(() => {});
+      showGenerateDashboardRow(true);
+      initAiChat();
+    } catch (err) {
+      typingBubble?.remove();
+      appendHomeBubble("assistant", `Upload failed: ${err.message || "Please try again."}`);
+      if (elements.homeSendBtn) elements.homeSendBtn.disabled = false;
+    }
+    return;
+  }
+
+  if (hasDataset && (msg || hasFiles)) {
+    // Send message to existing AI chat
+    if (hasFiles) {
+      appendFileAttachBubble(state.pendingFiles);
+      if (elements.selectedFiles) { elements.selectedFiles.innerHTML = ""; elements.selectedFiles.classList.add("hidden"); }
+      try {
+        await uploadDatasetFiles(state.currentDataset.id, state.pendingFiles, { skipDuel: true });
+        state.pendingFiles = [];
+        showToast("New files added to dataset");
+      } catch (_e) { /* non-fatal */ }
+    }
+    if (msg) {
+      if (elements.aiChatInput) elements.aiChatInput.value = msg;
+      await sendAiChat();
+    }
+    return;
+  }
+
+  if (msg && !hasDataset) {
+    appendHomeBubble("user", msg);
+    appendHomeBubble("assistant", "Please attach a CSV or Excel file so I can analyze your data. Click the 📎 button to attach a file.");
+    setTimeout(() => {
+      showSuggestionChips(["Attach a file", "What file formats are supported?"]);
+      if (elements.homeSendBtn) elements.homeSendBtn.disabled = false;
+    }, 200);
+  }
+}
+
+function autoResizeHomeInput() {
+  const el = elements.homeInput;
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = Math.min(el.scrollHeight, 180) + "px";
 }
 
 function initAiChat() {
   state.aiChatHistory = [];
   state.aiChatDone = false;
-  if (elements.aiChatMessages) elements.aiChatMessages.innerHTML = "";
-  if (elements.aiChatDone) elements.aiChatDone.classList.add("hidden");
-  if (elements.aiChatGenerate) elements.aiChatGenerate.classList.add("hidden");
-  if (elements.aiChatPlan) { elements.aiChatPlan.classList.add("hidden"); elements.aiChatPlan.innerHTML = ""; }
-  if (elements.aiChatModelBadge) elements.aiChatModelBadge.innerHTML = "";
   hideSuggestionChips();
+  /* Do NOT clear homeChatMessages — the user's upload/message should stay visible */
 
   setStep("ai-chat");
 
@@ -1551,7 +1672,6 @@ function initAiChat() {
     state.aiChatBusy = true;
     const typingBubble = appendChatBubble("typing", "");
     try {
-      // Check if any uploaded file looks like a dictionary
       const DICT_PATS = ["dictionary", "data_dict", "codebook", "metadata", "column_desc", "field_desc", "schema", "lookup", "legend"];
       const hasDictFile = (state.pendingFiles || []).some((f) => {
         const stem = f.name.replace(/\.[^.]+$/, "").toLowerCase().replace(/[-\s]/g, "_");
@@ -1562,26 +1682,30 @@ function initAiChat() {
         : "Hello, I just uploaded my data.";
       const response = await apiFetch(`/datasets/${state.currentDataset.id}/ai-chat`, {
         method: "POST",
-        body: JSON.stringify({ message: greeting, history: [] }),
+        body: JSON.stringify({ message: greeting, history: [], model_key: state.selectedModelKey || null }),
       });
       typingBubble?.remove();
-      if (response.model_name) updateModelBadge(response.model_name);
       const reply = response.reply || "Hi! I've analyzed your data. Tell me what you'd like to explore.";
       appendChatBubble("assistant", reply);
       state.aiChatHistory.push({ role: "user", content: greeting });
       state.aiChatHistory.push({ role: "assistant", content: reply });
-
-      if (response.done && elements.aiChatGenerate) {
-        elements.aiChatGenerate.classList.remove("hidden");
+      if (response.done) {
+        state.aiChatDone = true;
+        if (response.insights) {
+          state.businessContext = response.insights;
+          state.businessCategory = response.insights.business_category || null;
+        }
+        await autoBuildDashboard();
+      } else {
+        showSuggestionChips(buildDataAwareSuggestions(true));
       }
-
-      showSuggestionChips(buildDataAwareSuggestions(true));
     } catch (err) {
       typingBubble?.remove();
       appendChatBubble("assistant", "Hi! I've analyzed your data. Tell me what you'd like to explore.");
       console.error("AI chat init error:", err);
     } finally {
       state.aiChatBusy = false;
+      if (elements.homeSendBtn) elements.homeSendBtn.disabled = false;
     }
   }, 300);
 }
@@ -1935,7 +2059,7 @@ async function sendDashChat() {
         try {
           const response = await apiFetch(`/datasets/${state.currentDataset.id}/ai-chat`, {
             method: "POST",
-            body: JSON.stringify({ message, history: state.aiChatHistory }),
+            body: JSON.stringify({ message, history: state.aiChatHistory, model_key: state.selectedModelKey || null }),
           });
           fallbackTyping?.remove();
           const reply = response.reply || "I couldn't generate that visual. Try being more specific about which columns to use.";
@@ -1952,7 +2076,7 @@ async function sendDashChat() {
       /* --- Normal conversational path --- */
       const response = await apiFetch(`/datasets/${state.currentDataset.id}/ai-chat`, {
         method: "POST",
-        body: JSON.stringify({ message, history: state.aiChatHistory }),
+        body: JSON.stringify({ message, history: state.aiChatHistory, model_key: state.selectedModelKey || null }),
       });
       typingBubble?.remove();
       const reply = response.reply || "I'm not sure how to help with that. Try asking differently.";
@@ -1990,35 +2114,29 @@ async function sendDashChat() {
 }
 
 function initAiChatRefine() {
+  /* In the new layout the left chat IS the AI assistant — append there */
   state.aiChatDone = false;
-  if (elements.aiChatMessages) elements.aiChatMessages.innerHTML = "";
-  if (elements.aiChatDone) elements.aiChatDone.classList.add("hidden");
-  if (elements.aiChatGenerate) elements.aiChatGenerate.classList.add("hidden");
-  if (elements.aiChatPlan) { elements.aiChatPlan.classList.add("hidden"); elements.aiChatPlan.innerHTML = ""; }
   hideSuggestionChips();
-
-  setStep("ai-chat");
+  /* Expand the chat sidebar if it was collapsed */
+  elements.projectsSection?.classList.remove("chat-collapsed");
+  document.getElementById("chat-reopen-btn")?.classList.remove("active");
 
   setTimeout(async () => {
+    if (state.aiChatBusy) return;
     state.aiChatBusy = true;
     const typingBubble = appendChatBubble("typing", "");
     try {
-      const refineMsg = "The user already has a dashboard and clicked 'Generate More'. They want additional or different insights. Ask them: are they satisfied with the current dashboard? What other insights would help them? Suggest 2-3 new analysis angles based on the data.";
+      const refineMsg = "The user already has a dashboard and wants to refine it. Ask them what other insights would be helpful and suggest 2-3 new analysis angles.";
       const response = await apiFetch(`/datasets/${state.currentDataset.id}/ai-chat`, {
         method: "POST",
-        body: JSON.stringify({ message: refineMsg, history: state.aiChatHistory }),
+        body: JSON.stringify({ message: refineMsg, history: state.aiChatHistory, model_key: state.selectedModelKey || null }),
       });
       typingBubble?.remove();
       const reply = response.reply || "How is the dashboard working for you? What other insights would be helpful?";
       appendChatBubble("assistant", reply);
       state.aiChatHistory.push({ role: "user", content: refineMsg });
       state.aiChatHistory.push({ role: "assistant", content: reply });
-
-      showSuggestionChips([
-        "Add more variety to the charts",
-        "I want deeper trend analysis",
-        "Show me segment comparisons",
-      ]);
+      showSuggestionChips(["Add more variety to the charts", "I want deeper trend analysis", "Show me segment comparisons"]);
     } catch (err) {
       typingBubble?.remove();
       appendChatBubble("assistant", "How is the dashboard working for you? What other insights would be helpful?");
@@ -2607,7 +2725,6 @@ function prepareVisualForm(visual) {
   const numericOptions = columns.numeric.length ? columns.numeric : columns.all;
   const metricOptions = columns.all;
 
-  populateSelect(form.type, VISUAL_TYPES);
   populateSelect(form.x, columns.all, "Select column");
   populateSelect(form.y, metricOptions, "Select metric");
   populateSelect(form.values, metricOptions, "Select metric");
@@ -2621,7 +2738,10 @@ function prepareVisualForm(visual) {
   const defaultValues = visual?.values || numericOptions[0] || metricOptions[0] || "";
   const defaultAggregation = visual?.aggregation || "count";
 
-  form.type.value = defaultType;
+  /* type is set via the hidden input + chart-type-grid icon buttons */
+  const hiddenType = document.getElementById("chart-type-hidden");
+  if (hiddenType) hiddenType.value = defaultType;
+
   form.title.value = visual?.title || "Custom visual";
   form.x.value = defaultX;
   form.y.value = defaultY;
@@ -2636,6 +2756,76 @@ function prepareVisualForm(visual) {
   updateVisualFormFields(defaultType);
 }
 
+/* ===== Feature 2 — Tile Focus / Fullscreen ===== */
+function focusTile(visualId) {
+  const grid = elements.dashboardGrid;
+  if (!grid) return;
+  grid.querySelectorAll(".grid-stack-item").forEach((w) => {
+    const isFocused = w.dataset.visualId === visualId;
+    w.classList.toggle("tile-focused", isFocused);
+  });
+  state.focusedVisualId = visualId;
+}
+
+function clearTileFocus() {
+  elements.dashboardGrid?.querySelectorAll(".grid-stack-item").forEach((w) => {
+    w.classList.remove("tile-focused");
+  });
+  state.focusedVisualId = null;
+}
+
+function openTileFullscreen(visualId) {
+  const visual = state.finalVisuals.find((v) => v.visual_id === visualId);
+  if (!visual) return;
+  const modal = document.getElementById("tile-fullscreen-modal");
+  const titleEl = document.getElementById("tile-fullscreen-title");
+  const chartEl = document.getElementById("tile-fullscreen-chart");
+  if (!modal || !chartEl) return;
+  if (titleEl) titleEl.textContent = visual.title || "";
+  chartEl.innerHTML = "";
+  modal.classList.remove("hidden");
+  /* Re-render the chart inside the fullscreen container */
+  requestAnimationFrame(() => renderVisual(visual, chartEl));
+}
+
+function closeTileFullscreen() {
+  const modal = document.getElementById("tile-fullscreen-modal");
+  const chartEl = document.getElementById("tile-fullscreen-chart");
+  if (chartEl) { try { Plotly.purge(chartEl); } catch (_) {} chartEl.innerHTML = ""; }
+  modal?.classList.add("hidden");
+}
+
+/* ===== Feature 3 — Widget Config Slide Panel ===== */
+const CHART_TYPE_DEFS = [
+  { type: "bar",       label: "Bar",       svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="10" width="4" height="11"/><rect x="9.5" y="6" width="4" height="15"/><rect x="16" y="3" width="4" height="18"/></svg>` },
+  { type: "line",      label: "Line",      svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 17 8 11 13 14 21 5"/></svg>` },
+  { type: "pie",       label: "Pie",       svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>` },
+  { type: "scatter",   label: "Scatter",   svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="14" r="2"/><circle cx="15" cy="8" r="2"/><circle cx="18" cy="16" r="2"/><circle cx="10" cy="18" r="2"/></svg>` },
+  { type: "histogram", label: "Volume",    svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="12" width="4" height="9"/><rect x="7" y="8" width="4" height="13"/><rect x="12" y="4" width="4" height="17"/><rect x="17" y="9" width="4" height="12"/></svg>` },
+  { type: "table",     label: "Table",     svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>` },
+];
+
+function initChartTypeGrid(selectedType = "bar") {
+  const grid = document.getElementById("chart-type-grid");
+  const hidden = document.getElementById("chart-type-hidden");
+  if (!grid) return;
+  grid.innerHTML = "";
+  CHART_TYPE_DEFS.forEach(({ type, label, svg }) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `chart-type-btn${type === selectedType ? " active" : ""}`;
+    btn.innerHTML = `${svg}<span>${label}</span>`;
+    btn.addEventListener("click", () => {
+      grid.querySelectorAll(".chart-type-btn").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      if (hidden) hidden.value = type;
+      updateVisualFormFields(type);
+    });
+    grid.appendChild(btn);
+  });
+  if (hidden) hidden.value = selectedType;
+}
+
 function openAddVisualPanel(visual = null) {
   if (!state.currentDataset || !state.datasetDetail) {
     showToast("Upload data before adding a custom visual");
@@ -2643,6 +2833,7 @@ function openAddVisualPanel(visual = null) {
   }
   state.editingVisualId = visual?.visual_id || null;
   prepareVisualForm(visual);
+  initChartTypeGrid(visual?.type || "bar");
   elements.addVisualModal?.classList.remove("hidden");
 }
 
@@ -2778,28 +2969,44 @@ function startNewAnalysis() {
   resetUploadFlow();
   state.authPrompted = false;
   state.savedDashboard = false;
+  /* Reverse dashboard-mode layout */
+  exitDashboardMode();
+  /* Reset home chat UI */
+  if (elements.homeChatMessages) elements.homeChatMessages.innerHTML = "";
+  if (elements.homeChatArea) elements.homeChatArea.classList.add("hidden");
+  if (elements.homeWelcome) elements.homeWelcome.classList.remove("hidden");
+  if (elements.homeSuggestions) elements.homeSuggestions.innerHTML = "";
+  if (elements.homeInput) elements.homeInput.value = "";
+  if (elements.homeSendBtn) elements.homeSendBtn.disabled = true;
   updateCurrentProjectName();
   setStep("upload");
 }
 
+/* ===== Settings Modal ===== */
+function openSettings() {
+  const modal = document.getElementById("settings-modal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  /* Update theme button states */
+  document.querySelectorAll(".settings-theme-opt").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.theme === state.theme);
+  });
+}
+
+function closeSettings() {
+  document.getElementById("settings-modal")?.classList.add("hidden");
+}
+
 function setAuthenticatedView() {
   const isAuthed = Boolean(state.token);
-  const userMenu = document.getElementById("user-menu");
-  elements.loginBtn?.classList.toggle("hidden", isAuthed);
-  userMenu?.classList.toggle("hidden", !isAuthed);
-  if (isAuthed && state.email) {
-    const initial = state.email.charAt(0).toUpperCase();
-    document.querySelectorAll(".user-avatar").forEach((el) => { el.textContent = initial; });
-    const emailDisplay = document.getElementById("user-email-display");
-    const dropdownEmail = document.getElementById("user-dropdown-email");
-    if (emailDisplay) emailDisplay.textContent = state.email;
-    if (dropdownEmail) dropdownEmail.textContent = state.email;
-  }
+  /* Sidebar login/user row visibility */
+  document.getElementById("sidebar-user")?.classList.toggle("hidden", !isAuthed);
+  document.getElementById("sidebar-login-btn")?.classList.toggle("hidden", isAuthed);
+  /* Delegate sidebar user content + settings modal update to updateSidebarUser */
+  updateSidebarUser();
   if (!isAuthed) {
     state.projects = [];
     renderProjectList();
-    const dropdown = document.getElementById("user-dropdown");
-    if (dropdown) dropdown.classList.add("hidden");
   }
   if (isAuthed) {
     closeAuthModal();
@@ -3061,12 +3268,15 @@ function renderProjectList() {
 
   if (!state.token) {
     elements.projectLoginHint?.classList.remove("hidden");
+    if (elements.homeProjectsWrap) elements.homeProjectsWrap.classList.add("hidden");
     return;
   }
   if (!state.projects.length) {
     elements.projectsEmpty?.classList.remove("hidden");
+    if (elements.homeProjectsWrap) elements.homeProjectsWrap.classList.add("hidden");
     return;
   }
+  if (elements.homeProjectsWrap) elements.homeProjectsWrap.classList.remove("hidden");
   state.projects.forEach((project) => {
     const summary = state.projectSummaries[project.id] || {};
     const createdAt = formatProjectDate(summary.createdAt || project.created_at);
@@ -3121,49 +3331,6 @@ function closeMobileSidebar() {
   if (overlay) overlay.classList.add("hidden");
 }
 
-/* ===== Contextual Tips ===== */
-const TUTORIAL_KEY = "onyx_tutorial_seen";
-const TUTORIAL_TIPS = {
-  upload: "Drop your CSV or Excel file here to get started. Our AI will analyze your data automatically.",
-  chat: "Chat with our AI analyst to explore your data. Ask questions or click suggestions to guide the analysis.",
-  duel: "Choose your preferred chart style for each data insight. Click the one you like better.",
-  dashboard: "Your dashboard is ready! Drag tiles to rearrange, click 'Key Insights' for the data story, or use the AI Assistant for more charts.",
-  insights: "This is your data story — AI-generated insights paired with supporting visuals to help grow your business.",
-};
-
-function getTutorialState() {
-  try { return JSON.parse(localStorage.getItem(TUTORIAL_KEY) || "{}"); } catch { return {}; }
-}
-function markTipSeen(key) {
-  const s = getTutorialState();
-  s[key] = true;
-  localStorage.setItem(TUTORIAL_KEY, JSON.stringify(s));
-}
-function showContextualTip(containerSelector, tipKey) {
-  const seen = getTutorialState();
-  if (seen[tipKey]) return;
-  const container = document.querySelector(containerSelector);
-  if (!container) return;
-  const existing = container.querySelector(".contextual-tip");
-  if (existing) return;
-  const tip = document.createElement("div");
-  tip.className = "contextual-tip";
-  tip.setAttribute("role", "status");
-  tip.innerHTML = `
-    <svg class="contextual-tip-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-    <span class="contextual-tip-text">${TUTORIAL_TIPS[tipKey]}</span>
-    <button class="contextual-tip-dismiss" type="button" aria-label="Dismiss tip">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-  `;
-  tip.querySelector(".contextual-tip-dismiss").addEventListener("click", () => {
-    markTipSeen(tipKey);
-    tip.style.opacity = "0";
-    tip.style.transform = "translateY(-8px)";
-    setTimeout(() => tip.remove(), 200);
-  });
-  container.prepend(tip);
-}
 
 function renderSidebarProjects() {
   if (!elements.sidebarProjectList) return;
@@ -3206,31 +3373,23 @@ function renderSidebarProjects() {
 }
 
 function updateSidebarUser() {
-  const userEl = document.getElementById("sidebar-user");
-  if (!userEl) return;
-  
-  if (state.user) {
-    const name = state.user.display_name || state.user.email?.split("@")[0] || "User";
-    userEl.innerHTML = `
-      <div class="sidebar-user-avatar">
-        <span style="font-size:0.8rem;font-weight:600;">${name.charAt(0).toUpperCase()}</span>
-      </div>
-      <div class="sidebar-user-info">
-        <span class="sidebar-user-name">${name}</span>
-        <span class="sidebar-user-plan">Pro</span>
-      </div>
-    `;
-  } else {
-    userEl.innerHTML = `
-      <div class="sidebar-user-avatar">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      </div>
-      <div class="sidebar-user-info">
-        <span class="sidebar-user-name">Guest</span>
-        <span class="sidebar-user-plan">Free</span>
-      </div>
-    `;
+  const isAuthed = Boolean(state.token);
+  const name = isAuthed ? (state.email?.split("@")[0] || "User") : "Guest";
+  const nameEl = document.getElementById("sidebar-user-name-el");
+  const planEl = document.getElementById("sidebar-user-plan-el");
+  const avatarWrap = document.getElementById("sidebar-user-avatar-wrap");
+  if (nameEl) nameEl.textContent = name;
+  if (planEl) planEl.textContent = "Free";
+  if (avatarWrap) {
+    avatarWrap.innerHTML = isAuthed && state.email
+      ? `<span style="font-size:0.8rem;font-weight:700;color:#fff">${state.email.charAt(0).toUpperCase()}</span>`
+      : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
   }
+  /* Settings modal account section */
+  const settingsEmail = document.getElementById("settings-account-email");
+  if (settingsEmail) settingsEmail.textContent = isAuthed ? (state.email || "Signed in") : "Not signed in";
+  document.getElementById("settings-logout-btn")?.classList.toggle("hidden", !isAuthed);
+  document.getElementById("settings-login-btn")?.classList.toggle("hidden", isAuthed);
 }
 
 function renderDatasetList() {
@@ -3650,8 +3809,8 @@ function renderDashboard() {
   }
   state.grid = GridStack.init({
     float: false,
-    cellHeight: 80,
-    margin: 6,
+    cellHeight: 90,
+    margin: 10,
     handle: ".tile-header",
     animate: true,
     column: 12,
@@ -3718,12 +3877,20 @@ function renderDashboard() {
               <span>${visual.title}</span>
               <span class="tile-type">${visual.type}</span>
             </div>
-            <div class="tile-actions">
-              ${canEdit ? "<button class=\"btn btn-outline btn-sm edit-visual\" type=\"button\">Edit</button>" : ""}
-              <button class="btn btn-outline btn-sm delete-visual" type="button" aria-label="Remove visual">×</button>
-            </div>
           </div>
           <div class="tile-body" id="dash-${visual.visual_id}"></div>
+        </div>
+        <!-- Focus overlay (Feature 2) -->
+        <div class="tile-focus-overlay">
+          <button class="tile-focus-btn expand-tile" type="button" title="Expand">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+          </button>
+          ${canEdit ? `<button class="tile-focus-btn edit-tile" type="button" title="Edit widget">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>` : ""}
+          <button class="tile-focus-btn danger remove-tile" type="button" title="Remove">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
       `;
     }
@@ -3737,14 +3904,26 @@ function renderDashboard() {
       options.y = layout.y;
     }
     state.grid.addWidget(widget, options);
-    widget.querySelector(".edit-visual")?.addEventListener("click", (event) => {
+
+    /* Focus overlay handlers */
+    widget.addEventListener("click", (event) => {
+      if (event.target.closest(".tile-focus-btn")) return;
+      event.stopPropagation();
+      focusTile(visual.visual_id);
+    });
+    widget.querySelector(".expand-tile")?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      openTileFullscreen(visual.visual_id);
+    });
+    widget.querySelector(".edit-tile")?.addEventListener("click", (event) => {
       event.stopPropagation();
       openAddVisualPanel(visual);
     });
-    widget.querySelector(".delete-visual")?.addEventListener("click", (event) => {
+    widget.querySelector(".remove-tile")?.addEventListener("click", (event) => {
       event.stopPropagation();
       removeVisual(visual.visual_id);
     });
+
     if (!isKpi) {
       renderVisual(visual, widget.querySelector(`#dash-${visual.visual_id}`));
     }
@@ -3752,15 +3931,12 @@ function renderDashboard() {
   state.grid.commit();
   requestAnimationFrame(() => {
     updateLayoutFromGrid();
-    elements.dashboardGrid?.querySelectorAll(".chart").forEach((chart) => Plotly.Plots.resize(chart));
+    elements.dashboardGrid?.querySelectorAll(".chart").forEach((c) => Plotly.Plots.resize(c));
   });
-  /* Multiple delayed resize passes to handle late layout shifts */
+  /* One delayed pass to catch late GridStack layout shifts */
   setTimeout(() => {
-    elements.dashboardGrid?.querySelectorAll(".chart").forEach((chart) => Plotly.Plots.resize(chart));
-  }, 200);
-  setTimeout(() => {
-    elements.dashboardGrid?.querySelectorAll(".chart").forEach((chart) => Plotly.Plots.resize(chart));
-  }, 600);
+    elements.dashboardGrid?.querySelectorAll(".chart").forEach((c) => Plotly.Plots.resize(c));
+  }, 400);
 }
 
 function buildPlotlyLayout(visual, container, plotData) {
@@ -4134,46 +4310,205 @@ function renderVisual(visual, container) {
   requestAnimationFrame(() => Plotly.Plots.resize(container));
 }
 
-/* ===== Duel Mode ===== */
+/* ===== Feature 1 — Agent Status Bar ===== */
+function setAgentStatus(mode) {
+  const bar = document.getElementById("agent-status-bar");
+  const textEl = document.getElementById("agent-status-text");
+  const stateEl = document.getElementById("agent-status-state");
+  if (!bar) return;
+  if (mode === "generating") {
+    bar.classList.add("running");
+    if (textEl) textEl.textContent = "Generating your dashboard…";
+    if (stateEl) stateEl.textContent = "● Running";
+  } else {
+    bar.classList.remove("running");
+    if (textEl) textEl.textContent = "Agent is waiting for your response";
+    if (stateEl) stateEl.innerHTML = "&#x23F8; Paused";
+  }
+}
+
+const SPINNER_SVG = `<svg class="agent-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>`;
+const CHECK_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+function createAgentStepLog(steps) {
+  /* Create and insert a step-log bubble into home chat. Returns {el, rows[]} */
+  if (elements.homeChatArea) elements.homeChatArea.classList.remove("hidden");
+  if (elements.homeWelcome) elements.homeWelcome.classList.add("hidden");
+
+  const wrap = document.createElement("div");
+  wrap.className = "agent-log-wrap";
+
+  const rows = steps.map((label) => {
+    const row = document.createElement("div");
+    row.className = "agent-step-row";
+    row.innerHTML = `
+      <div class="agent-step-icon">${SPINNER_SVG}</div>
+      <span class="agent-step-label">${label}</span>
+      <span class="agent-step-elapsed"></span>`;
+    wrap.appendChild(row);
+    return row;
+  });
+
+  /* Mark all as pending (grey spinner hidden) */
+  rows.forEach((r, i) => {
+    if (i > 0) r.querySelector(".agent-step-icon").innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="currentColor" opacity="0.25"/></svg>`;
+  });
+
+  elements.homeChatMessages?.appendChild(wrap);
+  elements.homeChatArea?.scrollTo({ top: elements.homeChatArea.scrollHeight, behavior: "smooth" });
+  return { wrap, rows };
+}
+
+function markAgentStepDone(row, elapsed) {
+  row.className = "agent-step-row done";
+  row.querySelector(".agent-step-icon").innerHTML = CHECK_SVG;
+  row.querySelector(".agent-step-elapsed").textContent = `${elapsed}s`;
+}
+
+function markAgentStepRunning(row) {
+  row.className = "agent-step-row running";
+  row.querySelector(".agent-step-icon").innerHTML = SPINNER_SVG;
+  row.querySelector(".agent-step-elapsed").textContent = "Running…";
+}
+
+function addAgentSummary(wrap, widgetCount) {
+  const summary = document.createElement("div");
+  summary.className = "agent-log-summary";
+  summary.innerHTML = `${AI_SPARK_SVG} Dashboard ready — <strong>${widgetCount} widget${widgetCount !== 1 ? "s" : ""}</strong> built`;
+  wrap.appendChild(summary);
+  elements.homeChatArea?.scrollTo({ top: elements.homeChatArea.scrollHeight, behavior: "smooth" });
+}
+
+/* ===== Auto Dashboard Build (replaces duel flow) ===== */
 async function startDuel() {
+  /* Legacy alias — just calls autoBuildDashboard */
+  return autoBuildDashboard();
+}
+
+async function autoBuildDashboard() {
   if (!state.currentDataset) return;
   state.savedDashboard = false;
   state.dashboardFilters = [];
   state.datePreset = "all";
   state.customDateRange = { start: null, end: null };
-  showToast("Generating visual options...");
-  try {
-    const excludeSigs = state.finalVisuals
-      .filter((v) => v.type !== "kpi")
-      .map((v) => [v.type, v.x || null, v.y || null, v.values || null, v.aggregation || null]);
-    const response = await apiFetch(`/visuals/${state.currentDataset.id}/duel-pool`, {
-      method: "POST",
-      body: JSON.stringify({ exclude_signatures: excludeSigs.length ? excludeSigs : null }),
-    });
-    state.duelRounds = response.rounds || [];
-    state.duelKpis = response.kpis || [];
-    state.duelCurrentRound = 0;
-    state.duelPicked = [];
-    state.duelPoolSize = response.pool_size || 0;
 
-    if (state.duelRounds.length < 1) {
-      // No candidates at all — fall back to auto-generate
-      showToast("Not enough chart options for duel mode, auto-generating...");
-      await generateDashboardVisuals({ silent: true });
-      setStep("dashboard");
+  /* Feature 1: inline agentic step-log replaces full-screen overlay */
+  setAgentStatus("generating");
+  const stepLabels = [
+    "Dataset profiled",
+    "AI analysis complete",
+    "Generating dashboard widgets…",
+  ];
+  const { wrap, rows } = createAgentStepLog(stepLabels);
+
+  /* Step 0 — data already profiled, mark done immediately */
+  markAgentStepRunning(rows[0]);
+  await new Promise((r) => setTimeout(r, 350));
+  markAgentStepDone(rows[0], 1);
+
+  /* Step 1 — simulate analysis with a short delay */
+  markAgentStepRunning(rows[1]);
+  await new Promise((r) => setTimeout(r, 500));
+  markAgentStepDone(rows[1], 2);
+
+  /* Step 2 — actual API call, show live elapsed counter */
+  markAgentStepRunning(rows[2]);
+  const t0 = Date.now();
+  let elapsedTimer = setInterval(() => {
+    const s = Math.round((Date.now() - t0) / 1000);
+    const el = rows[2].querySelector(".agent-step-elapsed");
+    if (el) el.textContent = `Running ${s}s`;
+  }, 1000);
+
+  const modelKey = state.selectedModelKey || null;
+  const modelName = state.availableModels.find((m) => m.key === modelKey)?.display_name || "Auto";
+
+  try {
+    const response = await apiFetch(`/visuals/${state.currentDataset.id}/dashboard`, {
+      method: "POST",
+      body: JSON.stringify({ max_visuals: 10, model_key: modelKey }),
+    });
+    clearInterval(elapsedTimer);
+    const elapsed = Math.round((Date.now() - t0) / 1000);
+    state.finalVisuals = response.visuals || [];
+    markAgentStepDone(rows[2], elapsed);
+    addAgentSummary(wrap, state.finalVisuals.length);
+    setAgentStatus("idle");
+
+    if (!state.finalVisuals.length) {
+      appendHomeBubble("assistant", "I couldn't generate visuals for this dataset. Try uploading a different file or ask me to add a specific chart.");
       return;
     }
-
-    setStep("duel");
-    renderDuelRound();
+    enterDashboardMode();
   } catch (err) {
-    console.error("Duel pool failed:", err);
-    showToast("Could not generate visual options. Falling back to auto-generate.");
-    try {
-      await generateDashboardVisuals({ silent: true });
-    } catch (_e) { /* ignore */ }
-    setStep("dashboard");
+    clearInterval(elapsedTimer);
+    markAgentStepDone(rows[2], Math.round((Date.now() - t0) / 1000));
+    setAgentStatus("idle");
+    console.error("Dashboard build failed:", err);
+
+    /* Detect billing/payment/quota errors (backend returns 402) */
+    const msg = err.message || "";
+    if (msg.includes("API error") || msg.includes("payment") || msg.includes("billing") || msg.includes("quota") || msg.includes("invalid api key") || msg.includes("authentication")) {
+      appendHomeBubble("assistant", msg);
+    } else {
+      appendHomeBubble("assistant", `Dashboard build failed: ${msg || "Please try again."}`);
+    }
   }
+}
+
+function enterDashboardMode() {
+  state.step = "dashboard";
+  state.savedDashboard = false;
+
+  const appMain = document.querySelector(".app-main");
+  const homeSection = elements.projectsSection;
+
+  /* Hide welcome, show chat area */
+  if (elements.homeWelcome) elements.homeWelcome.classList.add("hidden");
+  if (elements.homeChatArea) elements.homeChatArea.classList.remove("hidden");
+  if (elements.homeSuggestions) elements.homeSuggestions.innerHTML = "";
+  /* Clear file chips / hint from input area */
+  if (elements.selectedFiles) { elements.selectedFiles.innerHTML = ""; elements.selectedFiles.classList.add("hidden"); }
+
+  /* Update input placeholder for sidebar context */
+  if (elements.homeInput) elements.homeInput.placeholder = "Ask the AI about your dashboard…";
+
+  /* Show chat sidebar header */
+  document.getElementById("chat-sidebar-header")?.classList.remove("hidden");
+
+  /* Activate dashboard layout: chat slides left, dashboard fills right */
+  homeSection?.classList.remove("hidden");
+  appMain?.classList.add("dashboard-active");
+
+  /* Show and animate dashboard section */
+  allStepSections.forEach((s) => { if (s !== homeSection) s?.classList.add("hidden"); });
+  elements.dashboardSection?.classList.remove("hidden");
+  elements.filterBar?.classList.remove("hidden");
+  elements.kpiStrip?.classList.remove("hidden");
+
+  /* Render dashboard content */
+  switchNavTab("overview");
+  renderKpiStrip();
+  updateFilterBar();
+  renderDashboard();
+
+  /* Do NOT open the right dash-chat panel — left chat panel is the AI assistant here */
+
+  saveSession();
+}
+
+function exitDashboardMode() {
+  const appMain = document.querySelector(".app-main");
+  appMain?.classList.remove("dashboard-active");
+  elements.projectsSection?.classList.remove("chat-collapsed");
+  document.getElementById("chat-sidebar-header")?.classList.add("hidden");
+  clearTileFocus();
+  closeTileFullscreen();
+  closeAddVisualPanel();
+  setAgentStatus("idle");
+  showGenerateDashboardRow(false);
+  /* Restore input placeholder */
+  if (elements.homeInput) elements.homeInput.placeholder = "Ask a question about your data, or attach a file to get started…";
 }
 
 function renderDuelRound() {
@@ -4362,27 +4697,87 @@ function bindEvents() {
     });
   });
 
-  elements.loginBtn?.addEventListener("click", () => {
+  /* Sidebar login / logout */
+  document.getElementById("sidebar-login-btn")?.addEventListener("click", () => {
     state.pendingStep = state.step;
     openAuthModal();
   });
+  document.getElementById("sidebar-logout-btn")?.addEventListener("click", () => {
+    state.token = null; state.email = null;
+    localStorage.removeItem("token"); localStorage.removeItem("email");
+    state.projectSummaries = {};
+    startNewAnalysis();
+    setAuthenticatedView();
+  });
 
-  /* User menu dropdown toggle */
-  document.getElementById("user-menu-trigger")?.addEventListener("click", () => {
-    const dropdown = document.getElementById("user-dropdown");
-    if (dropdown) dropdown.classList.toggle("hidden");
+  /* Sidebar theme toggle */
+  document.getElementById("sidebar-theme-toggle")?.addEventListener("click", () => {
+    toggleTheme();
+    updateSidebarThemeIcon();
   });
-  /* Close dropdown when clicking outside */
-  document.addEventListener("click", (e) => {
-    const menu = document.getElementById("user-menu");
-    const dropdown = document.getElementById("user-dropdown");
-    if (menu && dropdown && !menu.contains(e.target)) {
-      dropdown.classList.add("hidden");
-    }
+
+  /* Settings modal */
+  document.getElementById("sidebar-settings")?.addEventListener("click", openSettings);
+  document.getElementById("settings-close")?.addEventListener("click", closeSettings);
+  document.getElementById("settings-modal")?.addEventListener("click", (e) => {
+    if (e.target === document.getElementById("settings-modal")) closeSettings();
   });
+  document.querySelectorAll(".settings-theme-opt").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      applyTheme(btn.dataset.theme);
+      updateSidebarThemeIcon();
+      document.querySelectorAll(".settings-theme-opt").forEach((b) => b.classList.toggle("active", b.dataset.theme === state.theme));
+    });
+  });
+  document.getElementById("settings-clear-session")?.addEventListener("click", () => {
+    sessionStorage.removeItem(SESSION_KEY);
+    closeSettings();
+    showToast("Session cleared");
+  });
+  document.getElementById("settings-login-btn")?.addEventListener("click", () => { closeSettings(); state.pendingStep = state.step; openAuthModal(); });
+  document.getElementById("settings-logout-btn")?.addEventListener("click", () => {
+    closeSettings();
+    state.token = null; state.email = null;
+    localStorage.removeItem("token"); localStorage.removeItem("email");
+    state.projectSummaries = {};
+    startNewAnalysis();
+    setAuthenticatedView();
+  });
+
+  /* Home chat input */
+  elements.homeInput?.addEventListener("input", () => {
+    autoResizeHomeInput();
+    const hasText = elements.homeInput.value.trim().length > 0;
+    const hasFiles = state.pendingFiles.length > 0;
+    if (elements.homeSendBtn) elements.homeSendBtn.disabled = !hasText && !hasFiles;
+  });
+  elements.homeInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendHomeChat(); }
+  });
+  elements.homeSendBtn?.addEventListener("click", sendHomeChat);
+
+  /* Home drag-drop zone */
+  const homeDropZone = elements.homeDropZone;
+  if (homeDropZone) {
+    homeDropZone.addEventListener("dragover", (e) => { e.preventDefault(); homeDropZone.classList.add("drag-over"); });
+    homeDropZone.addEventListener("dragleave", () => homeDropZone.classList.remove("drag-over"));
+    homeDropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      homeDropZone.classList.remove("drag-over");
+      const files = Array.from(e.dataTransfer?.files || []).filter((f) => /\.(csv|xlsx|xls|tsv|xlsb)$/i.test(f.name));
+      if (files.length) handleFilesSelected(files);
+    });
+  }
+
+  /* Upload file input change (home page) */
+  elements.uploadFiles?.addEventListener("change", (event) => {
+    const files = Array.from(event.target?.files || []);
+    if (files.length) handleFilesSelected(files);
+    event.target.value = "";
+  });
+
 
   elements.authClose?.addEventListener("click", closeAuthModal);
-  elements.themeToggle?.addEventListener("click", toggleTheme);
 
   /* Sidebar */
   elements.sidebarToggle?.addEventListener("click", () => toggleSidebar());
@@ -4411,42 +4806,17 @@ function bindEvents() {
     btn.addEventListener("click", () => {
       const nav = btn.dataset.nav;
       document.querySelectorAll(".mobile-nav-item").forEach((b) => b.classList.toggle("active", b === btn));
-      if (nav === "home") { setStep("projects"); }
+      if (nav === "home") { setStep("upload"); }
       else if (nav === "dashboard" && state.currentDataset) { setStep("dashboard"); switchNavTab("overview"); }
       else if (nav === "insights" && state.currentDataset) { setStep("dashboard"); switchNavTab("insights"); }
       else if (nav === "profile") {
-        if (state.token) { const d = document.getElementById("user-dropdown"); if (d) d.classList.toggle("hidden"); }
+        if (state.token) openSettings();
         else openAuthModal();
       }
     });
   });
 
-  /* Drag-drop zone */
-  initDropZone();
-
-  /* File input change */
-  elements.uploadFiles?.addEventListener("change", (event) => {
-    const files = Array.from(event.target?.files || []);
-    if (files.length) handleFilesSelected(files);
-  });
-
-  /* Upload continue -> auto-create project, upload files, then open AI chat */
-  elements.uploadContinueBtn?.addEventListener("click", async () => {
-    if (!state.pendingFiles.length) { showToast("Select files to upload"); return; }
-    elements.uploadContinueBtn.disabled = true;
-    elements.uploadContinueBtn.classList.add("btn-loading");
-    try {
-      const projectName = toSuggestedName(state.pendingFiles[0]?.name) || "New project";
-      await createProjectWithUpload(projectName, "", state.pendingFiles, { skipDuel: true });
-      showToast("Files uploaded — let's analyze your data");
-      initAiChat();
-    } catch (error) {
-      showToast(error.message || "Project setup failed");
-      elements.uploadContinueBtn.disabled = false;
-    } finally {
-      elements.uploadContinueBtn.classList.remove("btn-loading");
-    }
-  });
+  /* initDropZone() not called — legacy drop zone removed from HTML */
 
   /* AI Chat */
   elements.aiChatSend?.addEventListener("click", sendAiChat);
@@ -4460,8 +4830,18 @@ function bindEvents() {
   });
   elements.aiChatDone?.addEventListener("click", finishAiChat);
 
-  /* Dashboard AI Chat */
-  elements.dashChatToggle?.addEventListener("click", toggleDashChat);
+  /* Chat sidebar collapse / reopen */
+  document.getElementById("chat-sidebar-close-btn")?.addEventListener("click", () => {
+    elements.projectsSection?.classList.add("chat-collapsed");
+    document.getElementById("chat-reopen-btn")?.classList.add("active");
+  });
+  document.getElementById("chat-reopen-btn")?.addEventListener("click", () => {
+    elements.projectsSection?.classList.remove("chat-collapsed");
+    document.getElementById("chat-reopen-btn")?.classList.remove("active");
+    /* Resize charts since column widths changed */
+    setTimeout(() => elements.dashboardGrid?.querySelectorAll(".chart").forEach((c) => Plotly.Plots.resize(c)), 400);
+  });
+  /* Legacy right dash-chat panel (kept for compat, hidden in new flow) */
   elements.dashChatClose?.addEventListener("click", closeDashChat);
   elements.dashChatSend?.addEventListener("click", sendDashChat);
   elements.dashChatInput?.addEventListener("keydown", (e) => {
@@ -4527,12 +4907,39 @@ function bindEvents() {
     initAiChatRefine();
   });
 
+  /* Dash sidebar model picker */
+  document.getElementById("dash-model-picker-btn")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleModelPicker(document.getElementById("dash-model-picker-btn"));
+  });
+
+  /* Generate Dashboard button */
+  document.getElementById("generate-dashboard-btn")?.addEventListener("click", () => {
+    if (!state.currentDataset) { showToast("Upload a file first"); return; }
+    showGenerateDashboardRow(false);
+    autoBuildDashboard();
+  });
+
   elements.addVisualBtn?.addEventListener("click", () => openAddVisualPanel());
   elements.closeAddVisual?.addEventListener("click", () => closeAddVisualPanel());
 
-  elements.addVisualForm?.elements
-    ?.namedItem("type")
-    ?.addEventListener("change", (event) => updateVisualFormFields(event.target.value));
+  /* Tile fullscreen modal close */
+  document.getElementById("tile-fullscreen-close")?.addEventListener("click", closeTileFullscreen);
+
+  /* Widget config delete button — removes the currently-editing visual */
+  document.getElementById("widget-config-delete")?.addEventListener("click", () => {
+    if (state.editingVisualId) {
+      removeVisual(state.editingVisualId);
+      closeAddVisualPanel();
+    }
+  });
+
+  /* Click outside dashboard tiles clears tile focus */
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".grid-stack-item") && !e.target.closest("#add-visual-modal") && !e.target.closest("#tile-fullscreen-modal")) {
+      clearTileFocus();
+    }
+  });
 
   elements.addVisualForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -4633,14 +5040,17 @@ function bindEvents() {
     scheduleFilterRebuild();
   });
 
-  /* Duel mode — click card to pick, skip button to skip, pick both */
-  elements.duelCardA?.addEventListener("click", () => handleDuelChoice("a"));
-  elements.duelCardB?.addEventListener("click", () => handleDuelChoice("b"));
-  elements.duelPickBoth?.addEventListener("click", () => handleDuelChoice("both"));
-  elements.duelSkip?.addEventListener("click", () => handleDuelChoice("skip"));
-  elements.duelDone?.addEventListener("click", () => {
-    showTransition("Building your dashboard...", "Rendering charts and insights");
-    finishDuel();
+  /* Welcome suggestion cards */
+  document.getElementById("welcome-cards")?.addEventListener("click", (e) => {
+    const card = e.target.closest(".welcome-card");
+    if (!card) return;
+    const prompt = card.dataset.prompt;
+    if (prompt && elements.homeInput) {
+      elements.homeInput.value = prompt;
+      if (elements.homeSendBtn) elements.homeSendBtn.disabled = false;
+      elements.homeInput.focus();
+      autoResizeHomeInput();
+    }
   });
 
   /* Editable dashboard title */
@@ -4766,17 +5176,122 @@ function bindEvents() {
   elements.saveStartOver?.addEventListener("click", () => startNewAnalysis());
   elements.saveLoginCta?.addEventListener("click", () => { state.pendingStep = "save"; openAuthModal(); });
 
-  elements.logoutBtn?.addEventListener("click", () => {
-    const dropdown = document.getElementById("user-dropdown");
-    if (dropdown) dropdown.classList.add("hidden");
-    state.token = null;
-    state.email = null;
-    localStorage.removeItem("token");
-    localStorage.removeItem("email");
-    state.projectSummaries = {};
-    startNewAnalysis();
-    setAuthenticatedView();
+  /* logoutBtn (header) removed — logout handled by sidebar-logout-btn above */
+
+  /* Model picker */
+  document.getElementById("model-picker-btn")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleModelPicker();
   });
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest("#model-picker-dropdown") && !e.target.closest("#model-picker-btn")) {
+      document.getElementById("model-picker-dropdown")?.classList.add("hidden");
+    }
+  });
+}
+
+/* ===== Model Picker ===== */
+const MODEL_KEY_STORAGE = "onyx_model";
+
+async function loadModels() {
+  try {
+    const models = await apiFetch("/models/");
+    state.availableModels = models;
+    /* If saved model key is not in the list, default to first available */
+    const available = models.filter((m) => m.available);
+    if (!models.find((m) => m.key === state.selectedModelKey)) {
+      state.selectedModelKey = available[0]?.key || "llama-groq";
+    }
+    renderModelPickerBtn();
+  } catch (_e) {
+    /* Non-fatal: model picker just shows nothing */
+  }
+}
+
+function renderModelPickerBtn() {
+  const model = state.availableModels.find((m) => m.key === state.selectedModelKey);
+  const labelEl = document.getElementById("model-picker-label");
+  const dashLabelEl = document.getElementById("dash-model-picker-label");
+  const tierEl = document.getElementById("model-picker-tier");
+  const name = model ? model.display_name : "Auto";
+  if (labelEl) labelEl.textContent = name;
+  if (dashLabelEl) dashLabelEl.textContent = name;
+  if (tierEl) {
+    if (!model) { tierEl.textContent = ""; tierEl.className = "model-tier-badge"; return; }
+    tierEl.textContent = model.tier === "free" ? "Free" : "Paid";
+    tierEl.className = `model-tier-badge ${model.tier}`;
+  }
+}
+
+function renderModelPickerList() {
+  const list = document.getElementById("model-picker-list");
+  if (!list || !state.availableModels.length) return;
+  list.innerHTML = "";
+
+  /* Group into free and paid */
+  const paid = state.availableModels.filter((m) => m.tier === "paid");
+  const free = state.availableModels.filter((m) => m.tier === "free");
+
+  function addSection(label, items) {
+    if (!items.length) return;
+    const sec = document.createElement("div");
+    sec.className = "model-picker-section-label";
+    sec.textContent = label;
+    list.appendChild(sec);
+    items.forEach((m) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `model-picker-item${m.key === state.selectedModelKey ? " active" : ""}${!m.available ? " unavailable" : ""}`;
+      const priceHtml = m.tier === "free"
+        ? `<span class="free-label">Free</span>`
+        : `<span>In: $${m.input_price.toFixed(2)}/M</span><br><span>Out: $${m.output_price.toFixed(2)}/M</span>`;
+      btn.innerHTML = `
+        <svg class="model-item-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        <div class="model-item-info">
+          <div class="model-item-name">
+            ${m.display_name}
+            <span class="model-item-badge">${m.badge}</span>
+            ${!m.available ? '<span class="model-item-badge" style="background:var(--danger-soft);color:var(--danger)">No Key</span>' : ""}
+          </div>
+          <div class="model-item-desc">${m.description}</div>
+        </div>
+        <div class="model-item-price">${priceHtml}</div>`;
+      if (m.available) {
+        btn.addEventListener("click", () => selectModel(m.key));
+      }
+      list.appendChild(btn);
+    });
+  }
+  addSection("Premium Models", paid);
+  addSection("Free Models", free);
+}
+
+function selectModel(key) {
+  state.selectedModelKey = key;
+  localStorage.setItem(MODEL_KEY_STORAGE, key);
+  renderModelPickerBtn();
+  renderModelPickerList();
+  document.getElementById("model-picker-dropdown")?.classList.add("hidden");
+}
+
+function toggleModelPicker(btnEl) {
+  const dropdown = document.getElementById("model-picker-dropdown");
+  const btn = btnEl || document.getElementById("model-picker-btn");
+  if (!dropdown) return;
+  if (dropdown.classList.contains("hidden")) {
+    renderModelPickerList();
+    dropdown.classList.remove("hidden");
+    if (btn) {
+      const rect = btn.getBoundingClientRect();
+      const dropH = Math.min(480, window.innerHeight * 0.6);
+      const top = rect.top - dropH - 8;
+      dropdown.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - 390))}px`;
+      dropdown.style.top = `${Math.max(8, top)}px`;
+      dropdown.style.maxHeight = `${dropH}px`;
+    }
+  } else {
+    dropdown.classList.add("hidden");
+  }
 }
 
 async function init() {
@@ -4790,9 +5305,14 @@ async function init() {
   }
 
   applyTheme(state.theme);
+  updateSidebarThemeIcon();
   setAuthenticatedView();
   bindEvents();
+  setAgentStatus("idle");
   elements.projectListSkeleton?.classList.remove("hidden");
+
+  /* Load models in parallel with projects — non-blocking */
+  loadModels();
 
   try {
     await loadProjects();
@@ -4838,19 +5358,15 @@ async function init() {
           updateCurrentProjectName();
           
           // Restore to the saved step if it's valid
-          const validSteps = ["dashboard", "ai-chat", "duel"];
           if (saved.step === "dashboard" && state.finalVisuals.length) {
-            setStep("dashboard");
-            renderDashboard();
+            enterDashboardMode();
             return;
           } else if (saved.step === "ai-chat") {
             setStep("ai-chat");
             return;
           } else if (saved.step === "duel") {
-            // For duel, go back to dashboard if visuals exist, otherwise upload
             if (state.finalVisuals.length) {
-              setStep("dashboard");
-              renderDashboard();
+              enterDashboardMode();
             } else {
               setStep("upload");
             }

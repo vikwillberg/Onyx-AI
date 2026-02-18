@@ -6,7 +6,13 @@ import pandas as pd
 
 from app.schemas import ColumnProfile, FileProfile, VisualSpec
 from app.services.ingestion import to_serializable
-from app.services.llm import generate_visual_spec_from_request, llm_service
+from app.services.llm import (
+    BillingError,
+    call_json_for_model,
+    generate_visual_spec_from_request,
+    llm_service,
+    MODEL_REGISTRY,
+)
 
 ALLOWED_TYPES = {"bar", "line", "pie", "scatter", "histogram", "table", "map"}
 AGGREGATIONS = {"count", "mean", "sum", "median"}
@@ -896,7 +902,7 @@ def score_categorical_column(column: ColumnProfile, row_count: int) -> float:
     return score
 
 
-def llm_suggest_derived_columns(profile: FileProfile) -> list[dict]:
+def llm_suggest_derived_columns(profile: FileProfile, model_key: Optional[str] = None) -> list[dict]:
     """Ask the LLM to suggest computed / derived columns from the data profile.
 
     Returns a list of dicts like:
@@ -957,7 +963,11 @@ def llm_suggest_derived_columns(profile: FileProfile) -> list[dict]:
         "Suggest derived columns."
     )
 
-    response = llm_service.request_json(system_prompt, user_prompt, max_tokens=1000)
+    if model_key and model_key in MODEL_REGISTRY:
+        raw = call_json_for_model(model_key, system_prompt, [{"role": "user", "content": user_prompt}], max_tokens=4096)
+        response = raw
+    else:
+        response = llm_service.request_json(system_prompt, user_prompt, max_tokens=4096)
     if not response or "derived_columns" not in response:
         return []
 
@@ -1144,16 +1154,16 @@ def heuristic_derived_columns(profile: FileProfile) -> list[dict]:
     return results[:5]
 
 
-def suggest_derived_columns(profile: FileProfile) -> list[dict]:
+def suggest_derived_columns(profile: FileProfile, model_key: Optional[str] = None) -> list[dict]:
     """Unified entry point: use LLM if available, otherwise fall back to heuristics."""
-    llm_results = llm_suggest_derived_columns(profile)
+    llm_results = llm_suggest_derived_columns(profile, model_key=model_key)
     if llm_results:
         return llm_results
     return heuristic_derived_columns(profile)
 
 
-def llm_column_role_hints(profile: FileProfile) -> dict[str, list[str]]:
-    if not llm_service.enabled:
+def llm_column_role_hints(profile: FileProfile, model_key: Optional[str] = None) -> dict[str, list[str]]:
+    if not llm_service.enabled and not model_key:
         return {}
 
     payload = {
@@ -1176,7 +1186,10 @@ def llm_column_role_hints(profile: FileProfile) -> dict[str, list[str]]:
         "Pick likely roles even if names are generic; use types, sample values, and cardinality."
     )
     user_prompt = f"Infer dashboard roles for these columns: {payload}"
-    response = llm_service.request_json(system_prompt, user_prompt)
+    if model_key and model_key in MODEL_REGISTRY:
+        response = call_json_for_model(model_key, system_prompt, [{"role": "user", "content": user_prompt}], max_tokens=4096)
+    else:
+        response = llm_service.request_json(system_prompt, user_prompt, max_tokens=4096)
     if not isinstance(response, dict):
         return {}
 
@@ -1843,6 +1856,7 @@ def generate_dashboard_visuals(
     max_visuals: int = 12,
     business_category: Optional[str] = None,
     business_context: Optional[dict] = None,
+    model_key: Optional[str] = None,
 ) -> list[VisualSpec]:
     row_count = max(profile.row_count, 1)
     numeric_cols = rank_numeric_columns(profile)
@@ -1858,7 +1872,7 @@ def generate_dashboard_visuals(
         dataframe = auto_derive_columns(dataframe, datetime_cols, derivations)
 
     # --- AI / heuristic derived columns (date diffs, ratios, extractions) ---
-    smart_derivations = suggest_derived_columns(profile)
+    smart_derivations = suggest_derived_columns(profile, model_key=model_key)
     if smart_derivations:
         from app.services.ingestion import profile_series
         dataframe, added_cols = apply_derived_columns(dataframe, smart_derivations)
@@ -1890,7 +1904,7 @@ def generate_dashboard_visuals(
             if extra_segment and any(h in lower for h in extra_segment):
                 col._template_boost = 0.7  # type: ignore[attr-defined]
 
-    role_hints = llm_column_role_hints(profile)
+    role_hints = llm_column_role_hints(profile, model_key=model_key)
 
     visuals: list[VisualSpec] = []
     signatures: set[tuple] = set()
@@ -2097,7 +2111,7 @@ def generate_dashboard_visuals(
 
     # --- LLM-powered dashboard plan FIRST (primary driver for diversity) ---
     if len(visuals) < max_visuals:
-        llm_specs = llm_dashboard_plan(profile, business_category, business_context, max_visuals - len(visuals))
+        llm_specs = llm_dashboard_plan(profile, business_category, business_context, max_visuals - len(visuals), model_key=model_key)
         for spec in llm_specs:
             vis = apply_data_to_spec(spec, dataframe)
             _append_visual(vis)
@@ -2381,9 +2395,10 @@ def llm_dashboard_plan(
     business_category: Optional[str] = None,
     business_context: Optional[dict] = None,
     max_visuals: int = 8,
+    model_key: Optional[str] = None,
 ) -> list[VisualSpec]:
     """Use LLM to generate an intelligent dashboard plan based on the data profile and business context."""
-    if not llm_service.enabled:
+    if not llm_service.enabled and not model_key:
         return []
 
     col_info = []
@@ -2472,7 +2487,10 @@ def llm_dashboard_plan(
         "Do NOT make more than 2 visuals about the same topic."
     )
 
-    response = llm_service.request_json(system_prompt, user_prompt, max_tokens=2000)
+    if model_key and model_key in MODEL_REGISTRY:
+        response = call_json_for_model(model_key, system_prompt, [{"role": "user", "content": user_prompt}], max_tokens=4096)
+    else:
+        response = llm_service.request_json(system_prompt, user_prompt, max_tokens=4096)
     if not response or "visuals" not in response:
         return []
 

@@ -25,7 +25,7 @@ from app.schemas import (
     MergeSuggestions,
     VisualSpec,
 )
-from app.services.llm import analyze_data_chat
+from app.services.llm import analyze_data_chat, BillingError
 from app.services.ingestion import (
     generate_merge_suggestions,
     is_dictionary_file,
@@ -438,12 +438,16 @@ def ai_chat(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Dataset not profiled yet")
 
     history = [{"role": m.role, "content": m.content} for m in payload.history]
-    reply, done, insights = analyze_data_chat(
-        profile_data=dataset.profile_json,
-        user_message=payload.message,
-        history=history,
-        dictionary_data=dataset.dictionary_json,
-    )
+    try:
+        reply, done, insights = analyze_data_chat(
+            profile_data=dataset.profile_json,
+            user_message=payload.message,
+            history=history,
+            dictionary_data=dataset.dictionary_json,
+            model_key=payload.model_key or None,
+        )
+    except BillingError as e:
+        return AiChatResponse(reply=str(e), done=False, insights=None, model_name=None)
 
     # If the AI is done, store context on the project
     if done:
@@ -460,6 +464,10 @@ def ai_chat(
             session.add(project)
             session.commit()
 
-    from app.services.llm import llm_service
-    model_label = f"{llm_service.provider} / {llm_service._model}" if llm_service.enabled else None
+    from app.services.llm import llm_service, MODEL_REGISTRY
+    if payload.model_key and payload.model_key in MODEL_REGISTRY:
+        reg = MODEL_REGISTRY[payload.model_key]
+        model_label = f"{reg['badge']} / {reg['display_name']}"
+    else:
+        model_label = f"{llm_service.provider} / {llm_service._model}" if llm_service.enabled else None
     return AiChatResponse(reply=reply, done=done, insights=insights, model_name=model_label)

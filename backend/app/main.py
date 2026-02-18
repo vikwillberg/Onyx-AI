@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.db import init_db
-from app.routers import auth, datasets, google_auth, projects, visuals
+from app.routers import auth, datasets, google_auth, models, projects, visuals
 from app.services.storage import ensure_storage_dirs
 
 
@@ -41,6 +41,7 @@ def create_app() -> FastAPI:
     app.include_router(projects.router, prefix="/projects", tags=["projects"])
     app.include_router(datasets.router, prefix="/datasets", tags=["datasets"])
     app.include_router(visuals.router, prefix="/visuals", tags=["visuals"])
+    app.include_router(models.router, prefix="/models", tags=["models"])
 
     return app
 

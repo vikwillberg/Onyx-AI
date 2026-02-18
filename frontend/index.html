@@ -19,52 +19,6 @@
       </div>
     </div>
     <div class="app-shell">
-      <!-- Top navigation bar -->
-      <header class="app-header">
-        <div class="header-left">
-          <button id="mobile-menu-btn" class="mobile-menu-btn" type="button" title="Menu" aria-label="Open menu">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-          </button>
-          <a href="/" class="brand" aria-label="ONYX home">
-            <img class="brand-logo brand-logo-light" src="/static/onyx-logo.png?v=5" alt="ONYX AI" />
-            <img class="brand-logo brand-logo-dark" src="/static/onyx-logo-dark.png?v=5" alt="ONYX AI" />
-          </a>
-        </div>
-        <div id="step-indicator" class="step-indicator hidden"></div>
-        <div class="header-right">
-          <button id="theme-toggle" class="theme-toggle" type="button" title="Toggle theme">
-            <div class="theme-toggle-track">
-              <div class="theme-toggle-thumb">
-                <svg class="theme-icon icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-                <svg class="theme-icon icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-              </div>
-            </div>
-          </button>
-          <button id="login-btn" class="btn btn-primary btn-sm" type="button">Log in</button>
-          <div id="user-menu" class="user-menu hidden">
-            <button id="user-menu-trigger" class="user-menu-trigger" type="button">
-              <span id="user-avatar" class="user-avatar"></span>
-              <span id="user-email-display" class="user-email-display"></span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            <div id="user-dropdown" class="user-dropdown hidden">
-              <div class="user-dropdown-header">
-                <span id="user-avatar-lg" class="user-avatar user-avatar-lg"></span>
-                <div class="user-dropdown-info">
-                  <span id="user-dropdown-email" class="user-dropdown-email"></span>
-                  <span class="user-dropdown-label">Personal account</span>
-                </div>
-              </div>
-              <div class="user-dropdown-divider"></div>
-              <button id="logout-btn" class="user-dropdown-item user-dropdown-logout" type="button">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                Log out
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
       <!-- Mobile sidebar overlay -->
       <div id="sidebar-overlay" class="sidebar-overlay hidden"></div>
 
@@ -98,17 +52,30 @@
             <div id="sidebar-project-list" class="sidebar-project-list"></div>
           </div>
 
-          <!-- Bottom: User Info -->
+          <!-- Bottom: User + Login + Theme + Settings -->
           <div class="sidebar-bottom">
-            <div id="sidebar-user" class="sidebar-user">
-              <div class="sidebar-user-avatar">
+            <div id="sidebar-user" class="sidebar-user hidden">
+              <div class="sidebar-user-avatar" id="sidebar-user-avatar-wrap">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               </div>
               <div class="sidebar-user-info">
-                <span class="sidebar-user-name">Guest</span>
-                <span class="sidebar-user-plan">Free</span>
+                <span class="sidebar-user-name" id="sidebar-user-name-el">User</span>
+                <span class="sidebar-user-plan" id="sidebar-user-plan-el">Free</span>
               </div>
+              <button id="sidebar-logout-btn" class="sidebar-logout-btn" type="button" title="Log out">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              </button>
             </div>
+            <button id="sidebar-login-btn" class="sidebar-nav-item sidebar-login-btn" type="button">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+              <span>Log in</span>
+            </button>
+            <button id="sidebar-theme-toggle" class="sidebar-nav-item sidebar-nav-sm sidebar-theme-btn" type="button">
+              <svg class="sidebar-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+              <svg class="sidebar-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+              <span id="sidebar-theme-label">Light mode</span>
+              <div class="sidebar-theme-track"><div class="sidebar-theme-thumb"></div></div>
+            </button>
             <button id="sidebar-settings" class="sidebar-nav-item sidebar-nav-sm" type="button">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
               <span>Settings</span>
@@ -125,171 +92,156 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
           </button>
           <div class="sidebar-rail-spacer"></div>
-          <button class="sidebar-rail-btn sidebar-rail-user" type="button" title="User">
+          <button id="sidebar-rail-theme" class="sidebar-rail-btn" type="button" title="Toggle theme" onclick="document.getElementById('sidebar-theme-toggle').click()">
+            <svg class="sidebar-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+            <svg class="sidebar-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </button>
+          <button id="sidebar-rail-login" class="sidebar-rail-btn sidebar-rail-user" type="button" title="Log in" onclick="document.getElementById('sidebar-login-btn').click()">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </button>
+          <button class="sidebar-rail-btn" type="button" title="Settings" onclick="document.getElementById('sidebar-settings').click()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </button>
         </div>
       </aside>
 
       <main class="app-main">
-        <!-- ========== PROJECTS / UPLOAD ========== -->
-        <section id="projects-section" class="panel hidden">
-          <div class="section-hero">
-            <div class="hero-text">
-              <h1><span class="hero-logo-wrap"><img class="hero-logo hero-logo-light" src="/static/onyx-logo.png?v=5" alt="ONYX AI" /><img class="hero-logo hero-logo-dark" src="/static/onyx-logo-dark.png?v=5" alt="ONYX AI" /></span></h1>
-              <p class="hero-subtitle">Upload your data and get an AI-powered dashboard in seconds.</p>
-              <div class="hero-features">
-                <div class="hero-feature"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> AI analyzes your data automatically</div>
-                <div class="hero-feature"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Choose your visual style</div>
-                <div class="hero-feature"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Get actionable insights</div>
-              </div>
+        <!-- ========== HOME: ChatGPT/Claude-style chat ========== -->
+        <section id="projects-section" class="panel home-section hidden">
+
+          <!-- Welcome state (before first message) -->
+          <div id="home-welcome" class="home-welcome">
+            <div class="welcome-logo-wrap">
+              <img class="home-logo-light" src="/static/onyx-logo.png?v=5" alt="ONYX" />
+              <img class="home-logo-dark" src="/static/onyx-logo-dark.png?v=5" alt="ONYX" />
+            </div>
+            <h1 class="welcome-title">What would you like to analyze?</h1>
+            <p class="welcome-subtitle">Attach a CSV or Excel file and let AI build your dashboard</p>
+            <ul class="welcome-bullets">
+              <li>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                I can generate live dashboards from any CSV or Excel file
+              </li>
+              <li>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C12 2 13.5 7.5 16 10C18.5 12.5 22 12 22 12C22 12 18.5 11.5 16 14C13.5 16.5 12 22 12 22C12 22 10.5 16.5 8 14C5.5 11.5 2 12 2 12C2 12 5.5 12.5 8 10C10.5 7.5 12 2 12 2Z"/></svg>
+                I can spot trends, anomalies, and revenue opportunities in your data
+              </li>
+              <li>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                I can answer questions and build new charts while your dashboard is open
+              </li>
+            </ul>
+            <div class="welcome-cards" id="welcome-cards">
+              <button class="welcome-card" type="button" data-prompt="Analyze sales performance — identify top products, revenue trends, and growth opportunities">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                <span class="welcome-card-title">Sales Analysis</span>
+                <span class="welcome-card-desc">Revenue trends &amp; top performers</span>
+              </button>
+              <button class="welcome-card" type="button" data-prompt="Show customer segments, retention patterns, and behavior insights from my data">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span class="welcome-card-title">Customer Insights</span>
+                <span class="welcome-card-desc">Segments &amp; retention</span>
+              </button>
+              <button class="welcome-card" type="button" data-prompt="Analyze operational efficiency, costs, and identify areas for improvement">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span class="welcome-card-title">Operations</span>
+                <span class="welcome-card-desc">Efficiency &amp; cost drivers</span>
+              </button>
+              <button class="welcome-card" type="button" data-prompt="Find key trends, anomalies, and patterns in my data that I should act on">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <span class="welcome-card-title">Trend Detection</span>
+                <span class="welcome-card-desc">Patterns &amp; anomalies</span>
+              </button>
             </div>
           </div>
 
-          <div class="upload-area">
-            <div id="upload-drop-zone" class="drop-zone">
-              <input id="upload-files" type="file" name="files" multiple accept=".csv,.tsv,.xlsx,.xls,.xlsb" class="drop-zone-input" />
-              <div class="drop-zone-content">
-                <div class="drop-zone-icon-wrap">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                </div>
-                <p class="drop-zone-title">Drop files here or <span class="drop-zone-browse">browse</span></p>
-                <p class="drop-zone-hint">CSV, Excel (.xlsx, .xls), TSV &mdash; up to 50 MB</p>
-              </div>
-              <div class="drop-zone-loading hidden">
-                <div class="spinner"></div>
-                <p>Analyzing your data...</p>
-              </div>
+          <!-- Chat sidebar header (visible only in dashboard mode) -->
+          <div id="chat-sidebar-header" class="chat-sidebar-header hidden">
+            <div class="chat-sidebar-header-info">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span>AI Chat</span>
             </div>
-            <div id="selected-files" class="file-chips hidden"></div>
-            <button id="upload-continue-btn" class="btn btn-primary btn-lg" type="button" disabled>Generate Dashboard</button>
+            <button id="chat-sidebar-close-btn" type="button" class="chat-sidebar-close-btn" title="Collapse chat">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
           </div>
 
-          <!-- Project list now lives in the sidebar -->
-          <div id="project-list" class="project-cards-grid hidden"></div>
+          <!-- Chat messages -->
+          <div id="home-chat-area" class="home-chat-area hidden">
+            <div id="home-chat-messages" class="home-chat-messages"></div>
+          </div>
+
+          <!-- Input bar -->
+          <div class="home-input-wrap">
+            <div class="home-input-box" id="home-drop-zone">
+              <!-- Attached file cards (visible inside box when files selected) -->
+              <div id="selected-files" class="file-chips home-file-chips hidden"></div>
+              <!-- Bottom row: attach btn + textarea + send -->
+              <div class="home-input-row">
+                <label class="home-attach-btn" for="upload-files" title="Attach data file">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                </label>
+                <input id="upload-files" type="file" name="files" multiple accept=".csv,.tsv,.xlsx,.xls,.xlsb" style="display:none" />
+                <textarea id="home-input" class="home-input" placeholder="Ask a question about your data, or attach a file to get started…" rows="1" autocomplete="off"></textarea>
+                <button id="home-send-btn" class="home-send-btn" type="button" disabled>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+                </button>
+              </div>
+            </div>
+            <div id="home-suggestions" class="home-suggestions"></div>
+            <!-- Agent status bar -->
+            <div id="agent-status-bar" class="agent-status-bar">
+              <span class="agent-status-dot"></span>
+              <span id="agent-status-text">Agent is waiting for your response</span>
+              <span class="agent-status-state" id="agent-status-state">&#x23F8; Paused</span>
+            </div>
+            <!-- Model picker row (like Claude's model selector) -->
+            <div class="model-picker-row">
+              <button id="model-picker-btn" class="model-picker-btn" type="button">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C12 2 13.5 7.5 16 10C18.5 12.5 22 12 22 12C22 12 18.5 11.5 16 14C13.5 16.5 12 22 12 22C12 22 10.5 16.5 8 14C5.5 11.5 2 12 2 12C2 12 5.5 12.5 8 10C10.5 7.5 12 2 12 2Z"/></svg>
+                <span id="model-picker-label">Loading…</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <span id="model-picker-tier" class="model-tier-badge"></span>
+            </div>
+
+            <!-- Model picker dropdown -->
+            <div id="model-picker-dropdown" class="model-picker-dropdown hidden">
+              <div class="model-picker-header">Choose AI Model</div>
+              <div id="model-picker-list" class="model-picker-list"></div>
+            </div>
+
+            <!-- Generate Dashboard button (shown only when dataset is loaded) -->
+            <div id="generate-dashboard-row" class="generate-dashboard-row hidden">
+              <button id="generate-dashboard-btn" class="btn btn-primary generate-dashboard-btn" type="button">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                Generate Dashboard
+              </button>
+            </div>
+            <p class="home-input-hint">CSV, Excel (.xlsx, .xls), TSV · drag files to attach</p>
+          </div>
+
+          <!-- Hidden compat elements for JS (not visible) -->
+          <div style="display:none" aria-hidden="true">
+            <input id="ai-chat-input" type="text" />
+            <div id="ai-chat-messages"></div>
+            <div id="ai-chat-suggestions"></div>
+            <div id="ai-chat-plan"></div>
+            <div id="ai-chat-model-badge"></div>
+            <div id="dataset-name-hint"></div>
+            <div id="data-preview-card"></div>
+            <div id="data-preview-table"></div>
+            <form id="project-setup-form"></form>
+          </div>
+
+          <!-- Recent projects (when logged in) -->
+          <div id="home-projects-wrap" class="home-projects-wrap hidden">
+            <div class="home-projects-label">Recent Projects</div>
+            <div id="project-list" class="project-cards-grid"></div>
+          </div>
           <div id="project-list-skeleton" class="project-cards-grid hidden"></div>
           <div id="projects-empty" class="empty-state hidden"></div>
           <p id="project-login-hint" class="hint"></p>
-        </section>
-
-        <!-- ========== SETUP / NAMING ========== -->
-        <section id="setup-section" class="panel hidden">
-          <div class="section-header">
-            <div class="section-header-text">
-              <span class="section-tag">Step 2</span>
-              <h2>Name your dashboard</h2>
-              <p>Give your project a name before we generate the dashboard.</p>
-            </div>
-          </div>
-          <div class="setup-grid">
-            <div class="card" id="project-setup-card">
-              <form id="project-setup-form" class="stacked">
-                <label>
-                  <span class="label-text">Project name</span>
-                  <input type="text" name="projectName" placeholder="e.g. Q1 Sales Analysis" required />
-                </label>
-                <label>
-                  <span class="label-text">Description <span class="label-optional">(optional)</span></span>
-                  <textarea name="description" placeholder="Brief summary of this dataset" rows="3"></textarea>
-                </label>
-                <p id="dataset-name-hint" class="hint"></p>
-                <button class="btn btn-primary btn-lg" type="submit">Generate Dashboard</button>
-              </form>
-            </div>
-            <div id="data-preview-card" class="card hidden">
-              <div class="card-header">
-                <h3>Data preview</h3>
-                <span class="tag tag-sm">First 5 rows</span>
-              </div>
-              <div id="data-preview-table" class="preview-table-wrap"></div>
-            </div>
-          </div>
-        </section>
-
-        <!-- ========== AI CHAT ========== -->
-        <section id="ai-chat-section" class="panel hidden">
-          <div class="section-header">
-            <div class="section-header-text">
-              <span class="section-tag">Step 2</span>
-              <h2>AI Analysis</h2>
-              <p>Chat with our AI analyst to get a smarter dashboard tailored to your goals.</p>
-            </div>
-          </div>
-          <div class="ai-chat-container">
-            <div class="ai-chat-model-badge" id="ai-chat-model-badge"></div>
-            <div class="ai-chat-messages" id="ai-chat-messages"></div>
-            <div class="ai-chat-suggestions hidden" id="ai-chat-suggestions"></div>
-            <div class="ai-chat-plan hidden" id="ai-chat-plan"></div>
-            <div class="ai-chat-input-wrap">
-              <input type="text" id="ai-chat-input" class="ai-chat-input" placeholder="Type a response or click a suggestion above..." autocomplete="off" />
-              <button id="ai-chat-send" class="btn btn-primary btn-sm" type="button">Send</button>
-              <button id="ai-chat-generate" class="btn btn-outline btn-sm" type="button">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                Start Generating
-              </button>
-            </div>
-            <div class="ai-chat-actions">
-              <button id="ai-chat-done" class="btn btn-primary btn-sm hidden" type="button">Build Dashboard &rarr;</button>
-            </div>
-          </div>
-        </section>
-
-        <!-- ========== DUEL ========== -->
-        <section id="duel-section" class="panel hidden">
-          <div class="section-header" style="text-align:center">
-            <div class="section-header-text">
-              <span class="section-tag">Step 3</span>
-              <h2>Pick your visuals</h2>
-              <p>We generated chart options from your data. Choose the ones you like best.</p>
-            </div>
-          </div>
-
-          <div class="duel-progress-wrap">
-            <div class="duel-progress-bar">
-              <div class="duel-progress-fill" id="duel-progress-fill"></div>
-            </div>
-            <div class="duel-progress-meta">
-              <span id="duel-round-label">Round 1 of 7</span>
-              <span id="duel-picked-badge" class="duel-picked-badge">0 picked</span>
-            </div>
-          </div>
-
-          <div class="duel-round-context" id="duel-round-context"></div>
-
-          <div class="duel-arena" id="duel-arena">
-            <div class="duel-card" id="duel-card-a">
-              <div class="duel-card-header">
-                <span class="duel-card-label">Option A</span>
-                <span class="duel-card-type" id="duel-type-a"></span>
-              </div>
-              <div class="duel-card-chart" id="duel-chart-a"></div>
-              <div class="duel-card-title" id="duel-title-a"></div>
-            </div>
-
-            <div class="duel-vs">VS</div>
-
-            <div class="duel-card" id="duel-card-b">
-              <div class="duel-card-header">
-                <span class="duel-card-label">Option B</span>
-                <span class="duel-card-type" id="duel-type-b"></span>
-              </div>
-              <div class="duel-card-chart" id="duel-chart-b"></div>
-              <div class="duel-card-title" id="duel-title-b"></div>
-            </div>
-          </div>
-
-          <p class="duel-hint">Click a chart to pick it, keep both, or skip</p>
-          <div class="duel-actions">
-            <button id="duel-pick-both" class="btn btn-primary btn-xl duel-skip-btn" type="button">Keep Both</button>
-            <button id="duel-skip" class="btn btn-outline btn-xl duel-skip-btn" type="button">Skip Both</button>
-          </div>
-
-          <div class="section-footer" style="text-align:center">
-            <button id="duel-done" class="btn btn-primary btn-lg" type="button" disabled>
-              Done — Build Dashboard
-              <span id="duel-done-count"></span>
-            </button>
-          </div>
         </section>
 
         <!-- ========== DATASET ========== -->
@@ -372,9 +324,9 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
               </button>
               <div class="dashboard-toolbar-spacer"></div>
-              <button id="dash-chat-toggle" class="btn btn-outline btn-sm" type="button" title="Toggle AI Assistant">
+              <button id="chat-reopen-btn" class="btn btn-outline btn-sm chat-reopen-btn" type="button" title="Show AI chat">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                AI Assistant
+                Chat
               </button>
               <span id="auto-save-status" class="auto-save-status"></span>
             </div>
@@ -412,23 +364,54 @@
           </div>
 
           <!-- Add visual modal -->
-          <div id="add-visual-modal" class="modal hidden">
-            <div class="modal-card" style="max-width:480px">
-              <div class="modal-card-header">
-                <h3>Add Custom Visual</h3>
-                <button id="close-add-visual" class="btn btn-icon" type="button">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <!-- Widget Config Slide Panel (replaces modal) -->
+          <div id="add-visual-modal" class="widget-config-panel hidden">
+            <div class="widget-config-header">
+              <div class="widget-config-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                Widget
+              </div>
+              <div class="widget-config-actions">
+                <button id="widget-config-delete" class="widget-config-icon-btn" type="button" title="Remove from dashboard">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                </button>
+                <button id="close-add-visual" class="widget-config-icon-btn" type="button" title="Close">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               </div>
-              <form id="add-visual-form" class="stacked">
-                <label><span class="label-text">Title</span><input type="text" name="title" placeholder="Custom visual" /></label>
-                <label><span class="label-text">Chart type</span><select name="type"></select></label>
-                <label data-field="x"><span class="label-text">X-axis / Category</span><select name="x"></select></label>
-                <label data-field="y"><span class="label-text">Y-axis / Metric</span><select name="y"></select></label>
-                <label data-field="values"><span class="label-text">Values</span><select name="values"></select></label>
-                <label data-field="aggregation"><span class="label-text">Aggregation</span><select name="aggregation"></select></label>
-                <label data-field="columns"><span class="label-text">Table columns</span><select name="columns" multiple></select></label>
-                <button class="btn btn-primary btn-lg" type="submit">Add to dashboard</button>
+            </div>
+            <div class="widget-config-body">
+              <form id="add-visual-form">
+                <div class="widget-config-field">
+                  <label class="widget-config-label">Widget Name</label>
+                  <input type="text" name="title" class="widget-config-input" placeholder="Custom visual" />
+                </div>
+                <div class="widget-config-field">
+                  <label class="widget-config-label">Chart Type</label>
+                  <div class="chart-type-grid" id="chart-type-grid"></div>
+                  <input type="hidden" name="type" id="chart-type-hidden" />
+                </div>
+                <div class="widget-config-field" data-field="x">
+                  <label class="widget-config-label">X-axis / Category</label>
+                  <select name="x" class="widget-config-select"></select>
+                </div>
+                <div class="widget-config-field" data-field="y">
+                  <label class="widget-config-label">Y-axis / Metric</label>
+                  <select name="y" class="widget-config-select"></select>
+                </div>
+                <div class="widget-config-field" data-field="values">
+                  <label class="widget-config-label">Values</label>
+                  <select name="values" class="widget-config-select"></select>
+                </div>
+                <div class="widget-config-field" data-field="aggregation">
+                  <label class="widget-config-label">Aggregation</label>
+                  <select name="aggregation" class="widget-config-select"></select>
+                </div>
+                <div class="widget-config-field" data-field="columns">
+                  <label class="widget-config-label">Table columns</label>
+                  <select name="columns" class="widget-config-select" multiple></select>
+                </div>
+                <button class="btn btn-primary widget-config-save" type="submit">Save changes</button>
               </form>
             </div>
           </div>
@@ -474,16 +457,36 @@
       <!-- AI Assistant right sidebar -->
       <aside id="dash-chat-panel" class="dash-chat-panel hidden">
         <div class="dash-chat-header">
-          <span class="dash-chat-title">AI Assistant</span>
+          <span class="dash-chat-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="color:var(--accent)"><path d="M12 2C12 2 13.5 7.5 16 10C18.5 12.5 22 12 22 12C22 12 18.5 11.5 16 14C13.5 16.5 12 22 12 22C12 22 10.5 16.5 8 14C5.5 11.5 2 12 2 12C2 12 5.5 12.5 8 10C10.5 7.5 12 2 12 2Z"/></svg>
+            AI Chat
+          </span>
           <button id="dash-chat-close" class="btn btn-icon btn-sm" type="button" title="Close">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         <div id="dash-chat-messages" class="dash-chat-messages"></div>
         <div id="dash-chat-suggestions" class="dash-chat-suggestions"></div>
-        <div class="dash-chat-input-wrap">
-          <textarea id="dash-chat-input" class="dash-chat-input" placeholder="Ask about your data or request a chart..." autocomplete="off" rows="1"></textarea>
-          <button id="dash-chat-send" class="btn btn-primary btn-sm" type="button">Send</button>
+        <!-- Agent status + model picker in sidebar -->
+        <div class="dash-chat-footer">
+          <div class="dash-chat-status">
+            <span class="agent-status-dot" id="dash-agent-dot"></span>
+            <span id="dash-agent-text">Agent is waiting for your response</span>
+            <span class="dash-agent-state" id="dash-agent-state">&#x23F8; Paused</span>
+          </div>
+          <div class="dash-input-box">
+            <textarea id="dash-chat-input" class="dash-chat-input" placeholder="Ask about your data or request a chart..." autocomplete="off" rows="1"></textarea>
+            <button id="dash-chat-send" class="dash-send-btn" type="button" title="Send">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+            </button>
+          </div>
+          <div class="dash-chat-model-row">
+            <button id="dash-model-picker-btn" class="model-picker-btn" type="button">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="color:var(--accent)"><path d="M12 2C12 2 13.5 7.5 16 10C18.5 12.5 22 12 22 12C22 12 18.5 11.5 16 14C13.5 16.5 12 22 12 22C12 22 10.5 16.5 8 14C5.5 11.5 2 12 2 12C2 12 5.5 12.5 8 10C10.5 7.5 12 2 12 2Z"/></svg>
+              <span id="dash-model-picker-label">Model</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+          </div>
         </div>
       </aside>
     </div>
@@ -557,6 +560,60 @@
       </section>
     </div>
 
+    <!-- Settings modal -->
+    <div id="settings-modal" class="modal hidden">
+      <div class="modal-card settings-modal-card">
+        <div class="modal-card-header">
+          <h3>Settings</h3>
+          <button id="settings-close" class="btn btn-icon" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="settings-body">
+          <div class="settings-section">
+            <div class="settings-section-title">Appearance</div>
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span>Theme</span>
+                <span class="settings-row-desc">Choose light or dark mode</span>
+              </div>
+              <div class="settings-theme-options">
+                <button class="settings-theme-opt" data-theme="light" type="button">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                  Light
+                </button>
+                <button class="settings-theme-opt" data-theme="dark" type="button">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                  Dark
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="settings-section">
+            <div class="settings-section-title">Data</div>
+            <div class="settings-row">
+              <div class="settings-row-label">
+                <span>Clear session</span>
+                <span class="settings-row-desc">Clear locally stored session data</span>
+              </div>
+              <button id="settings-clear-session" class="btn btn-outline btn-sm" type="button">Clear</button>
+            </div>
+          </div>
+          <div class="settings-section" id="settings-account-section">
+            <div class="settings-section-title">Account</div>
+            <div class="settings-row" id="settings-account-row">
+              <div class="settings-row-label">
+                <span id="settings-account-email">Not signed in</span>
+                <span class="settings-row-desc">Manage your account</span>
+              </div>
+              <button id="settings-logout-btn" class="btn btn-outline btn-sm hidden" type="button">Log out</button>
+              <button id="settings-login-btn" class="btn btn-primary btn-sm" type="button">Log in</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Confirmation dialog -->
     <div id="confirm-modal" class="modal hidden">
       <div class="modal-card">
@@ -608,6 +665,17 @@
         <span>Profile</span>
       </button>
     </nav>
+
+    <!-- Tile fullscreen modal -->
+    <div id="tile-fullscreen-modal" class="tile-fullscreen-modal hidden">
+      <div class="tile-fullscreen-header">
+        <h3 id="tile-fullscreen-title" class="tile-fullscreen-title"></h3>
+        <button id="tile-fullscreen-close" class="btn btn-icon" type="button">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div id="tile-fullscreen-chart" class="tile-fullscreen-chart"></div>
+    </div>
 
     <div id="toast" class="toast hidden"></div>
 

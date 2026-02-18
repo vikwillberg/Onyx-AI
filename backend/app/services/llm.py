@@ -2,6 +2,7 @@ import json
 import logging
 from typing import Any, Optional
 
+import anthropic
 import httpx
 from openai import OpenAI
 
@@ -12,6 +13,65 @@ logger = logging.getLogger(__name__)
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 
+# ── Model registry ─────────────────────────────────────────────────────────────
+# Each entry describes one selectable model.
+# "tier": "free" | "paid"
+# pricing is per 1 million tokens (USD), 0 for free tiers.
+MODEL_REGISTRY: dict[str, dict] = {
+    "claude-sonnet": {
+        "model_id":    "claude-sonnet-4-6-latest",
+        "provider":    "claude",
+        "display_name": "Claude Sonnet 4.6",
+        "description": "Anthropic's advanced reasoning model — great for complex analysis",
+        "input_price":  3.00,
+        "output_price": 15.00,
+        "tier": "paid",
+        "badge": "Anthropic",
+    },
+    "gpt-5-pro": {
+        "model_id":    "gpt-5.2-pro",
+        "provider":    "openai",
+        "display_name": "GPT-5.2 Pro",
+        "description": "OpenAI's flagship model — most capable for detailed insights",
+        "input_price":  5.00,
+        "output_price": 15.00,
+        "tier": "paid",
+        "badge": "OpenAI",
+    },
+    "gemini-3-flash-preview": {
+        "model_id":    "gemini-3-flash-preview",
+        "provider":    "gemini",
+        "display_name": "Gemini 3 Flash Preview",
+        "description": "Google's latest fast model — affordable and capable",
+        "input_price":  0.10,
+        "output_price": 0.40,
+        "tier": "paid",
+        "badge": "Google",
+    },
+    "llama-groq": {
+        "model_id":    "llama-3.3-70b-versatile",
+        "provider":    "groq",
+        "display_name": "Llama 3.3 70B",
+        "description": "Free via Groq — fast, open-source, no usage cost",
+        "input_price":  0.0,
+        "output_price": 0.0,
+        "tier": "free",
+        "badge": "Groq · Free",
+    },
+    "gemini-flash": {
+        "model_id":    "gemini-2.0-flash",
+        "provider":    "gemini",
+        "display_name": "Gemini 2.0 Flash",
+        "description": "Free Google model — reliable and fast for most tasks",
+        "input_price":  0.0,
+        "output_price": 0.0,
+        "tier": "free",
+        "badge": "Google · Free",
+    },
+}
+
+_DEFAULT_MODEL_KEY = "llama-groq"  # fallback when no key specified
+
 
 class _LLMProvider:
     """Holds connection info for a single LLM provider."""
@@ -20,6 +80,47 @@ class _LLMProvider:
         self.model = model
         self.name = name
         self.json_mode = json_mode
+
+
+# ── Billing / quota error helpers ─────────────────────────────────────────────
+
+class BillingError(Exception):
+    """Raised when an LLM call fails due to payment / quota / authentication issues."""
+    pass
+
+
+_BILLING_PHRASES = (
+    "insufficient_quota", "exceeded your current quota", "billing",
+    "no credits", "credit balance", "account is not active",
+    "payment required", "upgrade your plan", "rate limit",
+    "please add a payment", "your api key", "invalid api key",
+    "authentication", "permission_denied", "access denied",
+    "429", "402",
+)
+
+
+def _is_billing_error(exc: Exception) -> bool:
+    """Return True if the exception looks like a payment/quota/auth issue."""
+    msg = str(exc).lower()
+    return any(phrase in msg for phrase in _BILLING_PHRASES)
+
+
+def _billing_hint(provider: str, exc: Exception) -> str:
+    msg = str(exc)
+    provider_names = {
+        "openai": "OpenAI",
+        "groq": "Groq",
+        "gemini": "Google Gemini",
+        "claude": "Anthropic Claude",
+    }
+    name = provider_names.get(provider, provider.title())
+    return (
+        f"\u26a0\ufe0f **{name} API error** — this usually means the API key is invalid, "
+        f"has no credits, or the free tier quota is exhausted. "
+        f"Please check your {name} billing at your provider's dashboard and make sure "
+        f"the API key in your `.env` file is correct. "
+        f"(Original error: {msg[:200]})"
+    )
 
 
 class LLMService:
@@ -105,7 +206,7 @@ class LLMService:
             text = text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
         return text
 
-    def request_json(self, system_prompt: str, user_prompt: str, max_tokens: int = 1200) -> Optional[dict[str, Any]]:
+    def request_json(self, system_prompt: str, user_prompt: str, max_tokens: int = 4096) -> Optional[dict[str, Any]]:
         for idx, prov in enumerate(self._providers):
             try:
                 sys_content = system_prompt
@@ -129,6 +230,8 @@ class LLMService:
                 self._active = idx
                 return json.loads(self._strip_fences(content))
             except Exception as exc:
+                if _is_billing_error(exc):
+                    raise BillingError(_billing_hint(prov.name, exc)) from exc
                 logger.warning("LLM request_json failed (%s): %s — trying fallback", prov.name, exc)
                 continue
         return None
@@ -136,7 +239,7 @@ class LLMService:
     def chat(
         self,
         messages: list[dict[str, str]],
-        max_tokens: int = 800,
+        max_tokens: int = 4096,
         temperature: float = 0.4,
     ) -> Optional[str]:
         """Multi-turn chat completion (plain text). Tries all providers with auto-fallback."""
@@ -153,6 +256,8 @@ class LLMService:
                     self._active = idx
                 return result
             except Exception as exc:
+                if _is_billing_error(exc):
+                    raise BillingError(_billing_hint(prov.name, exc)) from exc
                 logger.warning("LLM chat failed (%s): %s — trying fallback", prov.name, exc)
                 continue
         return None
@@ -160,7 +265,7 @@ class LLMService:
     def chat_json(
         self,
         messages: list[dict[str, str]],
-        max_tokens: int = 1200,
+        max_tokens: int = 4096,
         temperature: float = 0.2,
     ) -> Optional[dict[str, Any]]:
         """Multi-turn chat completion with JSON response. Tries all providers with auto-fallback."""
@@ -185,12 +290,130 @@ class LLMService:
                 self._active = idx
                 return json.loads(self._strip_fences(content))
             except Exception as exc:
+                if _is_billing_error(exc):
+                    raise BillingError(_billing_hint(prov.name, exc)) from exc
                 logger.warning("LLM chat_json failed (%s): %s — trying fallback", prov.name, exc)
                 continue
         return None
 
 
 llm_service = LLMService()
+
+# ── Per-model dispatch ──────────────────────────────────────────────────────────
+
+_http_noverify = httpx.Client(verify=False)
+
+
+def _get_openai_client_for_provider(provider: str) -> Optional[OpenAI]:
+    """Return an OpenAI-compatible client for a given provider string."""
+    if provider == "openai" and settings.openai_api_key:
+        kw: dict[str, Any] = {"api_key": settings.openai_api_key, "http_client": _http_noverify}
+        if settings.openai_base_url:
+            kw["base_url"] = settings.openai_base_url
+        return OpenAI(**kw)
+    if provider == "groq" and settings.groq_api_key:
+        return OpenAI(api_key=settings.groq_api_key, base_url=GROQ_BASE_URL, http_client=_http_noverify)
+    if provider == "gemini" and settings.gemini_api_key:
+        return OpenAI(api_key=settings.gemini_api_key, base_url=GEMINI_BASE_URL, http_client=_http_noverify)
+    return None
+
+
+def _get_anthropic_client() -> Optional[anthropic.Anthropic]:
+    if not settings.claude_api_key:
+        return None
+    return anthropic.Anthropic(api_key=settings.claude_api_key, http_client=_http_noverify)
+
+
+def call_chat_for_model(
+    model_key: str,
+    system: str,
+    messages: list[dict[str, str]],
+    max_tokens: int = 4096,
+    temperature: float = 0.5,
+    json_mode: bool = False,
+) -> Optional[str]:
+    """Call a specific model by its registry key. Returns plain-text reply or None."""
+    entry = MODEL_REGISTRY.get(model_key)
+    if not entry:
+        logger.warning("Unknown model key: %s — falling back to default", model_key)
+        return None
+
+    provider = entry["provider"]
+    model_id = entry["model_id"]
+
+    try:
+        if provider == "claude":
+            client = _get_anthropic_client()
+            if not client:
+                logger.warning("Claude API key not configured")
+                return None
+            sys_prompt = system
+            if json_mode:
+                sys_prompt += "\n\nIMPORTANT: Respond with valid JSON only. No markdown, no code fences, no extra text."
+            msg = client.messages.create(
+                model=model_id,
+                max_tokens=max_tokens,
+                system=sys_prompt,
+                messages=[m for m in messages if m["role"] != "system"],
+            )
+            return msg.content[0].text if msg.content else None
+
+        else:
+            oa_client = _get_openai_client_for_provider(provider)
+            if not oa_client:
+                logger.warning("No API key for provider: %s", provider)
+                return None
+            full_messages = [{"role": "system", "content": system}] + [
+                m for m in messages if m["role"] != "system"
+            ]
+            supports_json = provider not in ("gemini",)
+            kwargs: dict[str, Any] = dict(
+                model=model_id,
+                temperature=temperature,
+                messages=full_messages,
+                max_tokens=max_tokens,
+            )
+            if json_mode and supports_json:
+                kwargs["response_format"] = {"type": "json_object"}
+            elif json_mode:
+                kwargs["messages"][0]["content"] += "\n\nIMPORTANT: Respond with valid JSON only."
+            response = oa_client.chat.completions.create(**kwargs)
+            return response.choices[0].message.content or None
+
+    except Exception as exc:
+        logger.warning("call_chat_for_model(%s): %s", model_key, exc)
+        return None
+
+
+def call_json_for_model(
+    model_key: str,
+    system: str,
+    messages: list[dict[str, str]],
+    max_tokens: int = 1200,
+) -> Optional[dict[str, Any]]:
+    """Like call_chat_for_model but parses JSON response."""
+    raw = call_chat_for_model(model_key, system, messages, max_tokens=max_tokens, json_mode=True)
+    if not raw:
+        return None
+    try:
+        return json.loads(LLMService._strip_fences(raw))
+    except Exception:
+        return None
+
+
+def get_available_models() -> list[dict]:
+    """Return registry entries for models that have their API keys configured."""
+    available = []
+    for key, entry in MODEL_REGISTRY.items():
+        provider = entry["provider"]
+        has_key = (
+            (provider == "claude" and bool(settings.claude_api_key))
+            or (provider == "openai" and bool(settings.openai_api_key))
+            or (provider == "groq" and bool(settings.groq_api_key))
+            or (provider == "gemini" and bool(settings.gemini_api_key))
+        )
+        available.append({**entry, "key": key, "available": has_key})
+    return available
 
 
 DATA_ANALYST_SYSTEM = """\
@@ -327,15 +550,17 @@ def analyze_data_chat(
     user_message: str,
     history: list[dict[str, str]],
     dictionary_data: dict | None = None,
+    model_key: str | None = None,
 ) -> tuple[str, bool, Optional[dict]]:
     """Run one turn of the data analysis conversation.
 
     Returns (reply_text, is_done, insights_dict_or_none).
+    model_key: registry key (e.g. "claude-sonnet"). If None, uses the default LLMService fallback chain.
     """
-    if not llm_service.enabled:
+    if not llm_service.enabled and not model_key:
         return (
-            "AI chat is not configured yet (missing GROQ/OpenAI/Gemini API key). "
-            "You can still click Start Generating to build a dashboard from your uploaded data.",
+            "AI chat is not configured yet (missing API key). "
+            "You can still build a dashboard from your uploaded data.",
             True,
             None,
         )
@@ -344,19 +569,24 @@ def analyze_data_chat(
     dictionary_section = build_dictionary_section(dictionary_data)
     system = DATA_ANALYST_SYSTEM.format(profile_summary=profile_summary, dictionary_section=dictionary_section)
 
-    messages: list[dict[str, str]] = [{"role": "system", "content": system}]
+    conv_messages: list[dict[str, str]] = []
     for msg in history:
-        messages.append({"role": msg["role"], "content": msg["content"]})
-    messages.append({"role": "user", "content": user_message})
+        conv_messages.append({"role": msg["role"], "content": msg["content"]})
+    conv_messages.append({"role": "user", "content": user_message})
 
-    reply = llm_service.chat(messages, max_tokens=600, temperature=0.6)
+    try:
+        if model_key and model_key in MODEL_REGISTRY:
+            reply = call_chat_for_model(model_key, system, conv_messages, max_tokens=4096, temperature=0.6)
+        else:
+            messages = [{"role": "system", "content": system}] + conv_messages
+            reply = llm_service.chat(messages, max_tokens=4096, temperature=0.6)
+    except BillingError:
+        raise  # let the router catch and format this nicely
     if not reply:
         return "I'm having trouble connecting right now. Please try again.", False, None
 
-    # Check if the AI thinks it has enough info
-    # Count only real user messages (exclude the initial auto-greeting)
     real_user_count = sum(
-        1 for m in messages
+        1 for m in conv_messages
         if m["role"] == "user" and "just uploaded" not in m.get("content", "").lower()
     )
     done_signals = ["i have what i need", "have enough", "let me build", "let's build",
@@ -364,22 +594,24 @@ def analyze_data_chat(
                     "let me create", "i'll design", "dashboard will cover",
                     "here's the plan", "here is the plan", "i'll now create",
                     "let me put together", "i'll put together"]
-    # Require at least 2 real exchanges before allowing finalization
     is_done = real_user_count >= 2 and any(sig in reply.lower() for sig in done_signals)
 
     insights = None
     if is_done:
-        # Extract structured insights from the conversation
+        conv_str = "\n".join(f"{m['role'].upper()}: {m['content']}" for m in conv_messages[:-1])
         extract_messages = [
             {"role": "system", "content": INSIGHT_EXTRACTION_SYSTEM},
             {"role": "user", "content": (
                 f"Dataset profile:\n{profile_summary}\n\n"
-                f"Conversation:\n" +
-                "\n".join(f"{m['role'].upper()}: {m['content']}" for m in messages[1:]) +
+                f"Conversation:\n{conv_str}"
                 f"\nUSER: {user_message}\nASSISTANT: {reply}"
             )},
         ]
-        insights = llm_service.chat_json(extract_messages, max_tokens=1200)
+        if model_key and model_key in MODEL_REGISTRY:
+            insights = call_json_for_model(model_key, INSIGHT_EXTRACTION_SYSTEM,
+                                           extract_messages[1:], max_tokens=1200)
+        else:
+            insights = llm_service.chat_json(extract_messages, max_tokens=1200)
 
     return reply, is_done, insights
 

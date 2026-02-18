@@ -227,6 +227,11 @@ class FilterRequest(BaseModel):
     column_filters: Optional[list[dict]] = None
 
 
+class DashboardRequest(BaseModel):
+    max_visuals: int = 10
+    model_key: Optional[str] = None
+
+
 class AiChatMessage(BaseModel):
     role: str  # "user" or "assistant"
     content: str
@@ -235,6 +240,7 @@ class AiChatMessage(BaseModel):
 class AiChatRequest(BaseModel):
     message: str
     history: list[AiChatMessage] = []
+    model_key: Optional[str] = None  # registry key e.g. "claude-sonnet"
 
 
 class AiChatResponse(BaseModel):

@@ -14,6 +14,7 @@ from app.db import get_session
 from app.models import DataFile, Dataset, Project, User
 from app.schemas import (
     AiVisualRequest,
+    DashboardRequest,
     DuelPickRequest,
     DuelPoolRequest,
     DuelPoolResponse,
@@ -27,6 +28,7 @@ from app.schemas import (
     VisualSpec,
 )
 from app.services.ingestion import load_dataframe, profile_dataframe
+from app.services.llm import BillingError
 from app.services.visuals import (
     ALLOWED_TYPES,
     apply_data_to_spec,
@@ -78,7 +80,12 @@ def get_dataset_dataframe(session: Session, dataset: Dataset) -> tuple[FileProfi
     if not file_record:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No files available")
     dataframe = load_dataframe(file_record)
-    profile = profile_dataframe(file_record.id, file_record.original_filename, dataframe)
+    # Use cached profile when available — avoids re-profiling on every visual request
+    cached = dataset.profile_json
+    if cached and isinstance(cached.get("files"), list) and cached["files"]:
+        profile = FileProfile.model_validate(cached["files"][0])
+    else:
+        profile = profile_dataframe(file_record.id, file_record.original_filename, dataframe)
     return profile, dataframe
 
 
@@ -102,7 +109,7 @@ def sample_visuals(
 @router.post("/{dataset_id}/dashboard", response_model=VisualResponse)
 def dashboard_visuals(
     dataset_id: UUID,
-    max_visuals: int = 12,
+    payload: DashboardRequest = DashboardRequest(),
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> VisualResponse:
@@ -120,10 +127,13 @@ def dashboard_visuals(
     try:
         visuals = generate_dashboard_visuals(
             profile, dataframe,
-            max_visuals=max(1, min(max_visuals, 20)),
+            max_visuals=max(1, min(payload.max_visuals, 20)),
             business_category=business_category,
             business_context=business_context,
+            model_key=payload.model_key or None,
         )
+    except BillingError as exc:
+        raise HTTPException(status_code=402, detail=str(exc))
     except Exception as exc:
         logger.error("Dashboard generation failed: %s\n%s", exc, traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Dashboard generation error: {exc}")
