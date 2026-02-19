@@ -18,55 +18,163 @@ GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 # "tier": "free" | "paid"
 # pricing is per 1 million tokens (USD), 0 for free tiers.
 MODEL_REGISTRY: dict[str, dict] = {
-    "claude-sonnet": {
-        "model_id":    "claude-sonnet-4-6-latest",
-        "provider":    "claude",
+    # ── Anthropic / Claude ────────────────────────────────────────────────────
+    "claude-sonnet-4-6": {
+        "model_id":     "claude-sonnet-4-6-20251101",
+        "provider":     "claude",
+        "company":      "Anthropic",
         "display_name": "Claude Sonnet 4.6",
-        "description": "Anthropic's advanced reasoning model — great for complex analysis",
+        "description":  "Smart, efficient model for everyday use",
         "input_price":  3.00,
         "output_price": 15.00,
         "tier": "paid",
-        "badge": "Anthropic",
+        "badge": "latest",
+    },
+    "claude-opus-4-6": {
+        "model_id":     "claude-opus-4-6-20251101",
+        "provider":     "claude",
+        "company":      "Anthropic",
+        "display_name": "Claude Opus 4.6",
+        "description":  "Powerful, large model for complex challenges",
+        "input_price":  15.00,
+        "output_price": 75.00,
+        "tier": "paid",
+        "badge": "latest",
+    },
+    "claude-haiku-4-5": {
+        "model_id":     "claude-haiku-4-5-20251001",
+        "provider":     "claude",
+        "company":      "Anthropic",
+        "display_name": "Claude Haiku 4.5",
+        "description":  "Fastest model for daily tasks",
+        "input_price":  0.80,
+        "output_price": 4.00,
+        "tier": "paid",
+        "badge": "latest",
+    },
+    "claude-opus-4-5": {
+        "model_id":     "claude-opus-4-5-20251101",
+        "provider":     "claude",
+        "company":      "Anthropic",
+        "display_name": "Claude Opus 4.5",
+        "description":  "Previous-generation flagship model",
+        "input_price":  15.00,
+        "output_price": 75.00,
+        "tier": "paid",
+        "badge": "",
+    },
+    # ── Google / Gemini ───────────────────────────────────────────────────────
+    "gemini-2-5-pro": {
+        "model_id":     "gemini-2.5-pro",
+        "provider":     "gemini",
+        "company":      "Google",
+        "display_name": "Gemini 2.5 Pro",
+        "description":  "Most capable Gemini — best for complex reasoning",
+        "input_price":  1.25,
+        "output_price": 10.00,
+        "tier": "paid",
+        "badge": "latest",
+    },
+    "gemini-2-5-flash": {
+        "model_id":     "gemini-2.5-flash-preview-05-20",
+        "provider":     "gemini",
+        "company":      "Google",
+        "display_name": "Gemini 2.5 Flash",
+        "description":  "Fast and affordable — great balance of speed and quality",
+        "input_price":  0.15,
+        "output_price": 0.60,
+        "tier": "paid",
+        "badge": "latest",
+    },
+    "gemini-flash": {
+        "model_id":     "gemini-2.0-flash",
+        "provider":     "gemini",
+        "company":      "Google",
+        "display_name": "Gemini 2.0 Flash",
+        "description":  "Free tier — reliable and fast for most analysis tasks",
+        "input_price":  0.0,
+        "output_price": 0.0,
+        "tier": "free",
+        "badge": "free",
+    },
+    "gemini-flash-lite": {
+        "model_id":     "gemini-2.0-flash-lite",
+        "provider":     "gemini",
+        "company":      "Google",
+        "display_name": "Gemini 2.0 Flash Lite",
+        "description":  "Lightest free model — fastest response times",
+        "input_price":  0.0,
+        "output_price": 0.0,
+        "tier": "free",
+        "badge": "free",
+    },
+    # ── Meta / Groq ───────────────────────────────────────────────────────────
+    "llama-groq": {
+        "model_id":     "llama-3.3-70b-versatile",
+        "provider":     "groq",
+        "company":      "Meta · Groq",
+        "display_name": "Llama 3.3 70B",
+        "description":  "Versatile open-source model — great all-rounder",
+        "input_price":  0.0,
+        "output_price": 0.0,
+        "tier": "free",
+        "badge": "free",
+    },
+    "llama-3-1-8b": {
+        "model_id":     "llama-3.1-8b-instant",
+        "provider":     "groq",
+        "company":      "Meta · Groq",
+        "display_name": "Llama 3.1 8B Instant",
+        "description":  "Ultra-fast lightweight model for quick tasks",
+        "input_price":  0.0,
+        "output_price": 0.0,
+        "tier": "free",
+        "badge": "free",
+    },
+    "llama-4-scout": {
+        "model_id":     "meta-llama/llama-4-scout-17b-16e-instruct",
+        "provider":     "groq",
+        "company":      "Meta · Groq",
+        "display_name": "Llama 4 Scout 17B",
+        "description":  "Latest Llama 4 multimodal — cutting-edge reasoning",
+        "input_price":  0.0,
+        "output_price": 0.0,
+        "tier": "free",
+        "badge": "new",
+    },
+    # ── OpenAI / GPT ─────────────────────────────────────────────────────────
+    "gpt-4o": {
+        "model_id":     "gpt-4o",
+        "provider":     "openai",
+        "company":      "OpenAI",
+        "display_name": "GPT-4o",
+        "description":  "Flagship multimodal model — strong reasoning and speed",
+        "input_price":  2.50,
+        "output_price": 10.00,
+        "tier": "paid",
+        "badge": "latest",
+    },
+    "gpt-4o-mini": {
+        "model_id":     "gpt-4o-mini",
+        "provider":     "openai",
+        "company":      "OpenAI",
+        "display_name": "GPT-4o Mini",
+        "description":  "Affordable fast model — great cost-per-token",
+        "input_price":  0.15,
+        "output_price": 0.60,
+        "tier": "paid",
+        "badge": "",
     },
     "gpt-5-pro": {
-        "model_id":    "gpt-5.2-pro",
-        "provider":    "openai",
+        "model_id":     "gpt-5.2-pro",
+        "provider":     "openai",
+        "company":      "OpenAI",
         "display_name": "GPT-5.2 Pro",
-        "description": "OpenAI's flagship model — most capable for detailed insights",
+        "description":  "Most capable OpenAI model for detailed insights",
         "input_price":  5.00,
         "output_price": 15.00,
         "tier": "paid",
-        "badge": "OpenAI",
-    },
-    "gemini-3-flash-preview": {
-        "model_id":    "gemini-3-flash-preview",
-        "provider":    "gemini",
-        "display_name": "Gemini 3 Flash Preview",
-        "description": "Google's latest fast model — affordable and capable",
-        "input_price":  0.10,
-        "output_price": 0.40,
-        "tier": "paid",
-        "badge": "Google",
-    },
-    "llama-groq": {
-        "model_id":    "llama-3.3-70b-versatile",
-        "provider":    "groq",
-        "display_name": "Llama 3.3 70B",
-        "description": "Free via Groq — fast, open-source, no usage cost",
-        "input_price":  0.0,
-        "output_price": 0.0,
-        "tier": "free",
-        "badge": "Groq · Free",
-    },
-    "gemini-flash": {
-        "model_id":    "gemini-2.0-flash",
-        "provider":    "gemini",
-        "display_name": "Gemini 2.0 Flash",
-        "description": "Free Google model — reliable and fast for most tasks",
-        "input_price":  0.0,
-        "output_price": 0.0,
-        "tier": "free",
-        "badge": "Google · Free",
+        "badge": "latest",
     },
 }
 
@@ -417,48 +525,30 @@ def get_available_models() -> list[dict]:
 
 
 DATA_ANALYST_SYSTEM = """\
-You are ONYX, a sharp AI business analyst having a real conversation with a user about their data. You genuinely want to help them find insights that grow revenue and cut waste.
+You are ONYX, a sharp AI business analyst. Your job is to have a brief, focused conversation to understand what the user wants from their data, then build their dashboard.
 
-CONVERSATION STYLE — THIS IS CRITICAL:
-- LISTEN to what the user says. When they respond, ACKNOWLEDGE their input specifically before continuing.
-- If the user says "sure" or "yes" to your question, ACTUALLY DO what you proposed — dig into that analysis, share what you find, then ask a follow-up.
-- Do NOT jump to finalizing after one exchange. Have a real back-and-forth (at least 2-3 exchanges).
-- Treat brief responses ("sure", "ok", "yes") as permission to CONTINUE exploring, NOT as a signal to finalize.
-- React to the user's words. If they mention something specific, address it directly.
+RULES — follow these exactly:
+1. FIRST MESSAGE: One short paragraph (max 80 words). Pick the single most interesting angle from the data profile — use specific numbers. End with ONE pointed question. No lists.
+2. FOLLOW-UP: When the user agrees or asks for more, actually do the mini-analysis. State 2-3 concrete findings using real column names and numbers from the profile. Then propose ONE more angle and ask if they want it.
+3. FINALIZE after 2 exchanges OR when user says "build", "create", "go ahead", "yes", "let's do it", or similar. Do NOT keep chatting indefinitely.
+4. FINAL MESSAGE: Write "I have what I need." then a numbered list of exactly what the dashboard will show.
 
-MINDSET:
-- You are a curious consultant who genuinely wants to help this business.
-- Every column is a clue. Spot revenue leaks, untapped segments, pricing gaps, timing patterns.
-- Each conversation should feel DIFFERENT based on THIS specific dataset.
+WHAT MAKES A GREAT OPENING:
+- Lead with a number that creates curiosity ("Only 3 products drive 60% of revenue — the rest are drag")
+- Hint at a tension or gap in the data ("Revenue peaks in Q1 but order count peaks in Q3 — those should move together")
+- Make it feel like you've already spotted something they haven't
 
-FIRST MESSAGE:
-- Write a short, conversational paragraph (NOT bullet lists). Max 80 words.
-- Pick ONE genuinely interesting angle from the data.
-- Weave in 1-2 specific numbers from the profile.
-- End with a pointed question like "Want me to dig into why X underperforms?" or "Should we explore what's driving that gap?"
-
-FOLLOW-UP MESSAGES (when user says "sure", "yes", "go ahead", etc.):
-- Start by DOING the analysis you proposed. Share 1-2 specific findings.
-- Then ask a NEW follow-up question to go deeper or explore a different angle.
-- Example: "Looking at the category breakdown, **WOMAN** products average 847 units vs **MAN** at 1,204 — that's a 30% gap. Is WOMAN underpriced or understocked? Also, I noticed **End-cap** positions sell 15% more. Want me to cross-reference position with category to find quick wins?"
-
-WHEN TO FINALIZE (only when ALL conditions are met):
-- You've had at least 2-3 meaningful exchanges with the user.
-- The user EXPLICITLY asks you to build/create the dashboard (e.g., "build it", "create the dashboard", "let's do it", "go ahead and build").
-- OR you've explored 2-3 different angles and naturally reached a stopping point.
-
-FINAL MESSAGE: Say "I have what I need." then list the dashboard plan as a numbered list.
+ANALYSIS ANGLES TO EXPLORE (pick the most relevant for THIS dataset):
+- Top performers vs long tail (80/20 rule on revenue/volume)
+- Time trends — growth, seasonality, recent drops
+- Segment gaps — which category/city/channel underperforms vs average
+- Pricing or quantity anomalies — outliers that skew totals
+- Churn signals, drop-offs, or one-time vs repeat patterns
 
 FORMATTING:
-- Keep replies conversational and under 120 words.
-- Use **bold** for key numbers and terms.
-- Later messages can use bullet points if needed.
-
-ANALYSIS FOCUS:
-- What drives the MOST revenue? What drives the LEAST?
-- Where is money being left on the table?
-- What time patterns can be exploited?
-- Which segments should be promoted, bundled, or dropped?
+- Bold **key numbers and column names**
+- Max 100 words per message after the first
+- Never ask two questions in one message — focus on ONE angle at a time
 
 DATA PROFILE:
 {profile_summary}
@@ -466,37 +556,37 @@ DATA PROFILE:
 
 
 INSIGHT_EXTRACTION_SYSTEM = """\
-You are a senior data analyst. Given the conversation between a user and an AI analyst about a dataset, extract structured insights that will drive a DIVERSE, ACTIONABLE dashboard.
+You are a senior data analyst. Extract structured insights from a user-AI conversation to drive a DIVERSE, HIGH-IMPACT dashboard.
 
-CRITICAL: If the user asked a specific question (e.g. "Show me subscription cost trends over time"), that question MUST be captured EXACTLY in "primary_question" and MUST be the FIRST item in "analysis_areas". The dashboard will prioritize this.
-
-Return JSON with:
+Return JSON exactly:
 {
-  "data_description": "one-line description of what this data is about",
-  "key_metrics": ["list of ALL numeric column names worth tracking as KPIs"],
-  "segments": ["list of ALL categorical column names useful for grouping/comparison"],
-  "time_column": "name of the main date/time column or null",
-  "primary_question": "the EXACT specific question or request the user made — copy their words as closely as possible",
+  "data_description": "one crisp sentence describing what this data is about",
+  "key_metrics": ["ALL numeric columns worth tracking — revenue, quantity, cost, count, etc."],
+  "segments": ["ALL categorical columns useful for grouping — product, city, channel, category, etc."],
+  "time_column": "main date/time column name, or null if none",
+  "primary_question": "copy the user's most specific request word-for-word — do NOT paraphrase",
   "analysis_areas": [
     {
-      "area": "short name like 'Product Performance' or 'Revenue Trends'",
-      "description": "what this analysis shows and why it matters",
-      "suggested_chart_types": ["bar", "line", etc],
-      "columns_involved": ["col1", "col2"]
+      "area": "concise name e.g. 'Revenue by Product' or 'Monthly Trends'",
+      "description": "one sentence: what this shows and the business decision it enables",
+      "suggested_chart_types": ["bar", "line", "pie", "scatter", "table", "kpi"],
+      "columns_involved": ["exact column names from the dataset"],
+      "priority": "high | medium | low"
     }
   ],
-  "goals": ["list of 4-6 diverse analysis goals — user's specific question FIRST, then broader insights"],
-  "business_category": "best category: ecommerce, saas, finance, healthcare, marketing, hr, logistics, restaurant, retail, education, general"
+  "goals": ["5-7 specific analysis goals — user's question first, then revenue drivers, comparisons, trends, anomalies"],
+  "kpi_columns": ["2-4 most important numeric columns to show as headline KPIs"],
+  "business_category": "ecommerce | saas | finance | healthcare | marketing | hr | logistics | restaurant | retail | education | general"
 }
 
 RULES:
-- primary_question: Extract the user's EXACT request. If they said "Show me X trends over time", write exactly that. Do NOT generalize or rephrase it.
-- analysis_areas[0]: MUST directly address the user's primary_question.
-- analysis_areas MUST contain at least 4 different areas (e.g., trends, comparisons, distributions, top performers).
-- goals MUST include the user's specific question PLUS broader business insights.
-- key_metrics should include ALL numeric columns that represent money, counts, or quantities.
-- segments should include ALL categorical columns useful for slicing data.
-- Only use column names that actually exist in the dataset.
+- analysis_areas[0] MUST directly address the user's primary_question — same focus, specific columns.
+- Include at least 6 analysis_areas covering: top performers, trends over time, segment comparison, distribution, anomaly/outlier, and one cross-dimension analysis.
+- Every area must have at least 2 real column names from the dataset.
+- kpi_columns: pick the columns that become the big headline numbers (total revenue, total orders, avg price, etc.).
+- goals[0] = user's exact question; goals[1-2] = revenue/growth insights; goals[3-4] = segment/comparison; goals[5-6] = risk/anomaly.
+- Only use column names that actually exist in the dataset profile.
+- Do NOT include markdown, code fences, or commentary — return raw JSON only.
 """
 
 

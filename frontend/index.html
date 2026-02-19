@@ -6,7 +6,7 @@
     <title>ONYX</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@10.1.2/dist/gridstack.min.css" />
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
@@ -28,7 +28,8 @@
           <!-- Top: Logo & Toggle -->
           <div class="sidebar-top">
             <div class="sidebar-brand">
-              <span class="sidebar-logo">ONYX</span>
+              <img class="sidebar-logo-img brand-logo-light" src="/static/onyx-logo.png?v=5" alt="ONYX" />
+              <img class="sidebar-logo-img brand-logo-dark" src="/static/onyx-logo-dark.png?v=5" alt="ONYX" style="display:none" />
               <button id="sidebar-collapse" class="sidebar-collapse-btn" type="button" title="Collapse sidebar">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
               </button>
@@ -54,6 +55,7 @@
 
           <!-- Bottom: User + Login + Theme + Settings -->
           <div class="sidebar-bottom">
+            <!-- Logged-in user row -->
             <div id="sidebar-user" class="sidebar-user hidden">
               <div class="sidebar-user-avatar" id="sidebar-user-avatar-wrap">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -66,9 +68,15 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
               </button>
             </div>
-            <button id="sidebar-login-btn" class="sidebar-nav-item sidebar-login-btn" type="button">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-              <span>Log in</span>
+            <!-- Guest row (shown when logged out) — click opens login -->
+            <button id="sidebar-login-btn" class="sidebar-user sidebar-guest-btn" type="button">
+              <div class="sidebar-user-avatar sidebar-guest-avatar">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </div>
+              <div class="sidebar-user-info">
+                <span class="sidebar-user-name">Guest</span>
+                <span class="sidebar-user-plan" style="color:var(--accent)">Sign in</span>
+              </div>
             </button>
             <button id="sidebar-theme-toggle" class="sidebar-nav-item sidebar-nav-sm sidebar-theme-btn" type="button">
               <svg class="sidebar-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
@@ -111,26 +119,18 @@
 
           <!-- Welcome state (before first message) -->
           <div id="home-welcome" class="home-welcome">
-            <div class="welcome-logo-wrap">
-              <img class="home-logo-light" src="/static/onyx-logo.png?v=5" alt="ONYX" />
-              <img class="home-logo-dark" src="/static/onyx-logo-dark.png?v=5" alt="ONYX" />
+            <!-- Hero illustration -->
+            <div class="copilot-hero-wrap">
+              <div class="copilot-hero-ring"></div>
+              <div class="copilot-hero-ring"></div>
+              <div class="copilot-hero-ring"></div>
+              <div class="copilot-hero-orb"></div>
+              <div class="copilot-hero-dot" style="top:22%;left:16%"></div>
+              <div class="copilot-hero-dot" style="top:68%;right:18%;animation-delay:0.8s"></div>
+              <div class="copilot-hero-dot" style="top:38%;right:12%;animation-delay:1.5s"></div>
             </div>
             <h1 class="welcome-title">What would you like to analyze?</h1>
             <p class="welcome-subtitle">Attach a CSV or Excel file and let AI build your dashboard</p>
-            <ul class="welcome-bullets">
-              <li>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-                I can generate live dashboards from any CSV or Excel file
-              </li>
-              <li>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C12 2 13.5 7.5 16 10C18.5 12.5 22 12 22 12C22 12 18.5 11.5 16 14C13.5 16.5 12 22 12 22C12 22 10.5 16.5 8 14C5.5 11.5 2 12 2 12C2 12 5.5 12.5 8 10C10.5 7.5 12 2 12 2Z"/></svg>
-                I can spot trends, anomalies, and revenue opportunities in your data
-              </li>
-              <li>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                I can answer questions and build new charts while your dashboard is open
-              </li>
-            </ul>
             <div class="welcome-cards" id="welcome-cards">
               <button class="welcome-card" type="button" data-prompt="Analyze sales performance — identify top products, revenue trends, and growth opportunities">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
@@ -176,16 +176,28 @@
             <div class="home-input-box" id="home-drop-zone">
               <!-- Attached file cards (visible inside box when files selected) -->
               <div id="selected-files" class="file-chips home-file-chips hidden"></div>
-              <!-- Bottom row: attach btn + textarea + send -->
-              <div class="home-input-row">
-                <label class="home-attach-btn" for="upload-files" title="Attach data file">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-                </label>
-                <input id="upload-files" type="file" name="files" multiple accept=".csv,.tsv,.xlsx,.xls,.xlsb" style="display:none" />
+              <!-- Textarea row -->
+              <div class="home-input-row" style="flex-direction:column;align-items:stretch;gap:8px;padding:10px 12px 8px;">
                 <textarea id="home-input" class="home-input" placeholder="Ask a question about your data, or attach a file to get started…" rows="1" autocomplete="off"></textarea>
-                <button id="home-send-btn" class="home-send-btn" type="button" disabled>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
-                </button>
+                <!-- Action buttons row -->
+                <div class="home-input-row-new">
+                  <div class="chat-input-left-actions">
+                    <label class="chat-action-btn" for="upload-files" title="Attach data file" style="cursor:pointer">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                      Attach
+                    </label>
+                    <input id="upload-files" type="file" name="files" multiple accept=".csv,.tsv,.xlsx,.xls,.xlsb" style="display:none" />
+                  </div>
+                  <div style="flex:1"></div>
+                  <div class="chat-input-right-actions">
+                    <button class="chat-mic-btn" type="button" title="Voice input">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                    </button>
+                    <button id="home-send-btn" class="home-send-btn" type="button" disabled>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
             <div id="home-suggestions" class="home-suggestions"></div>
@@ -207,8 +219,7 @@
 
             <!-- Model picker dropdown -->
             <div id="model-picker-dropdown" class="model-picker-dropdown hidden">
-              <div class="model-picker-header">Choose AI Model</div>
-              <div id="model-picker-list" class="model-picker-list"></div>
+              <div id="model-list-panel" class="model-list-panel"></div>
             </div>
 
             <!-- Generate Dashboard button (shown only when dataset is loaded) -->
@@ -297,16 +308,24 @@
         <!-- ========== DASHBOARD ========== -->
         <section id="dashboard-section" class="panel panel-dashboard hidden">
           <div class="dashboard-header">
-            <div class="dashboard-header-row1">
-              <div class="dashboard-title" id="dashboard-title-wrap" title="Click to rename">
-                <h2 id="dashboard-project-title" class="editable-title">Dashboard</h2>
-                <svg class="edit-pencil" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <div class="dashboard-header-row1" style="position:relative;display:flex;align-items:center;gap:12px;">
+              <!-- Left: title -->
+              <div class="header-dash-left">
+                <div class="dashboard-title" id="dashboard-title-wrap" title="Click to rename">
+                  <h2 id="dashboard-project-title" class="editable-title">Dashboard</h2>
+                  <svg class="edit-pencil" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </div>
               </div>
-              <nav class="dashboard-nav-pills" id="dashboard-nav-pills">
+              <!-- Center: nav pills -->
+              <nav class="dashboard-nav-pills" id="dashboard-nav-pills" style="margin:0 auto;">
                 <button class="nav-pill active" data-nav="overview">Dashboard</button>
                 <button class="nav-pill" data-nav="analytics">Key Insights</button>
                 <button class="nav-pill" data-nav="data">Data</button>
               </nav>
+              <!-- Right: actions -->
+              <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                <span id="auto-save-status" class="auto-save-status"></span>
+              </div>
             </div>
             <div class="dashboard-toolbar">
               <button id="update-data-btn" class="btn btn-outline btn-sm" type="button">
@@ -323,14 +342,14 @@
               <button id="export-csv" class="btn btn-outline btn-sm" type="button" title="Download snapshot">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
               </button>
-              <div class="dashboard-toolbar-spacer"></div>
-              <button id="chat-reopen-btn" class="btn btn-outline btn-sm chat-reopen-btn" type="button" title="Show AI chat">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                Chat
-              </button>
-              <span id="auto-save-status" class="auto-save-status"></span>
             </div>
           </div>
+
+          <!-- Floating AI button — shown only when chat sidebar is collapsed -->
+          <button id="chat-reopen-btn" class="ai-float-btn chat-reopen-btn" type="button" title="Open AI Chat">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C12 2 13.5 7.5 16 10C18.5 12.5 22 12 22 12C22 12 18.5 11.5 16 14C13.5 16.5 12 22 12 22C12 22 10.5 16.5 8 14C5.5 11.5 2 12 2 12C2 12 5.5 12.5 8 10C10.5 7.5 12 2 12 2Z"/></svg>
+            AI
+          </button>
 
           <div id="kpi-strip" class="kpi-strip hidden"></div>
           <div id="insights-strip-wrap" class="insights-strip-wrap hidden">
@@ -410,6 +429,34 @@
                 <div class="widget-config-field" data-field="columns">
                   <label class="widget-config-label">Table columns</label>
                   <select name="columns" class="widget-config-select" multiple></select>
+                </div>
+                <!-- Source row -->
+                <div class="widget-config-field">
+                  <label class="widget-config-label">Source Dataset</label>
+                  <div class="widget-source-row">
+                    <span class="widget-source-icon">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                    </span>
+                    <select class="" style="border:none;background:transparent;flex:1;font-size:0.88rem;color:var(--ink);font-family:inherit;outline:none;" id="widget-source-select">
+                      <option value="current">Current dataset</option>
+                    </select>
+                  </div>
+                </div>
+                <!-- Advanced toggle -->
+                <button type="button" class="widget-config-advanced-toggle" id="widget-advanced-toggle">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                  Advanced Options
+                </button>
+                <div class="widget-config-advanced-body" id="widget-advanced-body">
+                  <div class="widget-config-field">
+                    <label class="widget-config-label">Color Palette</label>
+                    <select class="widget-config-select" id="widget-palette-select">
+                      <option value="">Default</option>
+                      <option value="teal">Teal</option>
+                      <option value="warm">Warm</option>
+                      <option value="cool">Cool</option>
+                    </select>
+                  </div>
                 </div>
                 <button class="btn btn-primary widget-config-save" type="submit">Save changes</button>
               </form>

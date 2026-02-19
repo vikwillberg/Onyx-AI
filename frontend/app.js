@@ -67,10 +67,10 @@ const state = {
 };
 
 const CHART_COLORS = {
-  primary: "#6366f1",
-  secondary: "#0d9488",
-  accent: "#f59e0b",
-  palette: ["#6366f1", "#0d9488", "#e11d48", "#0ea5e9", "#8b5cf6", "#059669", "#f97316", "#ec4899", "#14b8a6", "#3b82f6", "#64748b", "#eab308"],
+  primary: "#F97316",
+  secondary: "#FB923C",
+  accent: "#FDBA74",
+  palette: ["#F97316", "#0EA5E9", "#6366F1", "#10B981", "#EC4899", "#8B5CF6", "#FDBA74", "#EF4444", "#14B8A6", "#84CC16", "#64748B", "#FB923C"],
 };
 
 function getActivePalette() {
@@ -81,9 +81,9 @@ function getActivePalette() {
 
 const PLOTLY_THEMES = {
   dark: {
-    axisTitle: "#a8a29e",
-    axisTick: "#d6d3d1",
-    legend: "#d6d3d1",
+    axisTitle: "#d6d3d1",
+    axisTick: "#fafaf9",
+    legend: "#fafaf9",
     grid: "rgba(41, 37, 36, 0.6)",
     font: "#fafaf9",
     line: "rgba(41, 37, 36, 0.7)",
@@ -91,9 +91,9 @@ const PLOTLY_THEMES = {
     plot: "#1c1917",
   },
   light: {
-    axisTitle: "#78716c",
-    axisTick: "#44403c",
-    legend: "#44403c",
+    axisTitle: "#44403c",
+    axisTick: "#1c1917",
+    legend: "#1c1917",
     grid: "rgba(231, 229, 228, 0.8)",
     font: "#1c1917",
     line: "rgba(231, 229, 228, 1)",
@@ -274,6 +274,37 @@ const stepSections = {
   save: [elements.saveSection],
 };
 const allStepSections = [...new Set(Object.values(stepSections).flat())];
+
+/* ===== Hero collapse animation — triggers once on first message ===== */
+let _heroCollapsed = false;
+
+function collapseHomeWelcome() {
+  /* Reveal chat area immediately so content starts flowing */
+  if (elements.homeChatArea) elements.homeChatArea.classList.remove("hidden");
+
+  if (_heroCollapsed) {
+    /* Animation already played or element already hidden */
+    if (elements.homeWelcome) elements.homeWelcome.classList.add("hidden");
+    return;
+  }
+  _heroCollapsed = true;
+
+  const heroWrap = document.querySelector(".copilot-hero-wrap");
+  if (!heroWrap || !elements.homeWelcome) {
+    if (elements.homeWelcome) elements.homeWelcome.classList.add("hidden");
+    return;
+  }
+
+  /* Kick off the CSS animation */
+  heroWrap.classList.add("hero-collapsing");
+
+  /* Hide the whole welcome container once the animation finishes */
+  const ANIM_MS = 950;
+  setTimeout(() => {
+    if (elements.homeWelcome) elements.homeWelcome.classList.add("hidden");
+    heroWrap.classList.remove("hero-collapsing");
+  }, ANIM_MS);
+}
 
 /* ===== Auto-save ===== */
 let _autoSaveTimer = null;
@@ -821,6 +852,8 @@ async function renderInsightsStrip() {
         `;
         
         /* Story Sections */
+        const sectionsGrid = document.createElement("div");
+        sectionsGrid.className = "narrative-sections-grid";
         resp.insights.forEach((insight, index) => {
           const category = insight.category || "overview";
           const icon = STORY_CATEGORY_ICONS[category] || STORY_CATEGORY_ICONS.overview;
@@ -847,7 +880,7 @@ async function renderInsightsStrip() {
               </div>
             ` : ""}
           `;
-          container.appendChild(section);
+          sectionsGrid.appendChild(section);
           
           /* Render the chart after adding to DOM */
           if (visualData) {
@@ -860,6 +893,7 @@ async function renderInsightsStrip() {
           }
         });
         
+        container.appendChild(sectionsGrid);
         elements.insightsStrip.appendChild(container);
         return;
       }
@@ -873,6 +907,8 @@ async function renderInsightsStrip() {
           const container = document.createElement("div");
           container.className = "narrative-container";
           container.innerHTML = `<div class="narrative-header"><h2 class="narrative-title">Key Insights</h2></div>`;
+          const fallbackGrid = document.createElement("div");
+          fallbackGrid.className = "narrative-sections-grid";
           fallback.insights.slice(0, 6).forEach((item, i) => {
             const text = typeof item === "string" ? item : (item.text || "");
             const category = item.category || "overview";
@@ -888,8 +924,9 @@ async function renderInsightsStrip() {
               </div>
               <div class="story-insight-text">${text}</div>
             `;
-            container.appendChild(section);
+            fallbackGrid.appendChild(section);
           });
+          container.appendChild(fallbackGrid);
           elements.insightsStrip.appendChild(container);
           return;
         }
@@ -1363,8 +1400,7 @@ function appendChatBubble(role, text) {
 function appendFileAttachBubble(files) {
   const container = elements.homeChatMessages;
   if (!container || !files?.length) return;
-  if (elements.homeChatArea) elements.homeChatArea.classList.remove("hidden");
-  if (elements.homeWelcome) elements.homeWelcome.classList.add("hidden");
+  collapseHomeWelcome();
   const wrap = document.createElement("div");
   wrap.className = "home-chat-bubble user";
   const inner = document.createElement("div");
@@ -1392,8 +1428,7 @@ const AI_SPARK_SVG = `<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http:/
 function appendHomeBubble(role, text) {
   const container = elements.homeChatMessages;
   if (!container) return null;
-  if (elements.homeChatArea) elements.homeChatArea.classList.remove("hidden");
-  if (elements.homeWelcome) elements.homeWelcome.classList.add("hidden");
+  collapseHomeWelcome();
   const bubble = document.createElement("div");
   bubble.className = `home-chat-bubble ${role}`;
   if (role === "typing") {
@@ -1412,13 +1447,84 @@ function appendHomeBubble(role, text) {
   } else {
     /* User message: pill on the right */
     const pill = document.createElement("span");
-    pill.textContent = text;
+    pill.innerHTML = highlightChatKeywords(text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"));
     bubble.appendChild(pill);
   }
   container.appendChild(bubble);
   const chatArea = elements.homeChatArea;
   if (chatArea) requestAnimationFrame(() => chatArea.scrollTo({ top: chatArea.scrollHeight, behavior: "smooth" }));
   return bubble;
+}
+
+/* ===== Step 6: keyword highlighter ===== */
+const CHAT_HL_KEYWORDS = [
+  "bar chart","line chart","pie chart","donut chart","scatter plot",
+  "histogram","map","table","dashboard","trend","anomaly",
+  "revenue","sales","profit","growth","insight","kpi","forecast",
+];
+function highlightChatKeywords(html) {
+  CHAT_HL_KEYWORDS.forEach((kw) => {
+    const re = new RegExp(`(${kw.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")})`, "gi");
+    html = html.replace(re, '<span class="chat-highlight">$1</span>');
+  });
+  return html;
+}
+
+/* ===== Step 5: autocomplete suggestion dropdown ===== */
+const CHAT_AUTOCOMPLETE = [
+  { icon: "📊", text: "Add a bar chart showing" },
+  { icon: "📈", text: "Add a line chart for" },
+  { icon: "🥧", text: "Add a pie chart of" },
+  { icon: "📋", text: "Add a summary table" },
+  { icon: "🗺️", text: "Add a map visualization" },
+  { icon: "🔢", text: "Add a KPI for" },
+  { icon: "📉", text: "Show trends for" },
+  { icon: "🔍", text: "Find anomalies in" },
+];
+
+function initSuggestionDropdown() {
+  const input = elements.homeInput;
+  const wrap = input?.closest(".home-input-wrap");
+  if (!input || !wrap) return;
+
+  let dropdown = document.getElementById("chat-autocomplete-dropdown");
+  if (!dropdown) {
+    dropdown = document.createElement("div");
+    dropdown.id = "chat-autocomplete-dropdown";
+    dropdown.className = "chat-suggestion-dropdown hidden";
+    wrap.appendChild(dropdown);
+  }
+
+  input.addEventListener("input", () => {
+    const val = input.value.trim().toLowerCase();
+    if (!val || val.length < 2) { dropdown.classList.add("hidden"); return; }
+    const matches = CHAT_AUTOCOMPLETE.filter((s) =>
+      s.text.toLowerCase().includes(val) || val.includes("add") || val.includes("show") || val.includes("chart")
+    ).slice(0, 5);
+    if (!matches.length) { dropdown.classList.add("hidden"); return; }
+    dropdown.innerHTML = matches.map((s) =>
+      `<button class="chat-suggestion-item" type="button">
+        <span class="chat-suggestion-item-icon">${s.icon}</span>
+        <span>${s.text}</span>
+      </button>`
+    ).join("") +
+    `<button class="chat-suggestion-show-all" type="button">Show all suggestions →</button>`;
+    dropdown.classList.remove("hidden");
+    dropdown.querySelectorAll(".chat-suggestion-item").forEach((btn, i) => {
+      btn.addEventListener("click", () => {
+        input.value = matches[i].text + " ";
+        dropdown.classList.add("hidden");
+        input.focus();
+      });
+    });
+    dropdown.querySelector(".chat-suggestion-show-all")?.addEventListener("click", () => {
+      dropdown.classList.add("hidden");
+    });
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!wrap.contains(e.target)) dropdown.classList.add("hidden");
+  });
 }
 
 function showSuggestionChips(chips) {
@@ -2447,46 +2553,29 @@ function getDefaultTileLayout(visual) {
   const columns = visual.config?.columns?.length || 0;
 
   if (visual.type === "kpi") {
-    return { w: 3, h: 1 };
+    return { w: 3, h: 2 };
   }
 
   if (visual.type === "table") {
-    if (isSummaryTable) {
-      return { w: 6, h: 3 };
-    }
-    if (columns >= 6) {
-      return { w: 12, h: 3 };
-    }
-    return { w: 6, h: 3 };
+    if (isSummaryTable) return { w: 6, h: 4 };
+    if (columns >= 6)   return { w: 12, h: 4 };
+    return { w: 6, h: 4 };
   }
 
-  /* Line charts — half width by default, can be resized */
-  if (visual.type === "line") {
-    return { w: 6, h: 3 };
-  }
-
-  if (visual.type === "scatter") {
-    return { w: 6, h: 3 };
-  }
+  if (visual.type === "line")      return { w: 8, h: 4 };
+  if (visual.type === "scatter")   return { w: 5, h: 4 };
+  if (visual.type === "map")       return { w: 8, h: 5 };
 
   if (visual.type === "bar") {
-    if (dataCount > 10) return { w: 6, h: 3 };
-    return { w: 4, h: 3 };
+    if (dataCount > 10) return { w: 8, h: 5 };
+    if (dataCount > 5)  return { w: 6, h: 4 };
+    return { w: 4, h: 4 };
   }
 
-  if (visual.type === "pie") {
-    return { w: 4, h: 3 };
-  }
+  if (visual.type === "pie")       return { w: 4, h: 4 };
+  if (visual.type === "histogram") return { w: 5, h: 4 };
 
-  if (visual.type === "histogram") {
-    return { w: 4, h: 3 };
-  }
-
-  if (visual.type === "map") {
-    return { w: 6, h: 3 };
-  }
-
-  return { w: 4, h: 3 };
+  return { w: 4, h: 4 };
 }
 
 function pickPrimaryVisual(visuals = []) {
@@ -2532,24 +2621,53 @@ function seedDashboardLayout(visuals = []) {
   const charts = visuals.filter((visual) => !layoutMap.has(visual.visual_id));
   if (!charts.length) return layoutMap;
 
-  /* Pack charts in a clean grid: 3-column (4+4+4) for most, 6 for line/scatter, 12 for wide tables */
-  let x = 0;
-  let rowHeight = 0;
-  charts.forEach((visual) => {
-    const defaults = getDefaultTileLayout(visual);
-    const isWideTable = visual.type === "table" && (visual.config?.columns?.length || 0) >= 6;
-    const isMedium = visual.type === "line" || visual.type === "scatter" || visual.type === "map";
-    const w = isWideTable ? 12 : isMedium ? 6 : 4;
-    const h = defaults.h;
-    if (x + w > totalColumns) {
-      yOffset += rowHeight;
-      x = 0;
-      rowHeight = 0;
-    }
-    layoutMap.set(visual.visual_id, { x, y: yOffset, w, h });
-    x += w;
-    rowHeight = Math.max(rowHeight, h);
-  });
+  /* Hero chart: first data-rich chart gets large left placement */
+  const heroIndex = charts.findIndex((v) =>
+    ["bar", "line", "scatter", "histogram"].includes(v.type)
+  );
+
+  if (heroIndex >= 0) {
+    const hero = charts[heroIndex];
+    const heroH = hero.type === "line" ? 4 : 5;
+    layoutMap.set(hero.visual_id, { x: 0, y: yOffset, w: 8, h: heroH });
+
+    /* Stack up to 2 charts to the right of the hero */
+    let rightY = yOffset;
+    const sideCharts = charts.filter((_, i) => i !== heroIndex).slice(0, 2);
+    sideCharts.forEach((v) => {
+      const d = getDefaultTileLayout(v);
+      const sideH = Math.min(d.h, heroH - (rightY - yOffset) > 0 ? heroH - (rightY - yOffset) : d.h);
+      layoutMap.set(v.visual_id, { x: 8, y: rightY, w: 4, h: sideH });
+      rightY += sideH;
+    });
+
+    /* Remaining charts flow in rows below */
+    const remaining = charts.filter((_, i) => i !== heroIndex).slice(2);
+    yOffset += heroH;
+    let x = 0;
+    let rowHeight = 0;
+    remaining.forEach((v) => {
+      const d = getDefaultTileLayout(v);
+      const w = d.w;
+      if (x + w > totalColumns) { yOffset += rowHeight; x = 0; rowHeight = 0; }
+      layoutMap.set(v.visual_id, { x, y: yOffset, w, h: d.h });
+      x += w;
+      rowHeight = Math.max(rowHeight, d.h);
+    });
+  } else {
+    /* No hero candidate — use auto-flow with proper sizes */
+    let x = 0;
+    let rowHeight = 0;
+    charts.forEach((visual) => {
+      const defaults = getDefaultTileLayout(visual);
+      const w = defaults.w;
+      const h = defaults.h;
+      if (x + w > totalColumns) { yOffset += rowHeight; x = 0; rowHeight = 0; }
+      layoutMap.set(visual.visual_id, { x, y: yOffset, w, h });
+      x += w;
+      rowHeight = Math.max(rowHeight, h);
+    });
+  }
 
   return layoutMap;
 }
@@ -2888,7 +3006,18 @@ async function removeVisual(visualId) {
   if (state.datasetDetail) {
     state.datasetDetail.final_visuals = nextVisuals;
   }
-  renderDashboard();
+  /* Remove widget directly so GridStack auto-compacts remaining tiles */
+  if (state.grid) {
+    const widgetEl = state.grid.el?.querySelector(`[data-visual-id="${visualId}"]`);
+    if (widgetEl) {
+      state.grid.removeWidget(widgetEl);
+      updateLayoutFromGrid();
+    } else {
+      renderDashboard();
+    }
+  } else {
+    renderDashboard();
+  }
   scheduleAutoSave();
 
   if (!state.currentDataset) return;
@@ -2972,6 +3101,7 @@ function startNewAnalysis() {
   /* Reverse dashboard-mode layout */
   exitDashboardMode();
   /* Reset home chat UI */
+  _heroCollapsed = false;
   if (elements.homeChatMessages) elements.homeChatMessages.innerHTML = "";
   if (elements.homeChatArea) elements.homeChatArea.classList.add("hidden");
   if (elements.homeWelcome) elements.homeWelcome.classList.remove("hidden");
@@ -3810,7 +3940,7 @@ function renderDashboard() {
   state.grid = GridStack.init({
     float: false,
     cellHeight: 90,
-    margin: 10,
+    margin: "18px 10px",
     handle: ".tile-header",
     animate: true,
     column: 12,
@@ -3840,7 +3970,7 @@ function renderDashboard() {
 
   gridVisuals.forEach((visual, index) => {
     const isKpi = visual.type === "kpi";
-    const defaults = isKpi ? { w: 3, h: 1 } : getDefaultTileLayout(visual);
+    const defaults = isKpi ? { w: 3, h: 2 } : getDefaultTileLayout(visual);
     const layout = visual.config?.layout;
     const width = typeof layout?.w === "number" ? layout.w : defaults.w;
     const height = typeof layout?.h === "number" ? layout.h : defaults.h;
@@ -3948,15 +4078,15 @@ function buildPlotlyLayout(visual, container, plotData) {
   const showPieLegend = dataCount > 4;
   const axisTitles = getAxisTitles(visual);
   const theme = PLOTLY_THEMES[state.theme] || PLOTLY_THEMES.dark;
-  const axisTitleFont = { size: 11, color: theme.axisTitle, family: "Inter" };
-  const axisTickFont = { size: 11, color: theme.axisTick, family: "Inter" };
+  const axisTitleFont = { size: 12, color: theme.axisTitle, family: "DM Sans" };
+  const axisTickFont  = { size: 12, color: theme.axisTick,  family: "DM Sans" };
   const pieLegend = {
     orientation: isCompact ? "h" : "v",
     y: isCompact ? -0.08 : 0.5,
     x: isCompact ? 0.5 : 1.02,
     xanchor: isCompact ? "center" : "left",
     yanchor: isCompact ? "top" : "middle",
-    font: { size: 10, color: theme.legend },
+    font: { size: 11, color: theme.legend, family: "DM Sans" },
   };
 
   /* Detect y-axis column format for smart tick formatting */
@@ -3988,7 +4118,7 @@ function buildPlotlyLayout(visual, container, plotData) {
   const leftMargin = isHorizontalBar ? 110 : yFmt === "currency" ? 60 : 48;
 
   return {
-    title: { text: "", font: { family: "Space Grotesk", size: 14 } },
+    title: { text: "", font: { family: "DM Sans", size: 14 } },
     margin: isPie
       ? {
           l: 12,
@@ -3999,7 +4129,7 @@ function buildPlotlyLayout(visual, container, plotData) {
       : { l: leftMargin, r: 20, t: 10, b: isHorizontalBar ? 30 : 52 },
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(0,0,0,0)",
-    font: { family: "Inter", color: theme.font },
+    font: { family: "DM Sans", size: 12, color: theme.font },
     autosize: true,
     xaxis: {
       automargin: true,
@@ -4038,6 +4168,16 @@ function buildPlotlyLayout(visual, container, plotData) {
     hovermode: "closest",
     bargap: 0.22,
     colorway: getActivePalette(),
+    annotations: isPie ? (() => {
+      const vals = plotData?.[0]?.values || [];
+      const total = vals.reduce((s, v) => s + (Number(v) || 0), 0);
+      const fmt = total >= 1e6 ? `${(total / 1e6).toFixed(1)}M`
+        : total >= 1e3 ? `${(total / 1e3).toFixed(1)}K`
+        : String(Math.round(total));
+      return [{ text: `<b>${fmt}</b>`, x: 0.5, y: 0.5, showarrow: false,
+        font: { size: 18, color: theme.font, family: "Space Grotesk, Inter" },
+        xanchor: "center", yanchor: "middle" }];
+    })() : [],
   };
 }
 
@@ -4414,10 +4554,16 @@ async function autoBuildDashboard() {
   /* Step 2 — actual API call, show live elapsed counter */
   markAgentStepRunning(rows[2]);
   const t0 = Date.now();
+  /* Step 11: pulsing dot + live timer in the running step */
+  const elapsedEl = rows[2].querySelector(".agent-step-elapsed");
+  if (elapsedEl) {
+    elapsedEl.innerHTML = `<span class="generating-status-row"><span class="agent-generating-dot"></span><span class="generating-timer" id="gen-timer-txt">0s</span></span>`;
+  }
   let elapsedTimer = setInterval(() => {
     const s = Math.round((Date.now() - t0) / 1000);
-    const el = rows[2].querySelector(".agent-step-elapsed");
-    if (el) el.textContent = `Running ${s}s`;
+    const timerEl = document.getElementById("gen-timer-txt");
+    if (timerEl) timerEl.textContent = `${s}s`;
+    else if (elapsedEl) elapsedEl.textContent = `Running ${s}s`;
   }, 1000);
 
   const modelKey = state.selectedModelKey || null;
@@ -4923,6 +5069,13 @@ function bindEvents() {
   elements.addVisualBtn?.addEventListener("click", () => openAddVisualPanel());
   elements.closeAddVisual?.addEventListener("click", () => closeAddVisualPanel());
 
+  /* Step 7: Advanced toggle in widget config panel */
+  document.getElementById("widget-advanced-toggle")?.addEventListener("click", function () {
+    this.classList.toggle("open");
+    const body = document.getElementById("widget-advanced-body");
+    if (body) body.classList.toggle("open");
+  });
+
   /* Tile fullscreen modal close */
   document.getElementById("tile-fullscreen-close")?.addEventListener("click", closeTileFullscreen);
 
@@ -5197,10 +5350,15 @@ async function loadModels() {
   try {
     const models = await apiFetch("/models/");
     state.availableModels = models;
-    /* If saved model key is not in the list, default to first available */
+    /* If saved model key is not in the list, pick best available default */
     const available = models.filter((m) => m.available);
-    if (!models.find((m) => m.key === state.selectedModelKey)) {
-      state.selectedModelKey = available[0]?.key || "llama-groq";
+    if (!available.find((m) => m.key === state.selectedModelKey)) {
+      /* Preference: claude-sonnet > gemini-flash > llama-groq > first available */
+      const preferred = ["claude-sonnet-4-6", "gemini-flash", "llama-groq"];
+      const best = preferred.find((k) => available.find((m) => m.key === k))
+        || available[0]?.key
+        || "llama-groq";
+      state.selectedModelKey = best;
     }
     renderModelPickerBtn();
   } catch (_e) {
@@ -5223,47 +5381,90 @@ function renderModelPickerBtn() {
   }
 }
 
+let _pickerMoreExpanded = false;
+
 function renderModelPickerList() {
-  const list = document.getElementById("model-picker-list");
-  if (!list || !state.availableModels.length) return;
-  list.innerHTML = "";
+  const panel = document.getElementById("model-list-panel");
+  if (!panel || !state.availableModels.length) return;
+  panel.innerHTML = "";
 
-  /* Group into free and paid */
-  const paid = state.availableModels.filter((m) => m.tier === "paid");
-  const free = state.availableModels.filter((m) => m.tier === "free");
+  /* Preferred display order within available models */
+  const PREF_ORDER = [
+    "claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5",
+    "gemini-flash", "gemini-2-5-flash",
+    "llama-groq", "llama-4-scout",
+    "gpt-4o", "gpt-4o-mini",
+  ];
 
-  function addSection(label, items) {
-    if (!items.length) return;
-    const sec = document.createElement("div");
-    sec.className = "model-picker-section-label";
-    sec.textContent = label;
-    list.appendChild(sec);
-    items.forEach((m) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = `model-picker-item${m.key === state.selectedModelKey ? " active" : ""}${!m.available ? " unavailable" : ""}`;
-      const priceHtml = m.tier === "free"
-        ? `<span class="free-label">Free</span>`
-        : `<span>In: $${m.input_price.toFixed(2)}/M</span><br><span>Out: $${m.output_price.toFixed(2)}/M</span>`;
-      btn.innerHTML = `
-        <svg class="model-item-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-        <div class="model-item-info">
-          <div class="model-item-name">
-            ${m.display_name}
-            <span class="model-item-badge">${m.badge}</span>
-            ${!m.available ? '<span class="model-item-badge" style="background:var(--danger-soft);color:var(--danger)">No Key</span>' : ""}
-          </div>
-          <div class="model-item-desc">${m.description}</div>
-        </div>
-        <div class="model-item-price">${priceHtml}</div>`;
-      if (m.available) {
-        btn.addEventListener("click", () => selectModel(m.key));
-      }
-      list.appendChild(btn);
+  const available = state.availableModels.filter((m) => m.available);
+  const unavailable = state.availableModels.filter((m) => !m.available);
+
+  /* Sort available: preferred first, then others */
+  available.sort((a, b) => {
+    const ai = PREF_ORDER.indexOf(a.key), bi = PREF_ORDER.indexOf(b.key);
+    if (ai === -1 && bi === -1) return 0;
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
+
+  /* Render available models */
+  available.forEach((m) => _appendModelRow(m, panel));
+
+  /* "More models" expander — shows unavailable */
+  if (unavailable.length) {
+    const divider = document.createElement("div");
+    divider.className = "model-picker-divider";
+    panel.appendChild(divider);
+
+    const moreBtn = document.createElement("button");
+    moreBtn.type = "button";
+    moreBtn.className = "model-picker-more";
+    moreBtn.id = "model-picker-more-btn";
+    moreBtn.innerHTML = `<span>More models</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+        style="transform:rotate(${_pickerMoreExpanded ? "90" : "0"}deg);transition:transform 0.15s">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>`;
+    moreBtn.addEventListener("click", () => {
+      _pickerMoreExpanded = !_pickerMoreExpanded;
+      renderModelPickerList();
     });
+    panel.appendChild(moreBtn);
+
+    if (_pickerMoreExpanded) {
+      unavailable.forEach((m) => _appendModelRow(m, panel));
+    }
   }
-  addSection("Premium Models", paid);
-  addSection("Free Models", free);
+}
+
+function _appendModelRow(m, panel) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  const isSelected = m.key === state.selectedModelKey;
+  btn.className = `model-picker-item${isSelected ? " active" : ""}${!m.available ? " unavailable" : ""}`;
+
+  /* Right-side indicator */
+  let rightHtml;
+  if (!m.available) {
+    rightHtml = `<span class="model-item-nokey">No key</span>`;
+  } else if (m.tier === "free") {
+    rightHtml = isSelected
+      ? `<svg class="model-item-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`
+      : `<span class="model-item-free">Free</span>`;
+  } else {
+    rightHtml = `<svg class="model-item-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+  }
+
+  btn.innerHTML = `
+    <div class="model-item-info">
+      <div class="model-item-name">${m.display_name}</div>
+      <div class="model-item-desc">${m.description}</div>
+    </div>
+    ${rightHtml}`;
+
+  if (m.available) btn.addEventListener("click", () => selectModel(m.key));
+  panel.appendChild(btn);
 }
 
 function selectModel(key) {
@@ -5285,7 +5486,7 @@ function toggleModelPicker(btnEl) {
       const rect = btn.getBoundingClientRect();
       const dropH = Math.min(480, window.innerHeight * 0.6);
       const top = rect.top - dropH - 8;
-      dropdown.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - 390))}px`;
+      dropdown.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - 296))}px`;
       dropdown.style.top = `${Math.max(8, top)}px`;
       dropdown.style.maxHeight = `${dropH}px`;
     }
@@ -5308,6 +5509,7 @@ async function init() {
   updateSidebarThemeIcon();
   setAuthenticatedView();
   bindEvents();
+  initSuggestionDropdown();
   setAgentStatus("idle");
   elements.projectListSkeleton?.classList.remove("hidden");
 
