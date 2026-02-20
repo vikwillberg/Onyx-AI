@@ -503,9 +503,13 @@ function setStep(step) {
     if (elements.homeWelcome) elements.homeWelcome.classList.remove("hidden");
     if (elements.homeChatArea) elements.homeChatArea.classList.add("hidden");
     if (elements.homeSendBtn) elements.homeSendBtn.disabled = !state.pendingFiles.length && !elements.homeInput?.value.trim();
+    updateMobilePageTitle("Onyx");
+    updateMobileBottomNav("home");
   } else if (step === "ai-chat") {
     if (elements.homeWelcome) elements.homeWelcome.classList.add("hidden");
     if (elements.homeChatArea) elements.homeChatArea.classList.remove("hidden");
+    updateMobilePageTitle("Onyx");
+    updateMobileBottomNav("home");
   }
 }
 
@@ -4708,6 +4712,35 @@ async function autoBuildDashboard() {
   }
 }
 
+/* ── Mobile helpers ──────────────────────────────────────── */
+function updateMobilePageTitle(title) {
+  const el = document.getElementById("mobile-page-title");
+  if (el) el.textContent = title || "Onyx";
+}
+
+function updateMobileGreeting() {
+  const nameEl = document.getElementById("mobile-greeting-name");
+  if (!nameEl) return;
+  if (state.email) {
+    const first = state.email.split("@")[0].split(".")[0];
+    nameEl.textContent = first.charAt(0).toUpperCase() + first.slice(1);
+  } else {
+    nameEl.textContent = "there";
+  }
+}
+
+function showDashboardNavBadge(show) {
+  const badge = document.getElementById("dashboard-nav-badge");
+  if (badge) badge.classList.toggle("hidden", !show);
+}
+
+function updateMobileBottomNav(activeNav) {
+  document.querySelectorAll(".mobile-nav-item").forEach((b) => {
+    b.classList.toggle("active", b.dataset.nav === activeNav);
+  });
+}
+/* ── End mobile helpers ──────────────────────────────────── */
+
 function enterDashboardMode() {
   state.step = "dashboard";
   state.savedDashboard = false;
@@ -4743,6 +4776,12 @@ function enterDashboardMode() {
   renderKpiStrip();
   updateFilterBar();
   renderDashboard();
+
+  /* Mobile: update header title, bottom nav, and badge */
+  const dashTitle = document.getElementById("dashboard-project-title")?.textContent || state.currentProject?.name || "Dashboard";
+  updateMobilePageTitle(dashTitle);
+  updateMobileBottomNav("dashboard");
+  showDashboardNavBadge(true);
 
   /* Do NOT open the right dash-chat panel — left chat panel is the AI assistant here */
 
@@ -5305,7 +5344,7 @@ function bindEvents() {
     scheduleFilterRebuild();
   });
 
-  /* Welcome suggestion cards */
+  /* Welcome suggestion cards (desktop grid) */
   document.getElementById("welcome-cards")?.addEventListener("click", (e) => {
     const card = e.target.closest(".welcome-card");
     if (!card) return;
@@ -5316,6 +5355,35 @@ function bindEvents() {
       elements.homeInput.focus();
       autoResizeHomeInput();
     }
+  });
+
+  /* Mobile quick-action pills — same behaviour as welcome cards */
+  document.getElementById("mobile-quick-pills")?.addEventListener("click", (e) => {
+    const pill = e.target.closest(".mobile-quick-pill");
+    if (!pill) return;
+    const prompt = pill.dataset.prompt;
+    if (prompt && elements.homeInput) {
+      elements.homeInput.value = prompt;
+      if (elements.homeSendBtn) elements.homeSendBtn.disabled = false;
+      elements.homeInput.focus();
+      autoResizeHomeInput();
+      sendHomeChat();
+    }
+  });
+
+  /* Mobile hamburger — opens the sidebar drawer */
+  document.getElementById("mobile-hamburger")?.addEventListener("click", () => {
+    const sidebar = elements.appSidebar;
+    const overlay = document.getElementById("sidebar-overlay");
+    if (!sidebar) return;
+    sidebar.classList.add("mobile-open");
+    if (overlay) overlay.classList.remove("hidden");
+  });
+
+  /* Mobile avatar — opens settings (or auth modal if not logged in) */
+  document.getElementById("mobile-avatar-btn")?.addEventListener("click", () => {
+    if (state.token) openSettings();
+    else openAuthModal();
   });
 
   /* Editable dashboard title */
@@ -5671,6 +5739,7 @@ async function init() {
       console.warn("Session restore failed, starting fresh");
     }
   }
+  updateMobileGreeting();
   setStep("upload");
 }
 
