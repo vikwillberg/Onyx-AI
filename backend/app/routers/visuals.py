@@ -536,6 +536,7 @@ def get_insights(
 @router.get("/{dataset_id}/narrative")
 def get_narrative_insights(
     dataset_id: UUID,
+    model_key: Optional[str] = None,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
@@ -548,7 +549,7 @@ def get_narrative_insights(
     from app.services.llm import generate_narrative_insights
     from app.services.visuals import generate_visual_data
     
-    narrative = generate_narrative_insights(profile_data, business_context or {})
+    narrative = generate_narrative_insights(profile_data, business_context or {}, model_key=model_key)
     
     # Generate actual visual data for each insight
     for insight in narrative.get("insights", []):

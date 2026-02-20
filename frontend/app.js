@@ -836,7 +836,8 @@ async function renderInsightsStrip() {
       </div>`;
     
     try {
-      const resp = await apiFetch(`/visuals/${state.currentDataset.id}/narrative`);
+      const modelKey = state.selectedModelKey || "";
+      const resp = await apiFetch(`/visuals/${state.currentDataset.id}/narrative${modelKey ? `?model_key=${encodeURIComponent(modelKey)}` : ""}`);
       elements.insightsStrip.innerHTML = "";
       
       if (resp.insights && resp.insights.length) {
@@ -860,23 +861,25 @@ async function renderInsightsStrip() {
           const category = insight.category || "overview";
           const icon = STORY_CATEGORY_ICONS[category] || STORY_CATEGORY_ICONS.overview;
           const sectionTitle = insight.section_title || category.charAt(0).toUpperCase() + category.slice(1);
-          const hasChart = insight.visual_data && insight.visual && insight.visual.type;
+          const hasData = insight.visual_data && insight.visual && insight.visual.type;
           const chartId = `story-chart-${index}`;
           const section = document.createElement("div");
           section.className = "story-section";
           section.dataset.section = index + 1;
           section.dataset.category = category;
           section.innerHTML = `
-            <div class="story-section-header">
-              <div class="story-section-icon">${icon}</div>
-              <div class="story-section-badge">${category.toUpperCase()}</div>
+            <div class="story-section-left">
+              <div class="story-section-header">
+                <div class="story-section-icon">${icon}</div>
+                <div class="story-section-badge">${category.toUpperCase()}</div>
+              </div>
+              <div class="story-section-headline">${sectionTitle}</div>
+              <div class="story-insight-text">${insight.text || ""}</div>
             </div>
-            <div class="story-section-headline">${sectionTitle}</div>
-            <div class="story-insight-text">${insight.text || ""}</div>
-            ${hasChart ? `<div class="story-chart chart" id="${chartId}"></div>` : ""}
+            <div class="story-chart chart" id="${chartId}">${hasData ? "" : "<div class=\"story-chart-empty\">Chart loading…</div>"}</div>
           `;
           sectionsGrid.appendChild(section);
-          if (hasChart) chartQueue.push({ id: chartId, spec: insight.visual, data: insight.visual_data });
+          if (hasData) chartQueue.push({ id: chartId, spec: insight.visual, data: insight.visual_data });
         });
         container.appendChild(sectionsGrid);
         elements.insightsStrip.appendChild(container);
@@ -907,23 +910,25 @@ async function renderInsightsStrip() {
             const category = item.category || "overview";
             const icon = STORY_CATEGORY_ICONS[category] || STORY_CATEGORY_ICONS.overview;
             const headline = item.section_title || category.charAt(0).toUpperCase() + category.slice(1);
-            const hasChart = item.visual_data && item.visual && item.visual.type;
+            const hasData = item.visual_data && item.visual && item.visual.type;
             const chartId = `story-chart-fb-${i}`;
             const section = document.createElement("div");
             section.className = "story-section";
             section.dataset.section = i + 1;
             section.dataset.category = category;
             section.innerHTML = `
-              <div class="story-section-header">
-                <div class="story-section-icon">${icon}</div>
-                <div class="story-section-badge">${category.toUpperCase()}</div>
+              <div class="story-section-left">
+                <div class="story-section-header">
+                  <div class="story-section-icon">${icon}</div>
+                  <div class="story-section-badge">${category.toUpperCase()}</div>
+                </div>
+                <div class="story-section-headline">${headline}</div>
+                <div class="story-insight-text">${text}</div>
               </div>
-              <div class="story-section-headline">${headline}</div>
-              <div class="story-insight-text">${text}</div>
-              ${hasChart ? `<div class="story-chart chart" id="${chartId}"></div>` : ""}
+              <div class="story-chart chart" id="${chartId}">${hasData ? "" : "<div class=\"story-chart-empty\">No chart data</div>"}</div>
             `;
             fallbackGrid.appendChild(section);
-            if (hasChart) fallbackQueue.push({ id: chartId, spec: item.visual, data: item.visual_data });
+            if (hasData) fallbackQueue.push({ id: chartId, spec: item.visual, data: item.visual_data });
           });
           container.appendChild(fallbackGrid);
           elements.insightsStrip.appendChild(container);

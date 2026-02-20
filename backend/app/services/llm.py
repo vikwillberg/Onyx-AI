@@ -856,25 +856,34 @@ Rules:
 """
 
 
-def generate_narrative_insights(profile_data: dict, business_context: dict) -> dict:
+def generate_narrative_insights(
+    profile_data: dict,
+    business_context: dict,
+    model_key: Optional[str] = None,
+) -> dict:
     """Generate a narrative story with insights paired with supporting visuals."""
-    if not llm_service.enabled:
+    if not llm_service.enabled and not model_key:
         return {"story_title": "Data Insights", "story_intro": "", "insights": []}
-    
+
     profile_summary = build_profile_summary(profile_data)
     context_str = json.dumps(business_context, default=str)[:800] if business_context else "No context"
-    
-    result = llm_service.request_json(
-        NARRATIVE_INSIGHTS_SYSTEM,
-        f"Dataset profile:\n{profile_summary}\n\nBusiness context:\n{context_str}",
-        max_tokens=1500,
-    )
-    
+    user_prompt = f"Dataset profile:\n{profile_summary}\n\nBusiness context:\n{context_str}"
+
+    if model_key and model_key in MODEL_REGISTRY:
+        result = call_json_for_model(
+            model_key,
+            NARRATIVE_INSIGHTS_SYSTEM,
+            [{"role": "user", "content": user_prompt}],
+            max_tokens=2000,
+        )
+    else:
+        result = llm_service.request_json(NARRATIVE_INSIGHTS_SYSTEM, user_prompt, max_tokens=2000)
+
     if result and isinstance(result.get("insights"), list):
         return {
             "story_title": result.get("story_title", "Data Insights"),
             "story_intro": result.get("story_intro", ""),
-            "insights": result["insights"][:6]
+            "insights": result["insights"][:6],
         }
     return {"story_title": "Data Insights", "story_intro": "", "insights": []}
 
