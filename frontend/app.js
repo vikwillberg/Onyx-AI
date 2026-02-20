@@ -855,10 +855,13 @@ async function renderInsightsStrip() {
         const MAX_INSIGHTS = 8;
         const sectionsGrid = document.createElement("div");
         sectionsGrid.className = "narrative-sections-grid";
+        const chartQueue = [];
         resp.insights.slice(0, MAX_INSIGHTS).forEach((insight, index) => {
           const category = insight.category || "overview";
           const icon = STORY_CATEGORY_ICONS[category] || STORY_CATEGORY_ICONS.overview;
           const sectionTitle = insight.section_title || category.charAt(0).toUpperCase() + category.slice(1);
+          const hasChart = insight.visual_data && insight.visual && insight.visual.type;
+          const chartId = `story-chart-${index}`;
           const section = document.createElement("div");
           section.className = "story-section";
           section.dataset.section = index + 1;
@@ -870,11 +873,20 @@ async function renderInsightsStrip() {
             </div>
             <div class="story-section-headline">${sectionTitle}</div>
             <div class="story-insight-text">${insight.text || ""}</div>
+            ${hasChart ? `<div class="story-chart chart" id="${chartId}"></div>` : ""}
           `;
           sectionsGrid.appendChild(section);
+          if (hasChart) chartQueue.push({ id: chartId, spec: insight.visual, data: insight.visual_data });
         });
         container.appendChild(sectionsGrid);
         elements.insightsStrip.appendChild(container);
+        /* Render charts after DOM insertion */
+        requestAnimationFrame(() => {
+          chartQueue.forEach(({ id, spec, data }) => {
+            const el = document.getElementById(id);
+            if (el) renderStoryChartHighlighted(el, spec, data);
+          });
+        });
         return;
       }
     } catch (e) {
@@ -889,11 +901,14 @@ async function renderInsightsStrip() {
           container.innerHTML = `<div class="narrative-header"><h2 class="narrative-title">Key Insights</h2></div>`;
           const fallbackGrid = document.createElement("div");
           fallbackGrid.className = "narrative-sections-grid";
+          const fallbackQueue = [];
           fallback.insights.slice(0, 8).forEach((item, i) => {
             const text = typeof item === "string" ? item : (item.text || "");
             const category = item.category || "overview";
             const icon = STORY_CATEGORY_ICONS[category] || STORY_CATEGORY_ICONS.overview;
             const headline = item.section_title || category.charAt(0).toUpperCase() + category.slice(1);
+            const hasChart = item.visual_data && item.visual && item.visual.type;
+            const chartId = `story-chart-fb-${i}`;
             const section = document.createElement("div");
             section.className = "story-section";
             section.dataset.section = i + 1;
@@ -905,11 +920,19 @@ async function renderInsightsStrip() {
               </div>
               <div class="story-section-headline">${headline}</div>
               <div class="story-insight-text">${text}</div>
+              ${hasChart ? `<div class="story-chart chart" id="${chartId}"></div>` : ""}
             `;
             fallbackGrid.appendChild(section);
+            if (hasChart) fallbackQueue.push({ id: chartId, spec: item.visual, data: item.visual_data });
           });
           container.appendChild(fallbackGrid);
           elements.insightsStrip.appendChild(container);
+          requestAnimationFrame(() => {
+            fallbackQueue.forEach(({ id, spec, data }) => {
+              const el = document.getElementById(id);
+              if (el) renderStoryChartHighlighted(el, spec, data);
+            });
+          });
           return;
         }
       } catch (_) { /* fall through */ }
@@ -991,6 +1014,116 @@ function renderStoryChart(container, spec, data) {
   } catch (_e) { /* silent */ }
 }
 
+/* ===== renderStoryChartHighlighted — orange-highlight top entity ===== */
+function renderStoryChartHighlighted(container, spec, data) {
+  if (!container || !data || !data.length) return;
+  try {
+    const theme = PLOTLY_THEMES[state.theme] || PLOTLY_THEMES.light;
+    const palette = getActivePalette();
+    const accent = "#F97316";
+    const muted = "rgba(156,163,175,0.55)";
+    const chartType = spec.type || "bar";
+    let plotData = [];
+
+    if (chartType === "bar") {
+      const sorted = [...data].sort((a, b) => (Number(b[spec.y]) || 0) - (Number(a[spec.y]) || 0)).slice(0, 10);
+      plotData = [{ type: "bar", orientation: "v",
+        x: sorted.map((r) => r[spec.x]),
+        y: sorted.map((r) => Number(r[spec.y]) || 0),
+        marker: { color: sorted.map((_, i) => i === 0 ? accent : muted), cornerradius: 4 },
+        hoverinfo: "x+y" }];
+    } else if (chartType === "line") {
+      plotData = [{ type: "scatter", mode: "lines+markers",
+        x: data.map((r) => r[spec.x]), y: data.map((r) => r[spec.y]),
+        line: { color: accent, width: 2, shape: "spline" },
+        marker: { color: accent, size: 5 },
+        fill: "tozeroy", fillcolor: accent + "25", hoverinfo: "x+y" }];
+    } else if (chartType === "pie") {
+      const sorted = [...data].sort((a, b) => (Number(b[spec.y]) || 0) - (Number(a[spec.y]) || 0));
+      plotData = [{ type: "pie",
+        labels: sorted.map((r) => r[spec.x]),
+        values: sorted.map((r) => r[spec.y] || r.count || r.value),
+        textinfo: "label+percent", textposition: "inside", hole: 0.38,
+        marker: { colors: sorted.map((_, i) => i === 0 ? accent : palette[i % palette.length]) },
+        hoverinfo: "label+value+percent" }];
+    } else if (chartType === "histogram") {
+      plotData = [{ type: "bar",
+        x: data.map((r) => r.bin || r[spec.x]),
+        y: data.map((r) => r.count || r[spec.y]),
+        marker: { color: accent, cornerradius: 3 }, hoverinfo: "x+y" }];
+    } else if (chartType === "scatter") {
+      plotData = [{ type: "scatter", mode: "markers",
+        x: data.map((r) => r[spec.x]), y: data.map((r) => r[spec.y]),
+        marker: { color: accent, size: 7, opacity: 0.8 }, hoverinfo: "x+y" }];
+    }
+
+    Plotly.newPlot(container, plotData, {
+      margin: { t: 6, r: 12, b: 36, l: 44 },
+      paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+      font: { family: "DM Sans", color: theme.font, size: 10 },
+      autosize: true, showlegend: chartType === "pie",
+      xaxis: { automargin: true, gridcolor: theme.grid, zeroline: false, tickfont: { size: 9 } },
+      yaxis: { automargin: true, gridcolor: theme.grid, zeroline: false, tickfont: { size: 9 } },
+      hovermode: "closest", bargap: 0.2,
+      legend: chartType === "pie" ? { orientation: "h", y: -0.2, font: { size: 9 } } : undefined,
+    }, { responsive: true, displayModeBar: false });
+  } catch (_e) { /* silent */ }
+}
+
+/* ===== Key Insights PNG snapshot ===== */
+async function snapshotInsights() {
+  const btn = document.getElementById("snapshot-insights-btn");
+  if (btn) { btn.disabled = true; btn.textContent = "Capturing…"; }
+  try {
+    const container = document.getElementById("insights-strip-wrap");
+    if (!container || typeof html2canvas === "undefined") {
+      showToast("Snapshot library not loaded"); return;
+    }
+    const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: getComputedStyle(document.body).getPropertyValue("--bg").trim() || "#ffffff" });
+    const a = document.createElement("a");
+    a.href = canvas.toDataURL("image/png");
+    a.download = "key-insights.png";
+    a.click();
+  } catch (err) {
+    showToast("Snapshot failed");
+    console.error("Snapshot error:", err);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Save Snapshot"; }
+  }
+}
+
+/* ===== Inline Widget Rename ===== */
+function startTitleEdit(span, visual) {
+  if (span.querySelector("input")) return;
+  const current = span.textContent.trim();
+  const input = document.createElement("input");
+  input.className = "tile-title-input";
+  input.value = current;
+  span.textContent = "";
+  span.appendChild(input);
+  input.focus();
+  input.select();
+  const commit = () => {
+    const newTitle = input.value.trim() || current;
+    span.textContent = newTitle;
+    if (newTitle !== current) {
+      visual.title = newTitle;
+      scheduleAutoSave();
+      if (state.currentDataset) {
+        apiFetch(`/visuals/${state.currentDataset.id}/update/${visual.visual_id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ title: newTitle }),
+        }).catch(() => {});
+      }
+    }
+  };
+  input.addEventListener("blur", commit);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); input.blur(); }
+    if (e.key === "Escape") { input.value = current; input.blur(); }
+  });
+}
+
 /* ===== Nav Pills (Overview / Key Insights / Data) ===== */
 function switchNavTab(tab) {
   const pills = document.querySelectorAll(".nav-pill");
@@ -1018,6 +1151,10 @@ function switchNavTab(tab) {
   /* Data: show analytics overview cards + data table */
   if (analyticsView) analyticsView.classList.toggle("hidden", !isData);
   if (dataView) dataView.classList.toggle("hidden", !isData);
+
+  /* Snapshot button — only on Key Insights tab */
+  const snapshotBtn = document.getElementById("snapshot-insights-btn");
+  if (snapshotBtn) snapshotBtn.classList.toggle("hidden", !isAnalytics);
 
   if (isAnalytics) renderInsightsStrip();
   if (isData) { renderAnalyticsView(); renderDataView(); }
@@ -4063,6 +4200,16 @@ function renderDashboard() {
       event.stopPropagation();
       openAddVisualPanel(visual, widget);
     });
+    /* Inline title rename */
+    const titleSpan = widget.querySelector(".tile-meta span:first-child");
+    if (titleSpan) {
+      titleSpan.title = "Click to rename";
+      titleSpan.style.cursor = "text";
+      titleSpan.addEventListener("click", (e) => {
+        e.stopPropagation();
+        startTitleEdit(titleSpan, visual);
+      });
+    }
     widget.querySelector(".remove-tile")?.addEventListener("click", (event) => {
       event.stopPropagation();
       removeVisual(visual.visual_id);
@@ -5044,6 +5191,7 @@ function bindEvents() {
   document.querySelectorAll(".nav-pill").forEach((pill) => {
     pill.addEventListener("click", () => switchNavTab(pill.dataset.nav));
   });
+  document.getElementById("snapshot-insights-btn")?.addEventListener("click", snapshotInsights);
 
   document.getElementById("refresh-projects")?.addEventListener("click", loadProjects);
   document.getElementById("refresh-datasets")?.addEventListener("click", () => {
@@ -5419,14 +5567,14 @@ function renderModelPickerList() {
   const modelsByKey = {};
   state.availableModels.forEach((m) => { modelsByKey[m.key] = m; });
 
-  MODEL_GROUPS.forEach((group) => {
+  MODEL_GROUPS.forEach((group, groupIdx) => {
     const groupModels = group.keys
       .map((k) => modelsByKey[k])
       .filter(Boolean);
     if (!groupModels.length) return;
 
     const header = document.createElement("div");
-    header.className = "model-picker-group-header";
+    header.className = groupIdx === 0 ? "model-picker-group-header" : "model-picker-group-header model-picker-group-separator";
     header.textContent = group.label;
     panel.appendChild(header);
 
