@@ -733,14 +733,15 @@ body[data-theme="light"] .grid-stack-item-content { background: #ffffff; }
   border: 1px solid var(--outline);
 }
 .dashboard-nav-pills .nav-pill {
-  padding: 6px 18px; font-size: 0.82rem; border-radius: 8px;
-  font-weight: 600; border: none; background: transparent;
+  padding: 12px 32px; font-size: 1rem; border-radius: 10px;
+  font-weight: 600; border: 2px solid transparent; background: transparent;
   color: var(--muted); cursor: pointer; transition: all 0.18s ease;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.01em; white-space: nowrap;
 }
 .dashboard-nav-pills .nav-pill:hover { color: var(--ink); background: var(--surface-hover); }
 .dashboard-nav-pills .nav-pill.active {
-  background: var(--surface); color: var(--ink);
+  background: var(--accent-soft); color: var(--accent);
+  border-color: var(--accent); font-weight: 700;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 .dashboard-toolbar .btn-primary { font-weight: 700; padding: 6px 14px; font-size: 0.78rem; }
@@ -2782,7 +2783,7 @@ body[data-theme="light"] .sidebar-icon-moon { display: none !important; }
 /* ===== NAV PILLS — Dashboard / Key Insights / Data ===== */
 .dashboard-nav-pills { display: flex; gap: 4px; align-items: center; }
 .nav-pill {
-  padding: 10px 24px; font-size: 0.95rem; font-weight: 600;
+  padding: 12px 32px; font-size: 1rem; font-weight: 600;
   border-radius: 10px; border: 2px solid transparent;
   background: transparent; color: var(--muted); cursor: pointer;
   font-family: inherit; transition: all 0.15s ease; white-space: nowrap;
