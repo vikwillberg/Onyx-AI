@@ -4911,6 +4911,11 @@ function bindEvents() {
   elements.sidebarToggle?.addEventListener("click", () => toggleSidebar());
   elements.sidebarCollapse?.addEventListener("click", () => toggleSidebar(false));
   elements.sidebarNewProject?.addEventListener("click", () => { closeMobileSidebar(); toggleSidebar(false); startNewAnalysis(); });
+  /* Logo click → home */
+  document.querySelector(".sidebar-brand")?.addEventListener("click", (e) => {
+    if (e.target.closest(".sidebar-collapse-btn")) return;
+    startNewAnalysis();
+  });
   const savedSidebar = localStorage.getItem(SIDEBAR_PREF_KEY);
   if (savedSidebar === "expanded") toggleSidebar(true);
 
