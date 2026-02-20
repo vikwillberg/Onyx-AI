@@ -5593,24 +5593,21 @@ function _appendModelRow(m, panel) {
   const isSelected = m.key === state.selectedModelKey;
   btn.className = `model-picker-item${isSelected ? " active" : ""}${!m.available ? " unavailable" : ""}`;
 
-  /* Right-side indicator */
-  let rightHtml;
+  /* Credit cost badge (right side) */
+  let creditHtml;
   if (!m.available) {
-    rightHtml = `<span class="model-item-nokey">No key</span>`;
-  } else if (m.tier === "free") {
-    rightHtml = isSelected
-      ? `<svg class="model-item-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`
-      : `<span class="model-item-free">Free</span>`;
+    creditHtml = `<span class="model-item-nokey">No key</span>`;
   } else {
-    rightHtml = `<svg class="model-item-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+    const credits = m.credits ?? (m.tier === "free" ? 0 : 5);
+    const label = credits === 0 ? "Free" : `${credits}x`;
+    const cls = credits === 0 ? "model-credit-badge free" : credits <= 2 ? "model-credit-badge low" : credits <= 5 ? "model-credit-badge mid" : "model-credit-badge high";
+    const checkHtml = isSelected ? `<svg class="model-item-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>` : "";
+    creditHtml = `${checkHtml}<span class="${cls}">${label}</span>`;
   }
 
   btn.innerHTML = `
-    <div class="model-item-info">
-      <div class="model-item-name">${m.display_name}</div>
-      <div class="model-item-desc">${m.description}</div>
-    </div>
-    ${rightHtml}`;
+    <div class="model-item-name">${m.display_name}</div>
+    <div class="model-item-right">${creditHtml}</div>`;
 
   if (m.available) btn.addEventListener("click", () => selectModel(m.key));
   panel.appendChild(btn);
