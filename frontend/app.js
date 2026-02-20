@@ -2900,7 +2900,7 @@ function initChartTypeGrid(selectedType = "bar") {
   if (hidden) hidden.value = selectedType;
 }
 
-function openAddVisualPanel(visual = null) {
+function openAddVisualPanel(visual = null, triggerEl = null) {
   if (!state.currentDataset || !state.datasetDetail) {
     showToast("Upload data before adding a custom visual");
     return;
@@ -2908,11 +2908,43 @@ function openAddVisualPanel(visual = null) {
   state.editingVisualId = visual?.visual_id || null;
   prepareVisualForm(visual);
   initChartTypeGrid(visual?.type || "bar");
-  elements.addVisualModal?.classList.remove("hidden");
+  const panel = elements.addVisualModal;
+  if (!panel) return;
+
+  /* Update header label with visual title */
+  const titleLabel = panel.querySelector(".widget-config-title span, .widget-config-title-text");
+  if (titleLabel) titleLabel.textContent = visual?.title || "New Widget";
+
+  panel.classList.remove("hidden");
+
+  /* Position near the triggering widget */
+  if (triggerEl) {
+    const rect = triggerEl.getBoundingClientRect();
+    const W = 340;
+    const H = Math.min(panel.scrollHeight || 520, window.innerHeight - 32);
+    let left = rect.right + 14;
+    let top  = rect.top;
+    if (left + W > window.innerWidth - 12) left = rect.left - W - 14;
+    if (top + H  > window.innerHeight - 12) top  = window.innerHeight - H - 12;
+    if (top  < 12) top  = 12;
+    if (left < 12) left = 12;
+    panel.style.setProperty("--pop-left", left + "px");
+    panel.style.setProperty("--pop-top",  top  + "px");
+    panel.classList.add("widget-popover-positioned");
+  } else {
+    panel.classList.remove("widget-popover-positioned");
+    panel.style.removeProperty("--pop-left");
+    panel.style.removeProperty("--pop-top");
+  }
 }
 
 function closeAddVisualPanel() {
-  elements.addVisualModal?.classList.add("hidden");
+  const panel = elements.addVisualModal;
+  if (!panel) return;
+  panel.classList.add("hidden");
+  panel.classList.remove("widget-popover-positioned");
+  panel.style.removeProperty("--pop-left");
+  panel.style.removeProperty("--pop-top");
   state.editingVisualId = null;
 }
 
@@ -4029,7 +4061,7 @@ function renderDashboard() {
     });
     widget.querySelector(".edit-tile")?.addEventListener("click", (event) => {
       event.stopPropagation();
-      openAddVisualPanel(visual);
+      openAddVisualPanel(visual, widget);
     });
     widget.querySelector(".remove-tile")?.addEventListener("click", (event) => {
       event.stopPropagation();
