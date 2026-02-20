@@ -597,9 +597,9 @@ function initDropZone() {
 }
 
 function handleFilesSelected(files) {
-  state.pendingFiles = files;
-  showFileChips(files);
-  if (elements.homeSendBtn) elements.homeSendBtn.disabled = files.length === 0;
+  state.pendingFiles = [...state.pendingFiles, ...files];
+  showFileChips(state.pendingFiles);
+  if (elements.homeSendBtn) elements.homeSendBtn.disabled = state.pendingFiles.length === 0;
 }
 
 const FILE_DOC_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
@@ -852,47 +852,27 @@ async function renderInsightsStrip() {
         `;
         
         /* Story Sections */
+        const MAX_INSIGHTS = 8;
         const sectionsGrid = document.createElement("div");
         sectionsGrid.className = "narrative-sections-grid";
-        resp.insights.forEach((insight, index) => {
+        resp.insights.slice(0, MAX_INSIGHTS).forEach((insight, index) => {
           const category = insight.category || "overview";
           const icon = STORY_CATEGORY_ICONS[category] || STORY_CATEGORY_ICONS.overview;
           const sectionTitle = insight.section_title || category.charAt(0).toUpperCase() + category.slice(1);
-          const visualSpec = insight.visual || {};
-          const visualData = insight.visual_data;
-          
           const section = document.createElement("div");
           section.className = "story-section";
           section.dataset.section = index + 1;
           section.dataset.category = category;
-          
-          const chartId = `story-chart-${index}`;
           section.innerHTML = `
             <div class="story-section-header">
               <div class="story-section-icon">${icon}</div>
-              <div class="story-section-title">${sectionTitle}</div>
+              <div class="story-section-badge">${category.toUpperCase()}</div>
             </div>
+            <div class="story-section-headline">${sectionTitle}</div>
             <div class="story-insight-text">${insight.text || ""}</div>
-            ${visualData ? `
-              <div class="story-visual">
-                <div class="story-visual-title">${visualSpec.title || "Supporting Data"}</div>
-                <div class="story-chart chart" id="${chartId}"></div>
-              </div>
-            ` : ""}
           `;
           sectionsGrid.appendChild(section);
-          
-          /* Render the chart after adding to DOM */
-          if (visualData) {
-            requestAnimationFrame(() => {
-              const chartEl = document.getElementById(chartId);
-              if (chartEl) {
-                renderStoryChart(chartEl, visualSpec, visualData);
-              }
-            });
-          }
         });
-        
         container.appendChild(sectionsGrid);
         elements.insightsStrip.appendChild(container);
         return;
@@ -909,10 +889,11 @@ async function renderInsightsStrip() {
           container.innerHTML = `<div class="narrative-header"><h2 class="narrative-title">Key Insights</h2></div>`;
           const fallbackGrid = document.createElement("div");
           fallbackGrid.className = "narrative-sections-grid";
-          fallback.insights.slice(0, 6).forEach((item, i) => {
+          fallback.insights.slice(0, 8).forEach((item, i) => {
             const text = typeof item === "string" ? item : (item.text || "");
             const category = item.category || "overview";
             const icon = STORY_CATEGORY_ICONS[category] || STORY_CATEGORY_ICONS.overview;
+            const headline = item.section_title || category.charAt(0).toUpperCase() + category.slice(1);
             const section = document.createElement("div");
             section.className = "story-section";
             section.dataset.section = i + 1;
@@ -920,8 +901,9 @@ async function renderInsightsStrip() {
             section.innerHTML = `
               <div class="story-section-header">
                 <div class="story-section-icon">${icon}</div>
-                <div class="story-section-title">${category}</div>
+                <div class="story-section-badge">${category.toUpperCase()}</div>
               </div>
+              <div class="story-section-headline">${headline}</div>
               <div class="story-insight-text">${text}</div>
             `;
             fallbackGrid.appendChild(section);
@@ -2553,27 +2535,27 @@ function getDefaultTileLayout(visual) {
   const columns = visual.config?.columns?.length || 0;
 
   if (visual.type === "kpi") {
-    return { w: 3, h: 2 };
+    return { w: 2, h: 2 };
   }
 
   if (visual.type === "table") {
-    if (isSummaryTable) return { w: 6, h: 4 };
-    if (columns >= 6)   return { w: 12, h: 4 };
-    return { w: 6, h: 4 };
+    if (isSummaryTable) return { w: 5, h: 4 };
+    if (columns >= 6)   return { w: 12, h: 5 };
+    return { w: 7, h: 5 };
   }
 
-  if (visual.type === "line")      return { w: 8, h: 4 };
-  if (visual.type === "scatter")   return { w: 5, h: 4 };
+  if (visual.type === "line")      return { w: 7, h: 4 };
+  if (visual.type === "scatter")   return { w: 4, h: 4 };
   if (visual.type === "map")       return { w: 8, h: 5 };
 
   if (visual.type === "bar") {
-    if (dataCount > 10) return { w: 8, h: 5 };
-    if (dataCount > 5)  return { w: 6, h: 4 };
-    return { w: 4, h: 4 };
+    if (dataCount > 10) return { w: 5, h: 5 };
+    if (dataCount > 5)  return { w: 5, h: 4 };
+    return { w: 4, h: 3 };
   }
 
-  if (visual.type === "pie")       return { w: 4, h: 4 };
-  if (visual.type === "histogram") return { w: 5, h: 4 };
+  if (visual.type === "pie")       return { w: 3, h: 4 };
+  if (visual.type === "histogram") return { w: 4, h: 3 };
 
   return { w: 4, h: 4 };
 }
@@ -2589,85 +2571,65 @@ function pickPrimaryVisual(visuals = []) {
 
 function seedDashboardLayout(visuals = []) {
   const layoutMap = new Map();
-  const totalColumns = 12;
-  const kpis = visuals.filter((visual) => visual.type === "kpi");
-  const summaryTables = visuals.filter(
-    (visual) => visual.type === "table" && visual.config?.table_type === "summary"
-  );
-  const topTiles = [...kpis, ...summaryTables];
-  let yOffset = 0;
+  const cols = 12;
 
-  /* KPIs row — evenly distributed */
-  if (topTiles.length) {
-    const perRow = Math.min(4, topTiles.length);
-    const w = Math.floor(totalColumns / perRow);
-    topTiles.forEach((visual, index) => {
-      const row = Math.floor(index / perRow);
-      const col = index % perRow;
-      const tileHeight = getDefaultTileLayout(visual).h;
-      layoutMap.set(visual.visual_id, {
-        x: col * w,
-        y: yOffset + row * (tileHeight + 0),
-        w,
-        h: tileHeight,
-      });
-      if (col === perRow - 1 || index === topTiles.length - 1) {
-        yOffset = Math.max(yOffset, yOffset + (row + 1) * tileHeight);
-      }
-    });
-    yOffset = Math.ceil(topTiles.length / perRow) * (getDefaultTileLayout(topTiles[0]).h);
+  /* Strip unique-category KPIs before layout */
+  const kpis    = visuals.filter((v) => v.type === "kpi" && !/unique/i.test(v.title || ""));
+  const bars     = visuals.filter((v) => v.type === "bar");
+  const pies     = visuals.filter((v) => v.type === "pie");
+  const scatters = visuals.filter((v) => v.type === "scatter");
+  const lines    = visuals.filter((v) => v.type === "line");
+  const tables   = visuals.filter((v) => v.type === "table");
+  const hists    = visuals.filter((v) => v.type === "histogram");
+  let y = 0;
+
+  /* --- Row 0: KPIs (w:2, h:2) at top-left; small charts to their right (h:4) --- */
+  const kpiW = 2;
+  const kpiH = 2;
+  const kpiCount = Math.min(kpis.length, 6);
+  kpis.slice(0, kpiCount).forEach((v, i) => {
+    layoutMap.set(v.visual_id, { x: i * kpiW, y: 0, w: kpiW, h: kpiH });
+  });
+  const kpiRowW = kpiCount * kpiW;
+
+  /* Small charts beside KPIs — scatter, pie, histogram, then lines */
+  const smallCandidates = [...scatters, ...pies, ...hists, ...lines.slice(0, 1)];
+  const remainingCols = cols - kpiRowW;
+  const smallCount = Math.min(smallCandidates.length, Math.floor(remainingCols / 3));
+  const smallW = smallCount > 0 ? Math.floor(remainingCols / smallCount) : 0;
+  smallCandidates.slice(0, smallCount).forEach((v, i) => {
+    layoutMap.set(v.visual_id, { x: kpiRowW + i * smallW, y: 0, w: smallW, h: 4 });
+  });
+  y = smallCount > 0 ? 4 : kpiH;
+
+  /* --- Row 1: Large horizontal bar (left) + data table (right) --- */
+  const heroBar   = bars.find((v) => !layoutMap.has(v.visual_id) && (v.data?.length || 0) > 5)
+                 || bars.find((v) => !layoutMap.has(v.visual_id));
+  const mainTable = tables.find((v) => !layoutMap.has(v.visual_id));
+
+  if (heroBar && mainTable) {
+    layoutMap.set(heroBar.visual_id,   { x: 0,  y, w: 5, h: 5 });
+    layoutMap.set(mainTable.visual_id, { x: 5,  y, w: 7, h: 5 });
+    y += 5;
+  } else if (heroBar) {
+    layoutMap.set(heroBar.visual_id, { x: 0, y, w: cols, h: 5 });
+    y += 5;
+  } else if (mainTable) {
+    layoutMap.set(mainTable.visual_id, { x: 0, y, w: cols, h: 5 });
+    y += 5;
   }
 
-  const charts = visuals.filter((visual) => !layoutMap.has(visual.visual_id));
-  if (!charts.length) return layoutMap;
-
-  /* Hero chart: first data-rich chart gets large left placement */
-  const heroIndex = charts.findIndex((v) =>
-    ["bar", "line", "scatter", "histogram"].includes(v.type)
-  );
-
-  if (heroIndex >= 0) {
-    const hero = charts[heroIndex];
-    const heroH = hero.type === "line" ? 4 : 5;
-    layoutMap.set(hero.visual_id, { x: 0, y: yOffset, w: 8, h: heroH });
-
-    /* Stack up to 2 charts to the right of the hero */
-    let rightY = yOffset;
-    const sideCharts = charts.filter((_, i) => i !== heroIndex).slice(0, 2);
-    sideCharts.forEach((v) => {
-      const d = getDefaultTileLayout(v);
-      const sideH = Math.min(d.h, heroH - (rightY - yOffset) > 0 ? heroH - (rightY - yOffset) : d.h);
-      layoutMap.set(v.visual_id, { x: 8, y: rightY, w: 4, h: sideH });
-      rightY += sideH;
-    });
-
-    /* Remaining charts flow in rows below */
-    const remaining = charts.filter((_, i) => i !== heroIndex).slice(2);
-    yOffset += heroH;
-    let x = 0;
-    let rowHeight = 0;
-    remaining.forEach((v) => {
-      const d = getDefaultTileLayout(v);
-      const w = d.w;
-      if (x + w > totalColumns) { yOffset += rowHeight; x = 0; rowHeight = 0; }
-      layoutMap.set(v.visual_id, { x, y: yOffset, w, h: d.h });
-      x += w;
-      rowHeight = Math.max(rowHeight, d.h);
-    });
-  } else {
-    /* No hero candidate — use auto-flow with proper sizes */
-    let x = 0;
-    let rowHeight = 0;
-    charts.forEach((visual) => {
-      const defaults = getDefaultTileLayout(visual);
-      const w = defaults.w;
-      const h = defaults.h;
-      if (x + w > totalColumns) { yOffset += rowHeight; x = 0; rowHeight = 0; }
-      layoutMap.set(visual.visual_id, { x, y: yOffset, w, h });
-      x += w;
-      rowHeight = Math.max(rowHeight, h);
-    });
-  }
+  /* --- Remaining charts flow in rows --- */
+  const remaining = visuals.filter((v) => !layoutMap.has(v.visual_id));
+  let x = 0;
+  let rowH = 0;
+  remaining.forEach((v) => {
+    const d = getDefaultTileLayout(v);
+    if (x + d.w > cols) { y += rowH; x = 0; rowH = 0; }
+    layoutMap.set(v.visual_id, { x, y, w: d.w, h: d.h });
+    x += d.w;
+    rowH = Math.max(rowH, d.h);
+  });
 
   return layoutMap;
 }
@@ -2977,6 +2939,31 @@ function mergeVisualLayouts(nextVisuals, previousVisuals = []) {
       config: { ...(visual.config || {}), layout },
     };
   });
+}
+
+function maybePromptSaveLogin() {
+  if (state.token) return;
+  if (state.authPrompted) return;
+  state.authPrompted = true;
+  /* Show non-intrusive save banner */
+  const existing = document.getElementById("save-login-banner");
+  if (existing) return;
+  const banner = document.createElement("div");
+  banner.id = "save-login-banner";
+  banner.className = "save-login-banner";
+  banner.innerHTML = `
+    <div class="save-login-banner-text">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Sign in to save your dashboard
+    </div>
+    <div class="save-login-banner-actions">
+      <button class="btn btn-sm btn-primary" id="save-banner-login">Sign in</button>
+      <button class="btn btn-sm btn-ghost" id="save-banner-dismiss">Maybe later</button>
+    </div>`;
+  document.getElementById("dashboard-section")?.appendChild(banner);
+  document.getElementById("save-banner-login")?.addEventListener("click", () => { banner.remove(); openAuthModal(); });
+  document.getElementById("save-banner-dismiss")?.addEventListener("click", () => banner.remove());
+  setTimeout(() => banner?.remove(), 12000);
 }
 
 function updateLayoutFromGrid() {
@@ -3939,12 +3926,12 @@ function renderDashboard() {
   }
   state.grid = GridStack.init({
     float: false,
-    cellHeight: 90,
-    margin: "18px 10px",
+    cellHeight: 75,
+    margin: "10px 8px",
     handle: ".tile-header",
     animate: true,
     column: 12,
-    resizable: { handles: "e,s,se" },
+    resizable: { handles: "e,s,se,sw,w,n,nw,ne" },
     draggable: { scroll: true },
     minRow: 1,
   });
@@ -3955,22 +3942,23 @@ function renderDashboard() {
       setTimeout(() => Plotly.Plots.resize(chart), 200);
     }
     updateLayoutFromGrid();
+    maybePromptSaveLogin();
   });
-  state.grid.on("dragstop", () => { updateLayoutFromGrid(); scheduleAutoSave(); });
+  state.grid.on("dragstop", () => { updateLayoutFromGrid(); scheduleAutoSave(); maybePromptSaveLogin(); });
   state.grid.on("change", () => { updateLayoutFromGrid(); scheduleAutoSave(); });
   state.grid.batchUpdate();
 
   /* KPIs go into the grid; insights are in the Key Insights tab now */
   if (elements.kpiStrip) elements.kpiStrip.innerHTML = "";
 
-  /* Render KPIs first, then charts */
-  const kpiVisuals = state.finalVisuals.filter((v) => v.type === "kpi");
+  /* Render KPIs first, then charts; filter out "unique categories" KPIs */
+  const kpiVisuals = state.finalVisuals.filter((v) => v.type === "kpi" && !/unique/i.test(v.title || ""));
   const chartVisuals = state.finalVisuals.filter((v) => v.type !== "kpi");
   const gridVisuals = [...kpiVisuals, ...chartVisuals];
 
   gridVisuals.forEach((visual, index) => {
     const isKpi = visual.type === "kpi";
-    const defaults = isKpi ? { w: 3, h: 2 } : getDefaultTileLayout(visual);
+    const defaults = isKpi ? { w: 2, h: 2 } : getDefaultTileLayout(visual);
     const layout = visual.config?.layout;
     const width = typeof layout?.w === "number" ? layout.w : defaults.w;
     const height = typeof layout?.h === "number" ? layout.h : defaults.h;
@@ -4982,9 +4970,9 @@ function bindEvents() {
     document.getElementById("chat-reopen-btn")?.classList.add("active");
   });
   document.getElementById("chat-reopen-btn")?.addEventListener("click", () => {
-    elements.projectsSection?.classList.remove("chat-collapsed");
-    document.getElementById("chat-reopen-btn")?.classList.remove("active");
-    /* Resize charts since column widths changed */
+    const isCollapsed = elements.projectsSection?.classList.contains("chat-collapsed");
+    elements.projectsSection?.classList.toggle("chat-collapsed", !isCollapsed);
+    document.getElementById("chat-reopen-btn")?.classList.toggle("active", !isCollapsed);
     setTimeout(() => elements.dashboardGrid?.querySelectorAll(".chart").forEach((c) => Plotly.Plots.resize(c)), 400);
   });
   /* Legacy right dash-chat panel (kept for compat, hidden in new flow) */

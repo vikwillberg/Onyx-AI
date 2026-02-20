@@ -507,26 +507,19 @@ select[multiple] { min-height: 110px; }
 .grid-stack-placeholder > .placeholder-content { border: 2px dashed var(--accent) !important; border-radius: var(--radius) !important; background: var(--accent-soft) !important; opacity: 0.5; }
 .grid-stack > .grid-stack-item { transition: none; }
 .grid-stack > .grid-stack-item.ui-draggable-dragging { z-index: 10; opacity: 0.88; box-shadow: 0 12px 28px rgba(0,0,0,0.15); }
-.grid-stack > .grid-stack-item > .ui-resizable-handle { opacity: 0; transition: opacity 0.2s ease; }
+.grid-stack > .grid-stack-item > .ui-resizable-handle { opacity: 0; transition: opacity 0.15s ease; }
 .grid-stack > .grid-stack-item:hover > .ui-resizable-handle { opacity: 1; }
-.grid-stack > .grid-stack-item > .ui-resizable-se {
-  width: 24px; height: 24px; right: 2px; bottom: 2px;
-  background: none; cursor: se-resize;
-}
-.grid-stack > .grid-stack-item > .ui-resizable-se::after {
-  content: '';
-  position: absolute; right: 4px; bottom: 4px;
-  width: 12px; height: 12px;
-  background-image: radial-gradient(circle, var(--muted-light) 1.4px, transparent 1.4px);
-  background-size: 5px 5px;
-  background-position: right bottom;
-}
-.grid-stack > .grid-stack-item > .ui-resizable-e {
-  width: 10px; right: -5px; cursor: e-resize;
-}
-.grid-stack > .grid-stack-item > .ui-resizable-s {
-  height: 10px; bottom: -5px; cursor: s-resize;
-}
+/* No dot on SE corner */
+.grid-stack > .grid-stack-item > .ui-resizable-se { width: 14px; height: 14px; right: 0; bottom: 0; cursor: se-resize; }
+.grid-stack > .grid-stack-item > .ui-resizable-se::after { display: none; }
+/* Edge handles — wide enough to grab easily */
+.grid-stack > .grid-stack-item > .ui-resizable-e  { width: 8px;  right: -4px;   cursor: e-resize;  }
+.grid-stack > .grid-stack-item > .ui-resizable-w  { width: 8px;  left: -4px;    cursor: w-resize;  }
+.grid-stack > .grid-stack-item > .ui-resizable-s  { height: 8px; bottom: -4px;  cursor: s-resize;  }
+.grid-stack > .grid-stack-item > .ui-resizable-n  { height: 8px; top: -4px;     cursor: n-resize;  }
+.grid-stack > .grid-stack-item > .ui-resizable-sw { width: 14px; height: 14px; left: 0;   bottom: 0; cursor: sw-resize; }
+.grid-stack > .grid-stack-item > .ui-resizable-nw { width: 14px; height: 14px; left: 0;   top: 0;    cursor: nw-resize; }
+.grid-stack > .grid-stack-item > .ui-resizable-ne { width: 14px; height: 14px; right: 0;  top: 0;    cursor: ne-resize; }
 
 .grid-stack-item-content {
   background: var(--surface); border-radius: 14px; border: 1px solid var(--tile-outline);
@@ -2669,53 +2662,75 @@ body[data-theme="light"] .sidebar-icon-moon { display: none !important; }
   color: var(--ink); font-family: inherit; outline: none;
 }
 
-/* ===== STEP 12: KEY INSIGHTS GRID REDESIGN ===== */
+/* ===== KEY INSIGHTS GRID REDESIGN ===== */
 .narrative-container { max-width: none; padding: 0; margin: 0; }
 .narrative-header {
-  text-align: left; margin-bottom: 14px; padding: 0 0 12px;
+  text-align: left; margin-bottom: 20px; padding: 0 0 14px;
   border-bottom: 1px solid var(--outline);
 }
-.narrative-title { font-size: 1.05rem; text-align: left; }
-.narrative-intro { text-align: left; font-size: 0.84rem; color: var(--muted); }
+.narrative-title { font-size: 1.4rem; font-weight: 800; text-align: left; letter-spacing: -0.02em; }
+.narrative-intro { text-align: left; font-size: 0.9rem; color: var(--muted); margin-top: 4px; }
 .narrative-sections-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
 }
-/* Compact card — no numbered badge, no connector line */
 .story-section {
-  padding: 12px 14px;
+  padding: 18px 20px;
   margin-bottom: 0;
-  border-radius: 10px;
-  border-left: 3px solid var(--section-color, var(--accent));
+  border-radius: 12px;
+  border-left: 4px solid var(--section-color, var(--accent));
+  background: var(--surface);
+  border-top: 1px solid var(--outline);
+  border-right: 1px solid var(--outline);
+  border-bottom: 1px solid var(--outline);
 }
 .story-section::before { display: none; }
 .story-section:not(:last-child)::after { display: none; }
-.story-section-header { padding-left: 0; gap: 8px; margin-bottom: 6px; }
-.story-section-icon { width: 22px; height: 22px; border-radius: 5px; }
-.story-section-icon svg { width: 11px; height: 11px; }
-.story-section-title { font-size: 0.62rem; letter-spacing: 0.1em; }
-.story-insight-text { font-size: 0.85rem; line-height: 1.5; padding: 0; }
-.story-chart { height: 120px; }
-@media (max-width: 700px) { .narrative-sections-grid { grid-template-columns: 1fr; } }
+.story-section-header { display: flex; align-items: center; gap: 8px; padding-left: 0; margin-bottom: 10px; }
+.story-section-icon { width: 28px; height: 28px; border-radius: 7px; flex-shrink: 0; }
+.story-section-icon svg { width: 14px; height: 14px; }
+.story-section-badge { font-size: 0.65rem; letter-spacing: 0.1em; font-weight: 700; color: var(--muted); text-transform: uppercase; }
+.story-section-headline { font-size: 1rem; font-weight: 700; color: var(--ink); margin-bottom: 8px; line-height: 1.3; letter-spacing: -0.01em; }
+.story-insight-text { font-size: 0.88rem; line-height: 1.6; color: var(--ink-secondary); padding: 0; }
+@media (max-width: 900px) { .narrative-sections-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .narrative-sections-grid { grid-template-columns: 1fr; } }
 
 /* ===== FLOATING AI BUTTON ===== */
 .ai-float-btn {
-  display: none; /* hidden by default */
+  display: none;
   position: absolute; right: 12px; top: 12px; z-index: 20;
   align-items: center; gap: 5px;
   padding: 6px 12px; border-radius: 999px;
   background: var(--accent); color: #fff;
   border: none; cursor: pointer; font-size: 0.78rem; font-weight: 700;
-  font-family: inherit; box-shadow: 0 2px 8px rgba(13,184,164,0.35);
+  font-family: inherit; box-shadow: 0 2px 8px rgba(249,115,22,0.35);
   transition: opacity 0.15s, transform 0.15s;
 }
 .ai-float-btn:hover { opacity: 0.88; transform: scale(1.04); }
-/* Show the button only when the chat sidebar IS collapsed */
-.app-main.dashboard-active .home-section.chat-collapsed ~ #dashboard-section .ai-float-btn,
-.app-main.dashboard-active:has(.home-section.chat-collapsed) .ai-float-btn {
-  display: flex;
+/* Always visible in dashboard mode */
+.app-main.dashboard-active .ai-float-btn { display: flex; }
+
+/* ===== SAVE LOGIN BANNER ===== */
+.save-login-banner {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  z-index: 300; display: flex; align-items: center; gap: 16px;
+  background: var(--surface); border: 1px solid var(--outline);
+  border-left: 4px solid var(--accent);
+  border-radius: 12px; padding: 14px 20px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  animation: bannerSlideUp 0.3s ease;
 }
+@keyframes bannerSlideUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+.save-login-banner-text {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.9rem; font-weight: 600; color: var(--ink);
+}
+.save-login-banner-text svg { color: var(--accent); flex-shrink: 0; }
+.save-login-banner-actions { display: flex; gap: 8px; }
 
 /* ===== STEP 2: DASHBOARD HEADER NEW ELEMENTS ===== */
 .dash-main-title {
