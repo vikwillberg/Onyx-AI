@@ -1653,11 +1653,6 @@ async function sendAiChat() {
       }
       state.aiChatDone = true;
       await autoBuildDashboard();
-    } else if (!state.aiChatDone) {
-      const userMsgCount = state.aiChatHistory.filter((m) => m.role === "user").length;
-      if (userMsgCount <= 2) {
-        showSuggestionChips(buildDataAwareSuggestions(false));
-      }
     }
   } catch (err) {
     typingBubble?.remove();
@@ -2224,7 +2219,6 @@ function initAiChatRefine() {
       appendChatBubble("assistant", reply);
       state.aiChatHistory.push({ role: "user", content: refineMsg });
       state.aiChatHistory.push({ role: "assistant", content: reply });
-      showSuggestionChips(["Add more variety to the charts", "I want deeper trend analysis", "Show me segment comparisons"]);
     } catch (err) {
       typingBubble?.remove();
       appendChatBubble("assistant", "How is the dashboard working for you? What other insights would be helpful?");
@@ -3927,8 +3921,8 @@ function renderDashboard() {
   state.grid = GridStack.init({
     float: false,
     cellHeight: 75,
-    margin: "10px 8px",
-    handle: ".tile-header",
+    margin: "6px",
+    handle: ".grid-stack-item-content",
     animate: true,
     column: 12,
     resizable: { handles: "e,s,se,sw,w,n,nw,ne" },
@@ -3996,7 +3990,7 @@ function renderDashboard() {
               <span class="tile-type">${visual.type}</span>
             </div>
           </div>
-          <div class="tile-body" id="dash-${visual.visual_id}"></div>
+          <div class="tile-body" id="dash-${visual.visual_id}" class="gs-no-drag"></div>
         </div>
         <!-- Focus overlay (Feature 2) -->
         <div class="tile-focus-overlay">
