@@ -2660,35 +2660,14 @@ function populateSelect(select, options, placeholder) {
   });
 }
 
+const TILE_W = 6;
+const TILE_H = 4;
+const KPI_W  = 2;
+const KPI_H  = 2;
+
 function getDefaultTileLayout(visual) {
-  const dataCount = visual.data?.length || 0;
-  const isSummaryTable = visual.type === "table" && visual.config?.table_type === "summary";
-  const columns = visual.config?.columns?.length || 0;
-
-  if (visual.type === "kpi") {
-    return { w: 2, h: 2 };
-  }
-
-  if (visual.type === "table") {
-    if (isSummaryTable) return { w: 5, h: 4 };
-    if (columns >= 6)   return { w: 12, h: 5 };
-    return { w: 7, h: 5 };
-  }
-
-  if (visual.type === "line")      return { w: 7, h: 4 };
-  if (visual.type === "scatter")   return { w: 4, h: 4 };
-  if (visual.type === "map")       return { w: 8, h: 5 };
-
-  if (visual.type === "bar") {
-    if (dataCount > 10) return { w: 5, h: 5 };
-    if (dataCount > 5)  return { w: 5, h: 4 };
-    return { w: 4, h: 3 };
-  }
-
-  if (visual.type === "pie")       return { w: 3, h: 4 };
-  if (visual.type === "histogram") return { w: 4, h: 3 };
-
-  return { w: 4, h: 4 };
+  if (visual.type === "kpi") return { w: KPI_W, h: KPI_H };
+  return { w: TILE_W, h: TILE_H };
 }
 
 function pickPrimaryVisual(visuals = []) {
@@ -2704,62 +2683,21 @@ function seedDashboardLayout(visuals = []) {
   const layoutMap = new Map();
   const cols = 12;
 
-  /* Strip unique-category KPIs before layout */
-  const kpis    = visuals.filter((v) => v.type === "kpi" && !/unique/i.test(v.title || ""));
-  const bars     = visuals.filter((v) => v.type === "bar");
-  const pies     = visuals.filter((v) => v.type === "pie");
-  const scatters = visuals.filter((v) => v.type === "scatter");
-  const lines    = visuals.filter((v) => v.type === "line");
-  const tables   = visuals.filter((v) => v.type === "table");
-  const hists    = visuals.filter((v) => v.type === "histogram");
-  let y = 0;
+  const kpis  = visuals.filter((v) => v.type === "kpi" && !/unique/i.test(v.title || ""));
+  const charts = visuals.filter((v) => v.type !== "kpi");
 
-  /* --- Row 0: KPIs (w:2, h:2) at top-left; small charts to their right (h:4) --- */
-  const kpiW = 2;
-  const kpiH = 2;
-  const kpiCount = Math.min(kpis.length, 6);
-  kpis.slice(0, kpiCount).forEach((v, i) => {
-    layoutMap.set(v.visual_id, { x: i * kpiW, y: 0, w: kpiW, h: kpiH });
+  /* Row 0: KPI strip — each KPI is KPI_W wide, KPI_H tall */
+  kpis.slice(0, 6).forEach((v, i) => {
+    layoutMap.set(v.visual_id, { x: i * KPI_W, y: 0, w: KPI_W, h: KPI_H });
   });
-  const kpiRowW = kpiCount * kpiW;
+  let y = kpis.length > 0 ? KPI_H : 0;
 
-  /* Small charts beside KPIs — scatter, pie, histogram, then lines */
-  const smallCandidates = [...scatters, ...pies, ...hists, ...lines.slice(0, 1)];
-  const remainingCols = cols - kpiRowW;
-  const smallCount = Math.min(smallCandidates.length, Math.floor(remainingCols / 3));
-  const smallW = smallCount > 0 ? Math.floor(remainingCols / smallCount) : 0;
-  smallCandidates.slice(0, smallCount).forEach((v, i) => {
-    layoutMap.set(v.visual_id, { x: kpiRowW + i * smallW, y: 0, w: smallW, h: 4 });
-  });
-  y = smallCount > 0 ? 4 : kpiH;
-
-  /* --- Row 1: Large horizontal bar (left) + data table (right) --- */
-  const heroBar   = bars.find((v) => !layoutMap.has(v.visual_id) && (v.data?.length || 0) > 5)
-                 || bars.find((v) => !layoutMap.has(v.visual_id));
-  const mainTable = tables.find((v) => !layoutMap.has(v.visual_id));
-
-  if (heroBar && mainTable) {
-    layoutMap.set(heroBar.visual_id,   { x: 0,  y, w: 5, h: 5 });
-    layoutMap.set(mainTable.visual_id, { x: 5,  y, w: 7, h: 5 });
-    y += 5;
-  } else if (heroBar) {
-    layoutMap.set(heroBar.visual_id, { x: 0, y, w: cols, h: 5 });
-    y += 5;
-  } else if (mainTable) {
-    layoutMap.set(mainTable.visual_id, { x: 0, y, w: cols, h: 5 });
-    y += 5;
-  }
-
-  /* --- Remaining charts flow in rows --- */
-  const remaining = visuals.filter((v) => !layoutMap.has(v.visual_id));
+  /* Remaining rows: all charts uniform TILE_W × TILE_H, 2 per row */
   let x = 0;
-  let rowH = 0;
-  remaining.forEach((v) => {
-    const d = getDefaultTileLayout(v);
-    if (x + d.w > cols) { y += rowH; x = 0; rowH = 0; }
-    layoutMap.set(v.visual_id, { x, y, w: d.w, h: d.h });
-    x += d.w;
-    rowH = Math.max(rowH, d.h);
+  charts.forEach((v) => {
+    if (x + TILE_W > cols) { y += TILE_H; x = 0; }
+    layoutMap.set(v.visual_id, { x, y, w: TILE_W, h: TILE_H });
+    x += TILE_W;
   });
 
   return layoutMap;

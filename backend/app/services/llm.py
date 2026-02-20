@@ -20,10 +20,10 @@ GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 MODEL_REGISTRY: dict[str, dict] = {
     # ── Anthropic / Claude ────────────────────────────────────────────────────
     "claude-sonnet-4-6": {
-        "model_id":     "claude-3-5-sonnet-20241022",
+        "model_id":     "claude-sonnet-4-6",
         "provider":     "claude",
         "company":      "Anthropic",
-        "display_name": "Claude Sonnet 3.5",
+        "display_name": "Claude Sonnet 4.6",
         "description":  "Smart, efficient model for everyday use",
         "input_price":  3.00,
         "output_price": 15.00,
@@ -32,10 +32,10 @@ MODEL_REGISTRY: dict[str, dict] = {
         "badge": "latest",
     },
     "claude-opus-4-6": {
-        "model_id":     "claude-3-opus-20240229",
+        "model_id":     "claude-opus-4-6",
         "provider":     "claude",
         "company":      "Anthropic",
-        "display_name": "Claude Opus 3",
+        "display_name": "Claude Opus 4.6",
         "description":  "Most powerful model for complex challenges",
         "input_price":  15.00,
         "output_price": 75.00,
