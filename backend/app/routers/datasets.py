@@ -448,6 +448,13 @@ def ai_chat(
         )
     except BillingError as e:
         return AiChatResponse(reply=str(e), done=False, insights=None, model_name=None)
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).error("ai_chat error: %s", exc, exc_info=True)
+        return AiChatResponse(
+            reply="I ran into an error processing your request. Please try again or choose a different model.",
+            done=False, insights=None, model_name=None,
+        )
 
     # If the AI is done, store context on the project
     if done:

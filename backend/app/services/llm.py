@@ -52,17 +52,6 @@ MODEL_REGISTRY: dict[str, dict] = {
         "tier": "paid",
         "badge": "latest",
     },
-    "claude-opus-4-5": {
-        "model_id":     "claude-opus-4-5-20251101",
-        "provider":     "claude",
-        "company":      "Anthropic",
-        "display_name": "Claude Opus 4.5",
-        "description":  "Previous-generation flagship model",
-        "input_price":  15.00,
-        "output_price": 75.00,
-        "tier": "paid",
-        "badge": "",
-    },
     # ── Google / Gemini ───────────────────────────────────────────────────────
     "gemini-2-5-pro": {
         "model_id":     "gemini-2.5-pro",
@@ -178,7 +167,7 @@ MODEL_REGISTRY: dict[str, dict] = {
     },
 }
 
-_DEFAULT_MODEL_KEY = "llama-groq"  # fallback when no key specified
+_DEFAULT_MODEL_KEY = "claude-haiku-4-5"  # fallback when no key specified
 
 
 class _LLMProvider:

@@ -61,7 +61,7 @@ const state = {
   aiChatHistory: [],
   aiChatDone: false,
   aiChatBusy: false,
-  selectedModelKey: localStorage.getItem("onyx_model") || "llama-groq",
+  selectedModelKey: localStorage.getItem("onyx_model") || "claude-haiku-4-5",
   availableModels: [],
   focusedVisualId: null,
 };
@@ -5350,15 +5350,18 @@ async function loadModels() {
   try {
     const models = await apiFetch("/models/");
     state.availableModels = models;
-    /* If saved model key is not in the list, pick best available default */
     const available = models.filter((m) => m.available);
-    if (!available.find((m) => m.key === state.selectedModelKey)) {
-      /* Preference: claude-sonnet > gemini-flash > llama-groq > first available */
+    /* Always prefer claude-haiku-4-5 when available; only keep stored key if haiku is unavailable */
+    if (available.find((m) => m.key === "claude-haiku-4-5")) {
+      state.selectedModelKey = "claude-haiku-4-5";
+      localStorage.setItem(MODEL_KEY_STORAGE, "claude-haiku-4-5");
+    } else if (!available.find((m) => m.key === state.selectedModelKey)) {
       const preferred = ["claude-sonnet-4-6", "gemini-flash", "llama-groq"];
       const best = preferred.find((k) => available.find((m) => m.key === k))
         || available[0]?.key
-        || "llama-groq";
+        || "claude-haiku-4-5";
       state.selectedModelKey = best;
+      localStorage.setItem(MODEL_KEY_STORAGE, best);
     }
     renderModelPickerBtn();
   } catch (_e) {
@@ -5381,61 +5384,40 @@ function renderModelPickerBtn() {
   }
 }
 
-let _pickerMoreExpanded = false;
+/* Provider groups — best + free models only */
+const MODEL_GROUPS = [
+  { label: "Anthropic", keys: ["claude-haiku-4-5", "claude-sonnet-4-6", "claude-opus-4-6"] },
+  { label: "Google", keys: ["gemini-2-5-pro", "gemini-2-5-flash", "gemini-flash", "gemini-flash-lite"] },
+  { label: "Meta · Groq", keys: ["llama-4-scout", "llama-groq", "llama-3-1-8b"] },
+  { label: "OpenAI", keys: ["gpt-5-pro", "gpt-4o", "gpt-4o-mini"] },
+];
 
 function renderModelPickerList() {
   const panel = document.getElementById("model-list-panel");
   if (!panel || !state.availableModels.length) return;
   panel.innerHTML = "";
 
-  /* Preferred display order within available models */
-  const PREF_ORDER = [
-    "claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5",
-    "gemini-flash", "gemini-2-5-flash",
-    "llama-groq", "llama-4-scout",
-    "gpt-4o", "gpt-4o-mini",
-  ];
+  const modelsByKey = {};
+  state.availableModels.forEach((m) => { modelsByKey[m.key] = m; });
 
-  const available = state.availableModels.filter((m) => m.available);
-  const unavailable = state.availableModels.filter((m) => !m.available);
+  MODEL_GROUPS.forEach((group) => {
+    const groupModels = group.keys
+      .map((k) => modelsByKey[k])
+      .filter(Boolean);
+    if (!groupModels.length) return;
 
-  /* Sort available: preferred first, then others */
-  available.sort((a, b) => {
-    const ai = PREF_ORDER.indexOf(a.key), bi = PREF_ORDER.indexOf(b.key);
-    if (ai === -1 && bi === -1) return 0;
-    if (ai === -1) return 1;
-    if (bi === -1) return -1;
-    return ai - bi;
+    const header = document.createElement("div");
+    header.className = "model-picker-group-header";
+    header.textContent = group.label;
+    panel.appendChild(header);
+
+    groupModels.forEach((m) => _appendModelRow(m, panel));
   });
 
-  /* Render available models */
-  available.forEach((m) => _appendModelRow(m, panel));
-
-  /* "More models" expander — shows unavailable */
-  if (unavailable.length) {
-    const divider = document.createElement("div");
-    divider.className = "model-picker-divider";
-    panel.appendChild(divider);
-
-    const moreBtn = document.createElement("button");
-    moreBtn.type = "button";
-    moreBtn.className = "model-picker-more";
-    moreBtn.id = "model-picker-more-btn";
-    moreBtn.innerHTML = `<span>More models</span>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-        style="transform:rotate(${_pickerMoreExpanded ? "90" : "0"}deg);transition:transform 0.15s">
-        <polyline points="9 18 15 12 9 6"/>
-      </svg>`;
-    moreBtn.addEventListener("click", () => {
-      _pickerMoreExpanded = !_pickerMoreExpanded;
-      renderModelPickerList();
-    });
-    panel.appendChild(moreBtn);
-
-    if (_pickerMoreExpanded) {
-      unavailable.forEach((m) => _appendModelRow(m, panel));
-    }
-  }
+  /* Append any models not covered by the groups */
+  const groupedKeys = MODEL_GROUPS.flatMap((g) => g.keys);
+  const ungrouped = state.availableModels.filter((m) => !groupedKeys.includes(m.key));
+  ungrouped.forEach((m) => _appendModelRow(m, panel));
 }
 
 function _appendModelRow(m, panel) {
