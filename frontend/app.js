@@ -2765,8 +2765,9 @@ function seedDashboardLayout(visuals = []) {
   return layoutMap;
 }
 
-function formatFieldLabel(label) {
+function formatFieldLabel(label, labelMap) {
   if (!label) return "";
+  if (labelMap && labelMap[label]) return labelMap[label];
   return label
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ")
@@ -2865,22 +2866,23 @@ function formatKpiValue(value, isCurrency = false) {
 }
 
 function getAxisTitles(visual) {
+  const lm = visual.config?.label_map || null;
   if (visual.type === "pie") {
     return { x: "", y: "" };
   }
   if (visual.type === "histogram") {
-    return { x: formatFieldLabel(visual.values || "Value"), y: "Count" };
+    return { x: formatFieldLabel(visual.values || "Value", lm), y: "Count" };
   }
   if (visual.type === "bar") {
     return {
-      x: formatFieldLabel(visual.x),
-      y: formatFieldLabel(visual.y || visual.values || "Count"),
+      x: formatFieldLabel(visual.x, lm),
+      y: formatFieldLabel(visual.y || visual.values || "Count", lm),
     };
   }
   if (visual.type === "line" || visual.type === "scatter") {
     return {
-      x: formatFieldLabel(visual.x),
-      y: formatFieldLabel(visual.y || ""),
+      x: formatFieldLabel(visual.x, lm),
+      y: formatFieldLabel(visual.y || "", lm),
     };
   }
   return { x: "", y: "" };
@@ -4380,7 +4382,7 @@ function renderVisual(visual, container) {
     const table = document.createElement("table");
     table.classList.add("data-table");
     table.innerHTML = `
-      <thead><tr>${columns.map((col) => `<th>${formatFieldLabel(col)}</th>`).join("")}</tr></thead>
+      <thead><tr>${columns.map((col) => `<th>${formatFieldLabel(col, visual.config?.label_map)}</th>`).join("")}</tr></thead>
       <tbody>
         ${(filteredData || [])
           .map(

@@ -1213,6 +1213,70 @@ def llm_column_role_hints(profile: FileProfile, model_key: Optional[str] = None)
     }
 
 
+def llm_humanize_column_names(profile: "FileProfile", model_key: Optional[str] = None) -> dict[str, str]:
+    """Ask the LLM to decode cryptic/abbreviated column names into human-readable labels.
+
+    E.g. 'cust_nm' -> 'Customer Name', 'ord_amt' -> 'Order Amount',
+         'dt_creat' -> 'Creation Date', 'qty_sold' -> 'Qty Sold'.
+
+    Returns a mapping {raw_col_name: human_label}. Falls back to title-casing
+    snake_case if the LLM is unavailable.
+    """
+    import re
+
+    def _fallback_label(name: str) -> str:
+        return re.sub(r"[_\-]+", " ", name).strip().title()
+
+    col_payload = []
+    for col in profile.columns:
+        entry: dict = {"name": col.name, "type": col.inferred_type}
+        if col.sample_values:
+            entry["samples"] = col.sample_values[:3]
+        col_payload.append(entry)
+
+    if not llm_service.enabled and not model_key:
+        return {col["name"]: _fallback_label(col["name"]) for col in col_payload}
+
+    system_prompt = (
+        "You are a data labeling assistant. Given a list of dataset column names "
+        "(which may be abbreviated, snake_case, or cryptically named), "
+        "produce a clean human-readable display label for each one. "
+        "Use the column type and sample values to infer meaning. "
+        "Return JSON: {\"labels\": {\"raw_col_name\": \"Human Label\", ...}}. "
+        "Rules:\n"
+        "- Labels should be Title Case, concise (1-4 words).\n"
+        "- Expand obvious abbreviations: cust->Customer, ord->Order, amt->Amount, "
+        "qty->Quantity, dt->Date, nm->Name, cd->Code, id->ID, avg->Avg, "
+        "cnt->Count, rev->Revenue, pct->%, mgr->Manager, emp->Employee.\n"
+        "- If the name is already readable, just title-case it.\n"
+        "- MUST include every column name from the input."
+    )
+    user_prompt = f"Column list: {col_payload}"
+
+    try:
+        if model_key and model_key in MODEL_REGISTRY:
+            response = call_json_for_model(
+                model_key, system_prompt,
+                [{"role": "user", "content": user_prompt}], max_tokens=2048
+            )
+        else:
+            response = llm_service.request_json(system_prompt, user_prompt, max_tokens=2048)
+
+        if isinstance(response, dict) and isinstance(response.get("labels"), dict):
+            raw_map = response["labels"]
+            # Validate — only keep entries where key exists in profile
+            allowed = {col.name for col in profile.columns}
+            label_map: dict[str, str] = {}
+            for col in profile.columns:
+                label = raw_map.get(col.name, "")
+                label_map[col.name] = str(label).strip() if label else _fallback_label(col.name)
+            return label_map
+    except Exception:
+        pass
+
+    return {col.name: _fallback_label(col.name) for col in profile.columns}
+
+
 def rank_numeric_columns(profile: FileProfile) -> list[ColumnProfile]:
     row_count = max(profile.row_count, 1)
     scored: list[tuple[float, ColumnProfile]] = []
@@ -1863,6 +1927,9 @@ def generate_dashboard_visuals(
     categorical_cols = rank_categorical_columns(profile)
     datetime_cols = rank_datetime_columns(profile)
 
+    # AI-powered column name humanization — runs once, shared across all visuals
+    label_map: dict[str, str] = llm_humanize_column_names(profile, model_key=model_key)
+
     template = TEMPLATE_REGISTRY.get(business_category or "", None)
     overrides = template.get("column_role_overrides", {}) if template else {}
 
@@ -2280,6 +2347,14 @@ def generate_dashboard_visuals(
                 m = next_metric()
                 _append_visual(build_bar_or_pie_visual(dataframe, cat.name, m.name if m else None,
                                                         preferred_aggregation(m.name) if m else "count", "bar"))
+
+    # Stamp AI-humanized label_map into every visual's config so the frontend
+    # can use readable axis labels without renaming the actual data columns.
+    for vis in visuals:
+        cfg = dict(vis.config or {})
+        if label_map:
+            cfg["label_map"] = label_map
+        vis.config = cfg
 
     return visuals
 
