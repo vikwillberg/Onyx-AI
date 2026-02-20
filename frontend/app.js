@@ -5554,7 +5554,7 @@ function renderModelPickerBtn() {
 /* Provider groups — best + free models only */
 const MODEL_GROUPS = [
   { label: "Anthropic", keys: ["claude-haiku-4-5", "claude-sonnet-4-6", "claude-opus-4-6"] },
-  { label: "Google", keys: ["gemini-2-5-pro", "gemini-2-5-flash", "gemini-flash", "gemini-flash-lite"] },
+  { label: "Google", keys: ["gemini-3-pro", "gemini-3-flash", "gemini-2-5-pro", "gemini-2-5-flash", "gemini-flash", "gemini-flash-lite"] },
   { label: "Meta · Groq", keys: ["llama-4-scout", "llama-groq", "llama-3-1-8b"] },
   { label: "OpenAI", keys: ["gpt-5-pro", "gpt-4o", "gpt-4o-mini"] },
 ];
