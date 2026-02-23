@@ -2092,16 +2092,18 @@ body[data-theme="dark"] .home-chat-bubble.user > div {
   display: flex; gap: 14px; align-items: flex-start;
   padding: 2px 0 14px;
 }
-.home-chat-bubble.typing .typing-dots { display: inline-flex; align-items: center; padding: 6px 0; }
+.home-chat-bubble.typing .typing-dots { display: inline-flex; align-items: center; justify-content: center; padding: 6px 0; width: 24px; height: 24px; }
 .home-chat-bubble.typing .typing-dots span {
-  width: 14px; height: 14px; border-radius: 50%;
-  background: conic-gradient(var(--accent) 0deg, var(--accent) 180deg, var(--ink) 180deg, var(--ink) 360deg);
-  animation: spinPulse 1.2s infinite linear;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: transparent;
+  border: 2px solid var(--accent);
+  border-top-color: transparent;
+  animation: fluidSpin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
-@keyframes spinPulse {
-  0% { transform: rotate(0deg) scale(0.9); }
-  50% { transform: rotate(180deg) scale(1.1); }
-  100% { transform: rotate(360deg) scale(0.9); }
+@keyframes fluidSpin {
+  0% { transform: rotate(0deg); opacity: 0.6; }
+  50% { transform: rotate(180deg); opacity: 1; border-width: 3px; }
+  100% { transform: rotate(360deg); opacity: 0.6; }
 }
 
 @keyframes fadeInUp {
@@ -2146,7 +2148,7 @@ body[data-theme="dark"] .home-chat-bubble.user > div {
 .home-input-row {
   display: flex; align-items: center; gap: 8px;
 }
-.home-input-box:focus-within { border-color: var(--accent); box-shadow: none; }
+.home-input-box:focus-within { box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08); }
 .home-input-box.drag-over { border-color: var(--accent); background: var(--accent-soft); }
 .home-attach-btn {
   width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
@@ -2926,68 +2928,35 @@ body[data-theme="light"] .sidebar-icon-moon { display: none !important; }
   background: #FB923C; opacity: 0.5; animation: heroFloat 2s ease-in-out infinite;
 }
 
-/* ── Hero collapse: rings & dots dissolve first ── */
+/* ── Hero collapse: slow beautiful fade out ── */
 .copilot-hero-wrap.hero-collapsing .copilot-hero-ring {
-  animation: heroRingDissolve 0.28s ease forwards !important;
+  animation: heroRingDissolve 1.2s ease forwards !important;
 }
-.copilot-hero-wrap.hero-collapsing .copilot-hero-ring:nth-child(2) { animation-delay: 0.04s !important; }
-.copilot-hero-wrap.hero-collapsing .copilot-hero-ring:nth-child(3) { animation-delay: 0.08s !important; }
+.copilot-hero-wrap.hero-collapsing .copilot-hero-ring:nth-child(2) { animation-delay: 0.1s !important; }
+.copilot-hero-wrap.hero-collapsing .copilot-hero-ring:nth-child(3) { animation-delay: 0.2s !important; }
 .copilot-hero-wrap.hero-collapsing .copilot-hero-dot {
-  animation: none !important; opacity: 0 !important; transition: opacity 0.15s;
+  animation: none !important; opacity: 0 !important; transition: opacity 0.8s;
 }
-/* Banner clip collapses to the orb circle, then the orb floats up */
 .copilot-hero-wrap.hero-collapsing {
-  animation: heroBannerCollapse 0.9s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: heroBannerFade 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
-/* The orb itself gets a separate "eject" float when the collapse is done */
 .copilot-hero-wrap.hero-collapsing .copilot-hero-orb {
-  animation: heroOrbEject 0.9s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+  animation: heroOrbFade 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
 }
 
 @keyframes heroRingDissolve {
   0%   { opacity: 0.5; transform: scale(1); }
-  100% { opacity: 0;   transform: scale(0.15); }
+  100% { opacity: 0;   transform: scale(1.5); }
 }
 
-/* clip-path: inset(top right bottom left round radius)
-   The orb is 70×70 centered in a 130px-tall full-width banner.
-   Top/bottom inset to orb center = (130-70)/2 = 30px
-   Left/right inset to center 70px = calc(50% - 35px)            */
-@keyframes heroBannerCollapse {
-  0% {
-    clip-path: inset(0px 0% 0px 0% round 12px);
-    opacity: 1;
-    transform: translateY(0);
-  }
-  /* pause a beat for rings to dissolve */
-  20% {
-    clip-path: inset(0px 0% 0px 0% round 12px);
-    opacity: 1;
-    transform: translateY(0);
-  }
-  /* contract inward to the orb circle */
-  58% {
-    clip-path: inset(30px calc(50% - 35px) 30px calc(50% - 35px) round 50%);
-    opacity: 1;
-    transform: translateY(0);
-  }
-  /* float up and shrink */
-  80% {
-    clip-path: inset(30px calc(50% - 35px) 30px calc(50% - 35px) round 50%);
-    opacity: 0.9;
-    transform: translateY(-22px) scale(0.92);
-  }
-  100% {
-    clip-path: inset(30px calc(50% - 35px) 30px calc(50% - 35px) round 50%);
-    opacity: 0;
-    transform: translateY(-80px) scale(0.55);
-  }
+@keyframes heroBannerFade {
+  0%   { opacity: 1; transform: translateY(0); filter: brightness(1); }
+  100% { opacity: 0; transform: translateY(0); filter: brightness(0); }
 }
 
-@keyframes heroOrbEject {
-  0%   { transform: translateY(0) scale(1); box-shadow: 0 0 40px rgba(249,115,22,0.65); }
-  58%  { transform: translateY(0) scale(1.08); box-shadow: 0 0 60px rgba(249,115,22,0.9); }
-  100% { transform: translateY(-80px) scale(0.55); box-shadow: 0 0 20px rgba(249,115,22,0.3); }
+@keyframes heroOrbFade {
+  0%   { transform: scale(1); box-shadow: 0 0 40px rgba(249,115,22,0.65); opacity: 1; filter: blur(0px); }
+  100% { transform: scale(1.5); box-shadow: 0 0 100px rgba(249,115,22,0); opacity: 0; filter: blur(8px); }
 }
 .copilot-welcome-title {
   font: 800 1.25rem "Product Sans", "DM Sans", sans-serif;
