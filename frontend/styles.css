@@ -1093,9 +1093,9 @@ body[data-theme="light"] .grid-stack-item-content { background: #ffffff; }
   height: 28px; width: auto; object-fit: contain;
   display: block; transition: opacity 0.3s ease;
 }
-.sidebar-logo-img.brand-logo-dark { display: none; }
-body[data-theme="dark"] .sidebar-logo-img.brand-logo-light { display: none; }
-body[data-theme="dark"] .sidebar-logo-img.brand-logo-dark { display: block; }
+.sidebar-logo-img.sidebar-logo-dark { display: none; }
+body[data-theme="dark"] .sidebar-logo-img.sidebar-logo-light { display: none; }
+body[data-theme="dark"] .sidebar-logo-img.sidebar-logo-dark { display: block; }
 .sidebar-user:hover { background: var(--surface-hover); }
 .sidebar-user-avatar {
   width: 32px; height: 32px; border-radius: 50%;
