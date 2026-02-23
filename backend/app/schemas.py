@@ -248,6 +248,7 @@ class AiChatResponse(BaseModel):
     done: bool = False
     insights: Optional[dict] = None
     model_name: Optional[str] = None
+    suggestions: list[str] = []
 
 
 class AiVisualRequest(BaseModel):

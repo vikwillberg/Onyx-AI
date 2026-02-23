@@ -56,6 +56,18 @@ MODEL_REGISTRY: dict[str, dict] = {
         "badge": "latest",
     },
     # ── Google / Gemini ───────────────────────────────────────────────────────
+    "gemini-3-1-high-pro": {
+        "model_id":     "gemini-3.1-high-pro",
+        "provider":     "gemini",
+        "company":      "Google",
+        "display_name": "Gemini 3.1 High Pro",
+        "description":  "Most advanced Gemini 3.1 model for complex reasoning and analysis",
+        "input_price":  3.00,
+        "output_price": 12.00,
+        "credits":      10,
+        "tier":         "paid",
+        "badge":        "new",
+    },
     "gemini-3-pro": {
         "model_id":     "gemini-3.0-pro",
         "provider":     "gemini",
@@ -204,7 +216,7 @@ MODEL_REGISTRY: dict[str, dict] = {
     },
 }
 
-_DEFAULT_MODEL_KEY = "claude-haiku-4-5"  # fallback when no key specified
+_DEFAULT_MODEL_KEY = "gemini-3-1-high-pro"  # fallback when no key specified
 
 
 class _LLMProvider:
@@ -515,6 +527,8 @@ def call_chat_for_model(
             return response.choices[0].message.content or None
 
     except Exception as exc:
+        if _is_billing_error(exc):
+            raise BillingError(_billing_hint(provider, exc)) from exc
         logger.warning("call_chat_for_model(%s): %s", model_key, exc)
         return None
 
@@ -730,6 +744,47 @@ def analyze_data_chat(
             insights = llm_service.chat_json(extract_messages, max_tokens=1200)
 
     return reply, is_done, insights
+
+
+SUGGESTION_SYSTEM = """\
+You generate short, clickable follow-up prompts for a data analysis chat.
+Given the conversation so far and the dataset profile, produce 3-4 short prompts (max 8 words each) that the user might want to ask next.
+Make them specific to the data — reference actual column names and metrics.
+Always include one "build" prompt like "Looks good, build it!" if the conversation has had at least 2 exchanges.
+Return JSON: {"suggestions": ["prompt1", "prompt2", "prompt3"]}"""
+
+
+def generate_chat_suggestions(
+    profile_data: dict,
+    history: list[dict[str, str]],
+    latest_reply: str,
+    model_key: str | None = None,
+) -> list[str]:
+    """Generate 3-4 context-aware suggestion chips based on the conversation."""
+    try:
+        profile_summary = build_profile_summary(profile_data)
+        conv_snippet = "\n".join(
+            f"{m['role'].upper()}: {m['content'][:200]}" for m in history[-4:]
+        )
+        conv_snippet += f"\nASSISTANT: {latest_reply[:300]}"
+        user_prompt = f"Dataset:\n{profile_summary[:1000]}\n\nConversation:\n{conv_snippet}"
+
+        if model_key and model_key in MODEL_REGISTRY:
+            result = call_json_for_model(
+                model_key, SUGGESTION_SYSTEM,
+                [{"role": "user", "content": user_prompt}],
+                max_tokens=300,
+            )
+        elif llm_service.enabled:
+            result = llm_service.request_json(SUGGESTION_SYSTEM, user_prompt, max_tokens=300)
+        else:
+            return []
+
+        if isinstance(result, dict) and isinstance(result.get("suggestions"), list):
+            return [s for s in result["suggestions"] if isinstance(s, str)][:4]
+    except Exception:
+        pass
+    return []
 
 
 DASHBOARD_INSIGHTS_SYSTEM = """\

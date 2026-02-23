@@ -25,7 +25,7 @@ from app.schemas import (
     MergeSuggestions,
     VisualSpec,
 )
-from app.services.llm import analyze_data_chat, BillingError
+from app.services.llm import analyze_data_chat, generate_chat_suggestions, BillingError
 from app.services.ingestion import (
     generate_merge_suggestions,
     is_dictionary_file,
@@ -477,4 +477,19 @@ def ai_chat(
         model_label = f"{reg['badge']} / {reg['display_name']}"
     else:
         model_label = f"{llm_service.provider} / {llm_service._model}" if llm_service.enabled else None
-    return AiChatResponse(reply=reply, done=done, insights=insights, model_name=model_label)
+
+    # Generate context-aware suggestion chips (skip if conversation is done)
+    suggestions: list[str] = []
+    if not done and dataset.profile_json:
+        try:
+            full_history = history + [{"role": "user", "content": payload.message}]
+            suggestions = generate_chat_suggestions(
+                profile_data=dataset.profile_json,
+                history=full_history,
+                latest_reply=reply,
+                model_key=payload.model_key or None,
+            )
+        except Exception:
+            pass  # non-fatal — just show no suggestions
+
+    return AiChatResponse(reply=reply, done=done, insights=insights, model_name=model_label, suggestions=suggestions)

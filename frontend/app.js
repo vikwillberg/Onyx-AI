@@ -61,7 +61,7 @@ const state = {
   aiChatHistory: [],
   aiChatDone: false,
   aiChatBusy: false,
-  selectedModelKey: localStorage.getItem("onyx_model") || "claude-haiku-4-5",
+  selectedModelKey: localStorage.getItem("onyx_model") || "gemini-3-1-high-pro",
   availableModels: [],
   focusedVisualId: null,
 };
@@ -1799,6 +1799,10 @@ async function sendAiChat() {
       }
       state.aiChatDone = true;
       await autoBuildDashboard();
+    } else if (response.suggestions && response.suggestions.length) {
+      showSuggestionChips(response.suggestions);
+    } else {
+      showSuggestionChips(buildDataAwareSuggestions());
     }
   } catch (err) {
     typingBubble?.remove();
@@ -1925,12 +1929,15 @@ function initAiChat() {
           state.businessCategory = response.insights.business_category || null;
         }
         await autoBuildDashboard();
+      } else if (response.suggestions && response.suggestions.length) {
+        showSuggestionChips(response.suggestions);
       } else {
         showSuggestionChips(buildDataAwareSuggestions(true));
       }
     } catch (err) {
       typingBubble?.remove();
       appendChatBubble("assistant", "Hi! I've analyzed your data. Tell me what you'd like to explore.");
+      showSuggestionChips(buildDataAwareSuggestions(true));
       console.error("AI chat init error:", err);
     } finally {
       state.aiChatBusy = false;
@@ -5531,15 +5538,15 @@ async function loadModels() {
     const models = await apiFetch("/models/");
     state.availableModels = models;
     const available = models.filter((m) => m.available);
-    /* Always prefer claude-haiku-4-5 when available; only keep stored key if haiku is unavailable */
-    if (available.find((m) => m.key === "claude-haiku-4-5")) {
-      state.selectedModelKey = "claude-haiku-4-5";
-      localStorage.setItem(MODEL_KEY_STORAGE, "claude-haiku-4-5");
+    /* Prefer gemini-3-1-high-pro when available; fall back through preferred list */
+    if (available.find((m) => m.key === "gemini-3-1-high-pro")) {
+      state.selectedModelKey = "gemini-3-1-high-pro";
+      localStorage.setItem(MODEL_KEY_STORAGE, "gemini-3-1-high-pro");
     } else if (!available.find((m) => m.key === state.selectedModelKey)) {
-      const preferred = ["claude-sonnet-4-6", "gemini-flash", "llama-groq"];
+      const preferred = ["gemini-3-pro", "claude-sonnet-4-6", "claude-haiku-4-5", "gemini-flash", "llama-groq"];
       const best = preferred.find((k) => available.find((m) => m.key === k))
         || available[0]?.key
-        || "claude-haiku-4-5";
+        || "gemini-3-1-high-pro";
       state.selectedModelKey = best;
       localStorage.setItem(MODEL_KEY_STORAGE, best);
     }
@@ -5567,7 +5574,7 @@ function renderModelPickerBtn() {
 /* Provider groups — best + free models only */
 const MODEL_GROUPS = [
   { label: "Anthropic", keys: ["claude-haiku-4-5", "claude-sonnet-4-6", "claude-opus-4-6"] },
-  { label: "Google", keys: ["gemini-3-pro", "gemini-3-flash", "gemini-2-5-pro", "gemini-2-5-flash", "gemini-flash", "gemini-flash-lite"] },
+  { label: "Google", keys: ["gemini-3-1-high-pro", "gemini-3-pro", "gemini-3-flash", "gemini-2-5-pro", "gemini-2-5-flash", "gemini-flash", "gemini-flash-lite"] },
   { label: "Meta · Groq", keys: ["llama-4-scout", "llama-groq", "llama-3-1-8b"] },
   { label: "OpenAI", keys: ["gpt-5-pro", "gpt-4o", "gpt-4o-mini"] },
 ];
