@@ -73,12 +73,6 @@ const CHART_COLORS = {
   palette: ["#F97316", "#0EA5E9", "#6366F1", "#10B981", "#EC4899", "#8B5CF6", "#FDBA74", "#EF4444", "#14B8A6", "#84CC16", "#64748B", "#FB923C"],
 };
 
-function getActivePalette() {
-  const cat = state.businessCategory;
-  if (cat && CATEGORY_COLORS[cat]) return CATEGORY_COLORS[cat];
-  return CHART_COLORS.palette;
-}
-
 const PLOTLY_THEMES = {
   dark: {
     axisTitle: "#d6d3d1",
@@ -1561,7 +1555,7 @@ function appendHomeBubble(role, text) {
   bubble.className = `home-chat-bubble ${role}`;
   if (role === "typing") {
     /* AI icon + animated dots */
-    bubble.innerHTML = `<div class="home-chat-ai-icon">${AI_SPARK_SVG}</div><div class="typing-dots"><span></span><span></span><span></span></div>`;
+    bubble.innerHTML = `<div class="home-chat-ai-icon">${AI_SPARK_SVG}</div><div class="typing-dots"><span></span></div>`;
   } else if (role === "assistant") {
     /* AI icon + body wrapper */
     const icon = document.createElement("div");
