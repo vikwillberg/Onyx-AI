@@ -547,22 +547,50 @@ def get_narrative_insights(
     business_context = project.business_context if project else {}
 
     from app.services.llm import generate_narrative_insights
-    from app.services.visuals import generate_visual_data
-    
+    from app.services.visuals import apply_data_to_spec, VisualSpec as VSpec
+    import pandas as pd
+
     narrative = generate_narrative_insights(profile_data, business_context or {}, model_key=model_key)
-    
+
+    # Load the dataframe once for generating visual data
+    dataframe = None
+    if dataset.stored_path:
+        try:
+            dataframe = pd.read_csv(dataset.stored_path, nrows=5000)
+        except Exception:
+            dataframe = None
+
     # Generate actual visual data for each insight
     for insight in narrative.get("insights", []):
         visual_spec = insight.get("visual", {})
-        if visual_spec and visual_spec.get("type"):
+        if visual_spec and visual_spec.get("type") and dataframe is not None:
             try:
-                visual_data = generate_visual_data(
-                    visual_spec,
-                    profile_data,
-                    dataset.stored_path,
+                spec = VSpec(
+                    visual_id=f"narrative_{narrative.get('insights', []).index(insight)}",
+                    type=visual_spec.get("type", "bar"),
+                    title=visual_spec.get("title", ""),
+                    x=visual_spec.get("x"),
+                    y=visual_spec.get("y"),
+                    values=visual_spec.get("values"),
+                    aggregation=visual_spec.get("aggregation"),
+                    config=visual_spec.get("config"),
                 )
-                insight["visual_data"] = visual_data
+                result = apply_data_to_spec(spec, dataframe)
+                if result and result.data:
+                    insight["visual_data"] = result.data
+                    insight["visual"] = {
+                        "type": result.type,
+                        "title": result.title,
+                        "x": result.x,
+                        "y": result.y,
+                        "values": result.values,
+                        "config": result.config,
+                    }
+                else:
+                    insight["visual_data"] = None
             except Exception:
                 insight["visual_data"] = None
-    
+        else:
+            insight["visual_data"] = None
+
     return narrative

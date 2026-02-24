@@ -792,29 +792,7 @@ function renderCategoryQuestions() {
 
 /* ===== KPI Strip ===== */
 function renderKpiStrip() {
-  if (!elements.kpiStrip) return;
-  const kpis = state.finalVisuals.filter((v) => v.type === "kpi");
-  if (!kpis.length) { elements.kpiStrip.innerHTML = ""; return; }
-  elements.kpiStrip.innerHTML = kpis.map((kpi) => {
-    const val = kpi.data?.[0]?.value;
-    const isCurrency = kpi.config?.is_currency === true
-      || isCurrencyColumn(kpi.title || "")
-      || isCurrencyColumn(kpi.config?.subtitle || "")
-      || isCurrencyColumn(kpi.y || kpi.values || "");
-    const trend = kpi.config?.trend;
-    let trendHtml = "";
-    if (trend && trend.direction) {
-      const cls = trend.direction === "up" ? "up" : trend.direction === "down" ? "down" : "flat";
-      const arrow = trend.direction === "up" ? "↑" : trend.direction === "down" ? "↓" : "→";
-      const pct = trend.percent != null ? `${Math.abs(trend.percent).toFixed(1)}%` : "";
-      trendHtml = `<div class="kpi-strip-trend ${cls}">${arrow} ${pct}</div>`;
-    }
-    return `<div class="kpi-strip-card">
-      <div class="kpi-strip-value">${formatKpiValue(val, isCurrency)}</div>
-      <div class="kpi-strip-label">${kpi.title}</div>
-      ${trendHtml}
-    </div>`;
-  }).join("");
+  if (elements.kpiStrip) elements.kpiStrip.innerHTML = "";
 }
 
 /* ===== Narrative Story Insights ===== */
@@ -960,6 +938,55 @@ async function renderInsightsStrip() {
         }
       } catch (_) { /* fall through */ }
     }
+  }
+
+  /* Final fallback: generate stats-based insights from the profile data */
+  const profile = getActiveProfile();
+  if (profile && profile.columns && profile.columns.length) {
+    elements.insightsStrip.innerHTML = "";
+    const container = document.createElement("div");
+    container.className = "narrative-container";
+    container.innerHTML = `<div class="narrative-header"><h2 class="narrative-title">Data Overview</h2><p class="narrative-intro">Key statistics from your dataset</p></div>`;
+    const grid = document.createElement("div");
+    grid.className = "narrative-sections-grid";
+    const cols = profile.columns;
+    const numericCols = cols.filter((c) => ["integer", "float", "number", "numeric"].includes((c.inferred_type || "").toLowerCase()));
+    const catCols = cols.filter((c) => ["string", "text", "categorical", "object"].includes((c.inferred_type || "").toLowerCase()));
+    const statInsights = [];
+    statInsights.push({ headline: "Dataset Size", text: `This dataset contains ${(profile.row_count || 0).toLocaleString()} rows and ${cols.length} columns.`, category: "overview" });
+    numericCols.slice(0, 3).forEach((col) => {
+      const parts = [];
+      if (col.min_value != null) parts.push(`min: ${Number(col.min_value).toLocaleString()}`);
+      if (col.max_value != null) parts.push(`max: ${Number(col.max_value).toLocaleString()}`);
+      if (col.unique_count != null) parts.push(`${col.unique_count} unique values`);
+      statInsights.push({ headline: col.name, text: `${col.name} ranges from ${parts.join(", ")}.${col.null_ratio > 0 ? ` ${(col.null_ratio * 100).toFixed(1)}% missing.` : ""}`, category: "pattern" });
+    });
+    catCols.slice(0, 2).forEach((col) => {
+      const samples = (col.sample_values || []).slice(0, 4).join(", ");
+      statInsights.push({ headline: col.name, text: `${col.name} has ${col.unique_count || "?"} unique categories${samples ? `: ${samples}...` : "."}`, category: "overview" });
+    });
+    statInsights.slice(0, 6).forEach((ins, i) => {
+      const icon = STORY_CATEGORY_ICONS[ins.category] || STORY_CATEGORY_ICONS.overview;
+      const section = document.createElement("div");
+      section.className = "story-section";
+      section.dataset.section = i + 1;
+      section.dataset.category = ins.category;
+      section.innerHTML = `
+        <div class="story-section-left">
+          <div class="story-section-header">
+            <div class="story-section-icon">${icon}</div>
+            <div class="story-section-badge">${(ins.category || "overview").toUpperCase()}</div>
+          </div>
+          <div class="story-section-headline">${ins.headline}</div>
+          <div class="story-insight-text">${ins.text}</div>
+        </div>
+        <div class="story-chart"><div class="story-chart-empty">AI insights unavailable</div></div>
+      `;
+      grid.appendChild(section);
+    });
+    container.appendChild(grid);
+    elements.insightsStrip.appendChild(container);
+    return;
   }
 
   if (wrap) wrap.classList.add("hidden");
@@ -1627,48 +1654,7 @@ const CHAT_AUTOCOMPLETE = [
 ];
 
 function initSuggestionDropdown() {
-  const input = elements.homeInput;
-  const wrap = input?.closest(".home-input-wrap");
-  if (!input || !wrap) return;
-
-  let dropdown = document.getElementById("chat-autocomplete-dropdown");
-  if (!dropdown) {
-    dropdown = document.createElement("div");
-    dropdown.id = "chat-autocomplete-dropdown";
-    dropdown.className = "chat-suggestion-dropdown hidden";
-    wrap.appendChild(dropdown);
-  }
-
-  input.addEventListener("input", () => {
-    const val = input.value.trim().toLowerCase();
-    if (!val || val.length < 2) { dropdown.classList.add("hidden"); return; }
-    const matches = CHAT_AUTOCOMPLETE.filter((s) =>
-      s.text.toLowerCase().includes(val) || val.includes("add") || val.includes("show") || val.includes("chart")
-    ).slice(0, 5);
-    if (!matches.length) { dropdown.classList.add("hidden"); return; }
-    dropdown.innerHTML = matches.map((s) =>
-      `<button class="chat-suggestion-item" type="button">
-        <span class="chat-suggestion-item-icon">${s.icon}</span>
-        <span>${s.text}</span>
-      </button>`
-    ).join("") +
-    `<button class="chat-suggestion-show-all" type="button">Show all suggestions →</button>`;
-    dropdown.classList.remove("hidden");
-    dropdown.querySelectorAll(".chat-suggestion-item").forEach((btn, i) => {
-      btn.addEventListener("click", () => {
-        input.value = matches[i].text + " ";
-        dropdown.classList.add("hidden");
-        input.focus();
-      });
-    });
-    dropdown.querySelector(".chat-suggestion-show-all")?.addEventListener("click", () => {
-      dropdown.classList.add("hidden");
-    });
-  });
-
-  document.addEventListener("click", (e) => {
-    if (!wrap.contains(e.target)) dropdown.classList.add("hidden");
-  });
+  /* Autocomplete popup disabled */
 }
 
 function showSuggestionChips(chips) {
@@ -2688,34 +2674,13 @@ function populateSelect(select, options, placeholder) {
   });
 }
 
-const TILE_W = 6;
+const TILE_W = 4;
 const TILE_H = 4;
 const KPI_W  = 2;
 const KPI_H  = 2;
 
 function getDefaultTileLayout(visual) {
   if (visual.type === "kpi") return { w: KPI_W, h: KPI_H };
-  
-  // Dynamic layout based on chart type and data size
-  const dataCount = visual.data ? visual.data.length : 0;
-  
-  if (visual.type === "pie") {
-    // Pie charts look best square
-    return { w: 4, h: 4 };
-  } else if (visual.type === "bar" || visual.type === "histogram") {
-    // Bar charts need more width, especially with many categories
-    return { w: dataCount > 8 ? 8 : 6, h: 4 };
-  } else if (visual.type === "line" || visual.type === "scatter") {
-    // Line and scatter charts are best wide to show trends/distribution
-    return { w: 8, h: 4 };
-  } else if (visual.type === "table") {
-    // Tables need more vertical space if there are many rows, and width depends on columns
-    const cols = visual.config?.columns ? visual.config.columns.length : 3;
-    const w = cols > 5 ? 8 : 6;
-    const h = dataCount > 5 ? 6 : 4;
-    return { w, h };
-  }
-  
   return { w: TILE_W, h: TILE_H };
 }
 
@@ -2732,17 +2697,12 @@ function seedDashboardLayout(visuals = []) {
   const layoutMap = new Map();
   const cols = 12;
 
-  const kpis  = visuals.filter((v) => v.type === "kpi" && !/unique/i.test(v.title || ""));
+  /* Only chart visuals — KPIs excluded */
   const charts = visuals.filter((v) => v.type !== "kpi");
 
-  /* Row 0: KPI strip — each KPI is KPI_W wide, KPI_H tall */
-  kpis.slice(0, 6).forEach((v, i) => {
-    layoutMap.set(v.visual_id, { x: i * KPI_W, y: 0, w: KPI_W, h: KPI_H });
-  });
-  let y = kpis.length > 0 ? KPI_H : 0;
-
-  /* Remaining rows: all charts uniform TILE_W × TILE_H, 2 per row */
+  /* 3 charts per row, each TILE_W wide */
   let x = 0;
+  let y = 0;
   charts.forEach((v) => {
     if (x + TILE_W > cols) { y += TILE_H; x = 0; }
     layoutMap.set(v.visual_id, { x, y, w: TILE_W, h: TILE_H });
@@ -4082,10 +4042,8 @@ function renderDashboard() {
   state.grid.on("change", () => { updateLayoutFromGrid(); scheduleAutoSave(); });
   state.grid.batchUpdate();
 
-  /* Render KPIs first, then charts; filter out "unique categories" KPIs */
-  const kpiVisuals = state.finalVisuals.filter((v) => v.type === "kpi" && !/unique/i.test(v.title || ""));
-  const chartVisuals = state.finalVisuals.filter((v) => v.type !== "kpi");
-  const gridVisuals = [...kpiVisuals, ...chartVisuals];
+  /* KPIs removed from dashboard — only render chart widgets */
+  const gridVisuals = state.finalVisuals.filter((v) => v.type !== "kpi");
 
   gridVisuals.forEach((visual, index) => {
     const isKpi = visual.type === "kpi";

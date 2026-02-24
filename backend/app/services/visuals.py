@@ -25,7 +25,7 @@ BAR_CATEGORY_LIMIT = 12
 TEXT_CATEGORY_LIMIT = 40
 CATEGORY_RATIO_LIMIT = 0.50
 SUMMARY_TABLE_LIMIT = 4
-KPI_LIMIT = 4
+KPI_LIMIT = 0
 IDENTIFIER_HINTS = ("id", "uuid", "guid", "key")
 # Columns that end with these suffixes are ALWAYS identifiers (no uniqueness check needed)
 STRONG_ID_SUFFIXES = ("_id", " id")
