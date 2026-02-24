@@ -547,12 +547,12 @@ function setStep(step) {
     if (elements.homeWelcome) elements.homeWelcome.classList.remove("hidden");
     if (elements.homeChatArea) elements.homeChatArea.classList.add("hidden");
     if (elements.homeSendBtn) elements.homeSendBtn.disabled = !state.pendingFiles.length && !elements.homeInput?.value.trim();
-    updateMobilePageTitle("Onyx");
+    updateMobilePageTitle("Hillside AI");
     updateMobileBottomNav("home");
   } else if (step === "ai-chat") {
     if (elements.homeWelcome) elements.homeWelcome.classList.add("hidden");
     if (elements.homeChatArea) elements.homeChatArea.classList.remove("hidden");
-    updateMobilePageTitle("Onyx");
+    updateMobilePageTitle("Hillside AI");
     updateMobileBottomNav("home");
   }
 }
@@ -1396,7 +1396,7 @@ function showGenerateDashboardRow(visible) {
   row.classList.toggle("hidden", !visible);
 }
 
-/* ONYX spark icon SVG (accent colored) */
+/* Hillside AI spark icon SVG (accent colored) */
 const AI_SPARK_SVG = `<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C12 2 13.5 7.5 16 10C18.5 12.5 22 12 22 12C22 12 18.5 11.5 16 14C13.5 16.5 12 22 12 22C12 22 10.5 16.5 8 14C5.5 11.5 2 12 2 12C2 12 5.5 12.5 8 10C10.5 7.5 12 2 12 2Z"/></svg>`;
 
 function appendHomeBubble(role, text) {
@@ -4647,7 +4647,7 @@ async function autoBuildDashboard() {
 /* ── Mobile helpers ──────────────────────────────────────── */
 function updateMobilePageTitle(title) {
   const el = document.getElementById("mobile-page-title");
-  if (el) el.textContent = title || "Onyx";
+  if (el) el.textContent = title || "Hillside AI";
 }
 
 function updateMobileGreeting() {
