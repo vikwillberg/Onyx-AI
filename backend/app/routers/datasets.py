@@ -25,7 +25,7 @@ from app.schemas import (
     MergeSuggestions,
     VisualSpec,
 )
-from app.services.llm import analyze_data_chat, generate_chat_suggestions, BillingError
+from app.services.llm import analyze_data_chat, generate_chat_suggestions, stream_chat_for_model, BillingError, build_profile_summary, build_dictionary_section, DATA_ANALYST_SYSTEM, MODEL_REGISTRY
 from app.services.ingestion import (
     generate_merge_suggestions,
     is_dictionary_file,
@@ -493,3 +493,130 @@ def ai_chat(
             pass  # non-fatal — just show no suggestions
 
     return AiChatResponse(reply=reply, done=done, insights=insights, model_name=model_label, suggestions=suggestions)
+
+
+@router.post("/{dataset_id}/ai-chat-stream")
+def ai_chat_stream(
+    dataset_id: UUID,
+    payload: AiChatRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """SSE streaming version of ai-chat — streams tokens as they arrive."""
+    import logging as _log
+    dataset = get_dataset_or_404(session, current_user, dataset_id)
+    if not dataset.profile_json:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Dataset not profiled yet")
+
+    history = [{"role": m.role, "content": m.content} for m in payload.history]
+    model_key = payload.model_key or None
+
+    profile_summary = build_profile_summary(dataset.profile_json, dataset.dictionary_json)
+    dictionary_section = build_dictionary_section(dataset.dictionary_json)
+    system = DATA_ANALYST_SYSTEM.format(profile_summary=profile_summary, dictionary_section=dictionary_section)
+
+    conv_messages: list[dict[str, str]] = []
+    for msg in history:
+        conv_messages.append({"role": msg["role"], "content": msg["content"]})
+    conv_messages.append({"role": "user", "content": payload.message})
+
+    def event_stream():
+        import json as _json
+        full_reply = ""
+        try:
+            if model_key and model_key in MODEL_REGISTRY:
+                for chunk in stream_chat_for_model(model_key, system, conv_messages, max_tokens=4096, temperature=0.6):
+                    full_reply += chunk
+                    yield f"data: {_json.dumps({'t': chunk})}\n\n"
+            else:
+                # Fallback: non-streaming call, send as one chunk
+                from app.services.llm import llm_service
+                messages = [{"role": "system", "content": system}] + conv_messages
+                reply = llm_service.chat(messages, max_tokens=4096, temperature=0.6)
+                if reply:
+                    full_reply = reply
+                    yield f"data: {_json.dumps({'t': reply})}\n\n"
+        except BillingError as e:
+            full_reply = str(e)
+            yield f"data: {_json.dumps({'t': full_reply})}\n\n"
+        except Exception as exc:
+            _log.getLogger(__name__).error("ai_chat_stream error: %s", exc, exc_info=True)
+            full_reply = "I ran into an error. Please try again or choose a different model."
+            yield f"data: {_json.dumps({'t': full_reply})}\n\n"
+
+        # After streaming completes, check if done and extract insights
+        done = False
+        insights = None
+        if full_reply:
+            done_signals = ["i have what i need", "have enough", "let me build", "let's build",
+                            "i'll create", "ready to build", "generating", "let me generate",
+                            "let me create", "i'll design", "dashboard will cover",
+                            "here's the plan", "here is the plan", "i'll now create",
+                            "let me put together", "i'll put together"]
+            real_user_count = sum(
+                1 for m in conv_messages
+                if m["role"] == "user" and "just uploaded" not in m.get("content", "").lower()
+            )
+            done = real_user_count >= 2 and any(sig in full_reply.lower() for sig in done_signals)
+
+            if done:
+                try:
+                    from app.services.llm import (
+                        INSIGHT_EXTRACTION_SYSTEM, call_json_for_model, llm_service,
+                    )
+                    conv_str = "\n".join(f"{m['role'].upper()}: {m['content']}" for m in conv_messages[:-1])
+                    extract_messages = [
+                        {"role": "system", "content": INSIGHT_EXTRACTION_SYSTEM},
+                        {"role": "user", "content": (
+                            f"Dataset profile:\n{profile_summary}\n\n"
+                            f"Conversation:\n{conv_str}"
+                            f"\nUSER: {payload.message}\nASSISTANT: {full_reply}"
+                        )},
+                    ]
+                    if model_key and model_key in MODEL_REGISTRY:
+                        insights = call_json_for_model(model_key, INSIGHT_EXTRACTION_SYSTEM,
+                                                       extract_messages[1:], max_tokens=1200)
+                    else:
+                        insights = llm_service.chat_json(extract_messages, max_tokens=1200)
+
+                    # Store on project
+                    project = session.get(Project, dataset.project_id)
+                    if project:
+                        merged_context = dict(project.business_context or {})
+                        if isinstance(insights, dict):
+                            merged_context.update(insights)
+                        if not merged_context.get("primary_question"):
+                            merged_context["primary_question"] = _fallback_primary_question(history, payload.message)
+                        project.business_context = merged_context
+                        if isinstance(insights, dict) and insights.get("business_category"):
+                            project.business_category = insights["business_category"]
+                        session.add(project)
+                        session.commit()
+                except Exception:
+                    pass
+
+        # Generate suggestions
+        suggestions: list[str] = []
+        if not done and dataset.profile_json:
+            try:
+                full_history = history + [{"role": "user", "content": payload.message}]
+                suggestions = generate_chat_suggestions(
+                    profile_data=dataset.profile_json,
+                    history=full_history,
+                    latest_reply=full_reply,
+                    model_key=model_key,
+                )
+            except Exception:
+                pass
+
+        # Send final metadata event
+        from app.services.llm import llm_service as _svc
+        if model_key and model_key in MODEL_REGISTRY:
+            reg = MODEL_REGISTRY[model_key]
+            model_label = f"{reg['badge']} / {reg['display_name']}"
+        else:
+            model_label = f"{_svc.provider} / {_svc._model}" if _svc.enabled else None
+
+        yield f"data: {_json.dumps({'done': done, 'insights': insights, 'model_name': model_label, 'suggestions': suggestions})}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")

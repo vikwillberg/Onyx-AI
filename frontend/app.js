@@ -1570,11 +1570,16 @@ async function sendAiChat() {
   state.aiChatHistory.push({ role: "user", content: msg });
 
   state.aiChatBusy = true;
-  const typingBubble = appendChatBubble("typing", "");
+
+  /* Create an empty assistant bubble that we'll stream text into */
+  const streamBubble = appendHomeBubble("assistant", "");
+  const bodyEl = streamBubble?.querySelector(".home-chat-bubble-body");
+  let fullReply = "";
 
   try {
-    const response = await apiFetch(`/datasets/${state.currentDataset.id}/ai-chat`, {
+    const resp = await fetch(`${API_BASE}/datasets/${state.currentDataset.id}/ai-chat-stream`, {
       method: "POST",
+      headers: { "Content-Type": "application/json", ...(state.token ? { Authorization: `Bearer ${state.token}` } : {}) },
       body: JSON.stringify({
         message: msg,
         history: state.aiChatHistory.slice(0, -1),
@@ -1582,28 +1587,59 @@ async function sendAiChat() {
       }),
     });
 
-    typingBubble?.remove();
-    if (response.model_name) updateModelBadge(response.model_name);
-    const reply = response.reply || "I couldn't process that. Could you try rephrasing?";
-    appendChatBubble("assistant", reply);
-    state.aiChatHistory.push({ role: "assistant", content: reply });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
-    if (response.done) {
-      if (response.insights) {
-        state.businessContext = response.insights;
-        state.businessCategory = response.insights.business_category || null;
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      /* Parse SSE lines from the buffer */
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || ""; /* keep incomplete line in buffer */
+
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        try {
+          const payload = JSON.parse(line.slice(6));
+          if (payload.t !== undefined) {
+            /* Text token chunk */
+            fullReply += payload.t;
+            if (bodyEl) bodyEl.innerHTML = simpleMarkdown(fullReply);
+            const chatArea = elements.homeChatArea;
+            if (chatArea) chatArea.scrollTop = chatArea.scrollHeight;
+          }
+          if (payload.done !== undefined) {
+            /* Final metadata event */
+            if (payload.model_name) updateModelBadge(payload.model_name);
+            if (payload.done) {
+              if (payload.insights) {
+                state.businessContext = payload.insights;
+                state.businessCategory = payload.insights.business_category || null;
+              }
+              state.aiChatDone = true;
+              showGenerateDashboardRow(true);
+            } else if (payload.suggestions && payload.suggestions.length) {
+              showSuggestionChips(payload.suggestions);
+            } else {
+              showSuggestionChips(buildDataAwareSuggestions());
+            }
+          }
+        } catch (_e) { /* skip malformed SSE lines */ }
       }
-      state.aiChatDone = true;
-      showGenerateDashboardRow(true);
-    } else if (response.suggestions && response.suggestions.length) {
-      showSuggestionChips(response.suggestions);
-    } else {
-      showSuggestionChips(buildDataAwareSuggestions());
     }
+
+    /* Store the full reply in history */
+    if (!fullReply) fullReply = "I couldn't process that. Could you try rephrasing?";
+    state.aiChatHistory.push({ role: "assistant", content: fullReply });
+
   } catch (err) {
-    typingBubble?.remove();
-    appendChatBubble("assistant", "Something went wrong. Please try again.");
-    console.error("AI chat error:", err);
+    if (!fullReply && bodyEl) bodyEl.innerHTML = simpleMarkdown("Something went wrong. Please try again.");
+    console.error("AI chat stream error:", err);
   } finally {
     state.aiChatBusy = false;
     if (elements.homeSendBtn) elements.homeSendBtn.disabled = false;

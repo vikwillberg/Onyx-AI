@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Optional
+from typing import Any, Iterator, Optional
 
 import anthropic
 import httpx
@@ -519,6 +519,69 @@ def call_json_for_model(
         return json.loads(LLMService._strip_fences(raw))
     except Exception:
         return None
+
+
+def stream_chat_for_model(
+    model_key: str,
+    system: str,
+    messages: list[dict[str, str]],
+    max_tokens: int = 4096,
+    temperature: float = 0.5,
+) -> Iterator[str]:
+    """Stream tokens from a specific model. Yields text chunks."""
+    entry = MODEL_REGISTRY.get(model_key)
+    if not entry:
+        logger.warning("Unknown model key for streaming: %s", model_key)
+        return
+
+    provider = entry["provider"]
+    model_id = entry["model_id"]
+
+    try:
+        if provider == "claude":
+            client = _get_anthropic_client()
+            if not client:
+                return
+            with client.messages.stream(
+                model=model_id,
+                max_tokens=max_tokens,
+                system=system,
+                messages=[m for m in messages if m["role"] != "system"],
+            ) as stream:
+                for text in stream.text_stream:
+                    yield text
+        else:
+            oa_client = _get_openai_client_for_provider(provider)
+            if not oa_client:
+                return
+            full_messages = [{"role": "system", "content": system}] + [
+                m for m in messages if m["role"] != "system"
+            ]
+            use_new_tokens_param = (
+                (provider == "openai" and any(model_id.startswith(p) for p in ("gpt-5", "o3", "o4")))
+                or (provider == "gemini" and any(model_id.startswith(p) for p in ("gemini-3", "gemini-2.5-pro")))
+            )
+            kwargs: dict[str, Any] = dict(
+                model=model_id,
+                messages=full_messages,
+                stream=True,
+            )
+            if use_new_tokens_param:
+                kwargs["max_completion_tokens"] = max_tokens
+            else:
+                kwargs["temperature"] = temperature
+                kwargs["max_tokens"] = max_tokens
+
+            response = oa_client.chat.completions.create(**kwargs)
+            for chunk in response:
+                delta = chunk.choices[0].delta if chunk.choices else None
+                if delta and delta.content:
+                    yield delta.content
+
+    except Exception as exc:
+        if _is_billing_error(exc):
+            raise BillingError(_billing_hint(provider, exc)) from exc
+        logger.warning("stream_chat_for_model(%s): %s", model_key, exc)
 
 
 def get_available_models() -> list[dict]:
