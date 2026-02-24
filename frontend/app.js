@@ -73,22 +73,27 @@ const CHART_COLORS = {
   palette: ["#F97316", "#0EA5E9", "#6366F1", "#10B981", "#EC4899", "#8B5CF6", "#FDBA74", "#EF4444", "#14B8A6", "#84CC16", "#64748B", "#FB923C"],
 };
 
-const COLOR_PALETTES = {
-  vibrant:       ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#8b5cf6", "#0ea5e9", "#ef4444", "#14b8a6", "#f97316", "#3b82f6", "#84cc16", "#d946ef"],
-  professional:  ["#1e3a8a", "#0f766e", "#3b82f6", "#0d9488", "#64748b", "#1e40af", "#115e59", "#2563eb", "#475569", "#0284c7", "#0e7490", "#334155"],
-  dark:          ["#9333ea", "#db2777", "#f59e0b", "#7c3aed", "#ec4899", "#fbbf24", "#a855f7", "#f472b6", "#d97706", "#6d28d9", "#be185d", "#eab308"],
-  monochrome:    ["#1c1917", "#44403c", "#78716c", "#a8a29e", "#57534e", "#292524", "#8a8580", "#6b7280", "#374151", "#4b5563", "#9ca3af", "#334155"],
-  onyx_default:  ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#8b5cf6", "#0ea5e9", "#ef4444", "#14b8a6"],
+const COLOR_THEMES = {
+  vibrant:     ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#8b5cf6", "#0ea5e9", "#ef4444", "#14b8a6", "#f97316", "#3b82f6", "#84cc16", "#d946ef"],
+  ocean:       ["#0ea5e9", "#06b6d4", "#3b82f6", "#22d3ee", "#6366f1", "#2dd4bf", "#0284c7", "#38bdf8", "#818cf8", "#67e8f9", "#7c3aed", "#a5f3fc"],
+  sunset:      ["#f97316", "#ef4444", "#f59e0b", "#ec4899", "#e11d48", "#fb923c", "#dc2626", "#fbbf24", "#db2777", "#f43f5e", "#d97706", "#be123c"],
+  forest:      ["#10b981", "#059669", "#84cc16", "#0d9488", "#15803d", "#65a30d", "#14b8a6", "#22c55e", "#4ade80", "#166534", "#0f766e", "#16a34a"],
+  royal:       ["#7c3aed", "#6366f1", "#8b5cf6", "#a855f7", "#4f46e5", "#c084fc", "#818cf8", "#6d28d9", "#e879f9", "#312e81", "#d946ef", "#a78bfa"],
+  corporate:   ["#1e3a8a", "#0f766e", "#3b82f6", "#0d9488", "#64748b", "#1e40af", "#115e59", "#2563eb", "#475569", "#0284c7", "#0e7490", "#334155"],
+  earth:       ["#92400e", "#78350f", "#a16207", "#854d0e", "#065f46", "#713f12", "#b45309", "#ca8a04", "#064e3b", "#d97706", "#166534", "#eab308"],
+  candy:       ["#ec4899", "#a855f7", "#f472b6", "#c084fc", "#fb7185", "#e879f9", "#f9a8d4", "#d946ef", "#fda4af", "#a78bfa", "#fbb6ce", "#c4b5fd"],
+  monochrome:  ["#334155", "#475569", "#64748b", "#94a3b8", "#1e293b", "#0f172a", "#cbd5e1", "#e2e8f0", "#526277", "#3a4f6b", "#708599", "#8697a8"],
+  neon:        ["#22d3ee", "#a3e635", "#f472b6", "#facc15", "#38bdf8", "#4ade80", "#fb923c", "#e879f9", "#2dd4bf", "#fbbf24", "#818cf8", "#34d399"],
 };
 
 function getActivePalette() {
-  const raw = (state.businessContext?.color_palette || "").toLowerCase().trim();
-  if (raw && COLOR_PALETTES[raw]) return COLOR_PALETTES[raw];
+  const raw = (state.businessContext?.color_palette || state.businessContext?.color_theme || "").toLowerCase().trim();
+  if (raw && COLOR_THEMES[raw]) return COLOR_THEMES[raw];
   if (raw) {
-    const fallback = Object.keys(COLOR_PALETTES).find((k) => raw.includes(k));
-    if (fallback) return COLOR_PALETTES[fallback];
+    const fallback = Object.keys(COLOR_THEMES).find((k) => raw.includes(k));
+    if (fallback) return COLOR_THEMES[fallback];
   }
-  return COLOR_PALETTES.vibrant; /* Default to vibrant multi-color palette */
+  return COLOR_THEMES.vibrant;
 }
 
 /* Color name → hex mapping for color-matched bar charts */
@@ -1879,7 +1884,7 @@ function simpleMarkdown(text) {
     .replace(/\*(.*?)\*/g, "<em>$1</em>")
     .replace(/`(.*?)`/g, "<code>$1</code>");
 
-  // Re-allow the specific color spans used by the AI palette options
+  // Re-allow the specific color spans used by the AI theme options
   html = html.replace(/&lt;span style="color:(#[0-9A-Fa-f]{3,6})"&gt;(.*?)&lt;\/span&gt;/gi, '<span style="color:$1">$2</span>');
   html = html.replace(/&lt;span style=&amp;quot;color:(#[0-9A-Fa-f]{3,6})&amp;quot;&gt;(.*?)&lt;\/span&gt;/gi, '<span style="color:$1">$2</span>');
 
