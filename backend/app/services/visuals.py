@@ -1,8 +1,11 @@
+import logging
 from datetime import datetime
 from typing import Optional, Union
 from uuid import uuid4
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 from app.schemas import ColumnProfile, FileProfile, VisualSpec
 from app.services.ingestion import to_serializable
@@ -855,6 +858,129 @@ def is_categorical_candidate(column: ColumnProfile, row_count: int) -> bool:
         unique, ratio = column_cardinality(column, row_count)
         return unique <= TEXT_CATEGORY_LIMIT or ratio <= CATEGORY_RATIO_LIMIT
     return False
+
+
+def is_binary_column(column: ColumnProfile, row_count: int) -> bool:
+    """Detect binary outcome columns (0/1, Yes/No, True/False)."""
+    if column.unique_count != 2:
+        return False
+    if column.inferred_type in {"integer", "float", "number", "numeric", "boolean"}:
+        samples = column.sample_values or []
+        sample_set = {str(s).strip().lower() for s in samples}
+        binary_patterns = [
+            {"0", "1"}, {"0.0", "1.0"},
+            {"true", "false"}, {"yes", "no"},
+        ]
+        if any(sample_set <= pattern or sample_set == pattern for pattern in binary_patterns):
+            return True
+        if column.min_value is not None and column.max_value is not None:
+            try:
+                if float(column.min_value) == 0 and float(column.max_value) == 1:
+                    return True
+            except (ValueError, TypeError):
+                pass
+    return False
+
+
+def build_conversion_rate_visual(
+    dataframe: pd.DataFrame,
+    binary_col: str,
+    group_col: str,
+    n_bins: int = 6,
+    title: Optional[str] = None,
+) -> Optional[VisualSpec]:
+    """Build a bar chart showing conversion rate of a binary column grouped by another column."""
+    if binary_col not in dataframe.columns or group_col not in dataframe.columns:
+        return None
+    df = dataframe[[group_col, binary_col]].dropna()
+    if df.empty:
+        return None
+
+    is_numeric = pd.api.types.is_numeric_dtype(df[group_col])
+    if is_numeric and df[group_col].nunique() > n_bins:
+        try:
+            df = df.copy()
+            df["_bin"] = pd.cut(df[group_col], bins=n_bins, duplicates="drop")
+            df["_bin"] = df["_bin"].astype(str)
+            grouped = df.groupby("_bin")[binary_col].agg(["mean", "count"]).reset_index()
+            grouped.columns = [group_col, "rate", "count"]
+        except Exception:
+            return None
+    else:
+        grouped = df.groupby(group_col)[binary_col].agg(["mean", "count"]).reset_index()
+        grouped.columns = [group_col, "rate", "count"]
+
+    grouped = grouped[grouped["count"] >= 3]
+    if grouped.empty:
+        return None
+    grouped["rate"] = (grouped["rate"] * 100).round(1)
+
+    chart_title = title or f"{binary_col} Rate by {group_col}"
+    return VisualSpec(
+        visual_id=build_visual_id("bar"),
+        type="bar",
+        title=chart_title,
+        x=group_col,
+        y="rate",
+        aggregation="mean",
+        data=serialize_dataframe(grouped[[group_col, "rate"]], limit=20),
+        config={"y_format": "percentage"},
+    )
+
+
+def build_binary_pie_visual(
+    dataframe: pd.DataFrame,
+    binary_col: str,
+    title: Optional[str] = None,
+    positive_label: str = "Yes",
+    negative_label: str = "No",
+) -> Optional[VisualSpec]:
+    """Build a pie chart showing the split of a binary column."""
+    if binary_col not in dataframe.columns:
+        return None
+    series = dataframe[binary_col].dropna()
+    if series.empty:
+        return None
+    pos_count = int((series == 1).sum() or (series == True).sum())  # noqa: E712
+    neg_count = len(series) - pos_count
+    chart_title = title or f"{binary_col} Distribution"
+    data = [
+        {binary_col: positive_label, "count": pos_count},
+        {binary_col: negative_label, "count": neg_count},
+    ]
+    return VisualSpec(
+        visual_id=build_visual_id("pie"),
+        type="pie",
+        title=chart_title,
+        x=binary_col,
+        values="count",
+        data=data,
+    )
+
+
+def build_colored_scatter_visual(
+    dataframe: pd.DataFrame,
+    x_col: str,
+    y_col: str,
+    color_col: str,
+    title: Optional[str] = None,
+) -> Optional[VisualSpec]:
+    """Build a scatter plot with points colored by a categorical/binary column."""
+    if not all(c in dataframe.columns for c in [x_col, y_col, color_col]):
+        return None
+    df = dataframe[[x_col, y_col, color_col]].dropna()
+    if len(df) < 5:
+        return None
+    chart_title = title or f"{y_col} vs {x_col} by {color_col}"
+    return VisualSpec(
+        visual_id=build_visual_id("scatter"),
+        type="scatter",
+        title=chart_title,
+        x=x_col,
+        y=y_col,
+        data=serialize_dataframe(df, limit=500),
+        config={"color_column": color_col},
+    )
 
 
 def preferred_aggregation(metric_name: str) -> str:
@@ -2492,13 +2618,29 @@ def apply_data_to_spec(spec: VisualSpec, dataframe: pd.DataFrame) -> Optional[Vi
     elif spec.type == "histogram" and spec.values:
         visual = build_histogram_visual(dataframe, spec.values)
     elif spec.type in {"bar", "pie"} and spec.x:
-        visual = build_bar_or_pie_visual(
-            dataframe,
-            category_col=spec.x,
-            value_col=spec.y or spec.values,
-            aggregation=spec.aggregation or "count",
-            chart_type=spec.type,
+        cfg = spec.config if isinstance(spec.config, dict) else {}
+        is_conversion_rate = (
+            cfg.get("y_format") == "percentage"
+            and spec.y
+            and spec.aggregation == "mean"
+            and spec.y in dataframe.columns
+            and dataframe[spec.y].dropna().isin([0, 1]).all()
         )
+        if is_conversion_rate and spec.type == "bar":
+            visual = build_conversion_rate_visual(
+                dataframe,
+                binary_col=spec.y,
+                group_col=spec.x,
+                title=spec.title,
+            )
+        else:
+            visual = build_bar_or_pie_visual(
+                dataframe,
+                category_col=spec.x,
+                value_col=spec.y or spec.values,
+                aggregation=spec.aggregation or "count",
+                chart_type=spec.type,
+            )
     elif spec.type == "line" and spec.x:
         visual = build_line_visual(
             dataframe,
@@ -2507,7 +2649,12 @@ def apply_data_to_spec(spec: VisualSpec, dataframe: pd.DataFrame) -> Optional[Vi
             aggregation=spec.aggregation or "mean",
         )
     elif spec.type == "scatter" and spec.x and spec.y:
-        visual = build_scatter_visual(dataframe, spec.x, spec.y)
+        cfg = spec.config if isinstance(spec.config, dict) else {}
+        color_col = cfg.get("color_column")
+        if color_col and color_col in dataframe.columns:
+            visual = build_colored_scatter_visual(dataframe, spec.x, spec.y, color_col, title=spec.title)
+        else:
+            visual = build_scatter_visual(dataframe, spec.x, spec.y)
     elif spec.type == "map" and spec.x and spec.y:
         config = spec.config if isinstance(spec.config, dict) else {}
         visual = build_map_visual(
@@ -2538,6 +2685,7 @@ def llm_dashboard_plan(
         return []
 
     col_info = []
+    binary_col_names = []
     for col in profile.columns:
         info: dict = {
             "name": col.name,
@@ -2551,6 +2699,9 @@ def llm_dashboard_plan(
             info["min"] = col.min_value
         if col.max_value is not None:
             info["max"] = col.max_value
+        if is_binary_column(col, profile.row_count):
+            info["is_binary"] = True
+            binary_col_names.append(col.name)
         col_info.append(info)
 
     category_label = business_category or "general"
@@ -2586,6 +2737,22 @@ def llm_dashboard_plan(
         "You are a senior data analyst designing an INSIGHT-DRIVEN dashboard that helps "
         "the user DISCOVER something NEW about their data — not just summarize obvious totals.\n\n"
         "YOUR GOAL: Every visual MUST reveal a pattern, outlier, or comparison the user hasn't seen before.\n\n"
+        "CRITICAL: Do NOT invent or derive new column names. ONLY use exact column names from the "
+        "provided list OR the derived columns listed below (day_of_week, month, hour_of_day). "
+        "If a column is marked 'is_binary: true', it is a BINARY OUTCOME — follow the BINARY COLUMN RULES below.\n\n"
+        "BINARY / CLASSIFICATION COLUMN RULES:\n"
+        "- If a column has exactly 2 unique values (0/1, Yes/No, True/False), it is a BINARY OUTCOME.\n"
+        "- NEVER average a binary column directly as y-axis — this produces meaningless decimals like 0.35.\n"
+        "- Instead, use it in these ways:\n"
+        "  a) CONVERSION RATE BAR: x = another column (binned if numeric), y = binary_col, aggregation = 'mean', "
+        "     config = {\"y_format\": \"percentage\"}. Title: 'Which Age Group Has the Highest Purchase Rate?'\n"
+        "  b) PIE CHART: x = binary_col, values = binary_col, aggregation = 'count'. "
+        "     Title: 'What Percentage of Users Purchased?'\n"
+        "  c) COLORED SCATTER: x = numeric_col_1, y = numeric_col_2, "
+        "     config = {\"color_column\": \"binary_col\"}. Title: 'How Do Buyers vs Non-Buyers Compare?'\n"
+        "  d) HISTOGRAM split: values = numeric_col, config = {\"color_column\": \"binary_col\"}. "
+        "     Shows distribution of a numeric column split by outcome.\n"
+        "- NEVER use a binary column as a standalone numeric y-axis without aggregation='mean' + y_format='percentage'.\n\n"
         "INSIGHT CATEGORIES (include at least 4 of these):\n"
         "1. TOP PERFORMERS — Which items/categories/regions drive the most value? Show the 80/20 rule.\n"
         "2. TRENDS OVER TIME — Is the metric growing, declining, or seasonal? Use line charts with date columns.\n"
@@ -2595,13 +2762,15 @@ def llm_dashboard_plan(
         "   If latitude & longitude columns exist, create a MAP visual (type='map').\n"
         "5. OUTLIERS & ANOMALIES — Which items have unusually high or low values? Use scatter plots.\n"
         "6. SEGMENT COMPARISON — Compare categories, types, or groups side by side.\n"
-        "7. DISTRIBUTION — How are values spread? Use histograms only for numeric columns with <100 unique values.\n\n"
+        "7. DISTRIBUTION — How are values spread? Use histograms only for numeric columns with <100 unique values.\n"
+        "8. CONVERSION / OUTCOME ANALYSIS — For binary columns: who converts, at what rate, and what drives it?\n\n"
         "CHART TYPE MIX (use a variety — never repeat the same type 3+ times):\n"
-        "- 1-2 LINE charts (trends over time — MUST use a datetime column for x-axis)\n"
-        "- 2-3 BAR charts (rankings, comparisons, day-of-week patterns)\n"
-        "- 1 PIE chart (share/proportion — use column with 3-8 unique values)\n"
-        "- 0-1 SCATTER (correlations or outlier detection between two numeric columns)\n"
+        "- 0-2 LINE charts (trends over time — MUST use a datetime column for x-axis; skip if no date column)\n"
+        "- 2-3 BAR charts (rankings, comparisons, conversion rates, day-of-week patterns)\n"
+        "- 1 PIE chart (share/proportion — use column with 2-8 unique values, including binary outcomes)\n"
+        "- 1 SCATTER (correlations or outcome comparison — use config.color_column for binary grouping)\n"
         "- 0-1 MAP (ONLY if latitude/longitude columns exist — type='map', x=lon_column, y=lat_column)\n"
+        "- 0-1 HISTOGRAM (distribution of a key numeric column)\n"
         "- 0-1 TABLE (top/bottom performers leaderboard)\n\n"
         "MAP VISUAL RULES:\n"
         "- type='map', x = longitude column name, y = latitude column name\n"
@@ -2618,13 +2787,19 @@ def llm_dashboard_plan(
         "TITLE STYLE: Use insight-driven questions or findings:\n"
         "- 'Which Products Drive 80% of Revenue?' not 'Revenue by Product'\n"
         "- 'Are Sales Growing or Declining?' not 'Total Price over Date'\n"
-        "- 'Which Day of the Week Is Most Profitable?' not 'Sales by Day'\n"
-        "- 'Where Are Your Customers Located?' not 'Count by City'\n\n"
+        "- 'Which Age Group Has the Highest Purchase Rate?' not 'Average Purchased by Age'\n"
+        "- 'How Do Buyers Compare to Non-Buyers?' not 'Purchased vs EstimatedSalary'\n\n"
         "EXAMPLES OF GREAT DASHBOARDS BY DATA TYPE:\n"
         "▸ Sales/E-commerce data (Date, Product, Price, City, Payment Method):\n"
         "  - Top 10 products by revenue (bar), Monthly revenue trend (line),\n"
         "  - Revenue by day of week (bar with day_of_week), Sales by city (bar),\n"
         "  - Payment method share (pie), Price distribution (histogram)\n"
+        "▸ Classification/ML data (Age, Salary, Purchased[0/1]):\n"
+        "  - Overall conversion split (pie: Purchased count),\n"
+        "  - Purchase rate by age bracket (bar, y=Purchased, agg=mean, config.y_format=percentage),\n"
+        "  - Purchase rate by salary bracket (bar, y=Purchased, agg=mean, config.y_format=percentage),\n"
+        "  - Age vs Salary colored by Purchased (scatter, config.color_column=Purchased),\n"
+        "  - Salary distribution (histogram)\n"
         "▸ Geographic/Science data (latitude, longitude, magnitude, depth, place):\n"
         "  - Location map (map), Distribution by region (bar),\n"
         "  - Magnitude over time (line), Depth vs magnitude correlation (scatter)\n"
@@ -2641,7 +2816,7 @@ def llm_dashboard_plan(
         "y (column name for y-axis/value), "
         "values (column name for pie values or histogram distribution), "
         "aggregation (one of: count, sum, mean, median), "
-        "config (optional object with lat_column, lon_column, label_column, value_column for maps). "
+        "config (optional object — can include: y_format, color_column, lat_column, lon_column, label_column, value_column). "
         "ONLY use column names from the provided list OR the derived columns listed above."
     )
     user_prompt = (
@@ -2693,8 +2868,10 @@ def llm_dashboard_plan(
                     config = {"lat_column": lat_col, "lon_column": lon_col}
             else:
                 if x and x not in column_names:
+                    logger.warning("LLM hallucinated column '%s' for x-axis in visual '%s'", x, title)
                     continue
                 if y and y not in column_names:
+                    logger.warning("LLM hallucinated column '%s' for y-axis in visual '%s'", y, title)
                     continue
                 if values and values not in column_names:
                     continue

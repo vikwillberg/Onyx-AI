@@ -1188,7 +1188,7 @@ function switchDashboardTab(tab) {
     if (dataView) dataView.classList.remove("hidden");
     if (insightsWrap) insightsWrap.classList.add("hidden");
     if (filterBar) filterBar.classList.add("hidden");
-    renderDataViewTable();
+    renderDataView();
   }
 }
 
@@ -4215,7 +4215,8 @@ function buildPlotlyLayout(visual, container, plotData) {
   let yTickPrefix = "";
   let yTickSuffix = "";
   let yTickFormat = "";
-  const yFmt = detectColumnFormat(visual.y || visual.values || "");
+  const backendYFormat = visual.config?.y_format;
+  const yFmt = backendYFormat === "percentage" ? "percentage" : detectColumnFormat(visual.y || visual.values || "");
   if (yFmt === "currency") {
     yTickPrefix = "$";
     yTickFormat = ".2s";
@@ -4291,7 +4292,7 @@ function buildPlotlyLayout(visual, container, plotData) {
     legend: isPie
       ? pieLegend
       : { orientation: "h", y: -0.2, x: 0, xanchor: "left", font: { size: 10 } },
-    showlegend: isPie && showPieLegend,
+    showlegend: (isPie && showPieLegend) || (visual.type === "scatter" && !!visual.config?.color_column),
     uniformtext: { minsize: 9, mode: "hide" },
     hovermode: "closest",
     bargap: 0.22,
@@ -4470,23 +4471,49 @@ function renderVisual(visual, container) {
     ];
   } else if (visual.type === "scatter") {
     const palette = getActivePalette();
-    const scatterColor = palette[0] || "#b45309";
-    const yVals = data.map((row) => Number(row[visual.y]) || 0);
-    plotData = [
-      {
+    const colorCol = visual.config?.color_column;
+    if (colorCol && data.length && data[0][colorCol] !== undefined) {
+      const groups = {};
+      data.forEach((row) => {
+        const key = String(row[colorCol] ?? "Unknown");
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(row);
+      });
+      const groupKeys = Object.keys(groups).sort();
+      const colorMap = { "0": palette[0] || "#ef4444", "1": palette[1] || "#22c55e" };
+      plotData = groupKeys.map((key, i) => ({
         type: "scatter",
         mode: "markers",
-        x: data.map((row) => row[visual.x]),
-        y: yVals,
+        name: key === "0" ? "No" : key === "1" ? "Yes" : key,
+        x: groups[key].map((row) => row[visual.x]),
+        y: groups[key].map((row) => Number(row[visual.y]) || 0),
         marker: {
-          color: scatterColor,
+          color: colorMap[key] || palette[i % palette.length],
           size: 7,
           opacity: 0.7,
           line: { color: theme.font, width: 0.5 },
         },
-        hovertemplate: hoverTemplate,
-      },
-    ];
+        hovertemplate: `${visual.x}: %{x}<br>${visual.y}: %{y}<br>${colorCol}: ${key}<extra></extra>`,
+      }));
+    } else {
+      const scatterColor = palette[0] || "#b45309";
+      const yVals = data.map((row) => Number(row[visual.y]) || 0);
+      plotData = [
+        {
+          type: "scatter",
+          mode: "markers",
+          x: data.map((row) => row[visual.x]),
+          y: yVals,
+          marker: {
+            color: scatterColor,
+            size: 7,
+            opacity: 0.7,
+            line: { color: theme.font, width: 0.5 },
+          },
+          hovertemplate: hoverTemplate,
+        },
+      ];
+    }
   } else if (visual.type === "histogram") {
     const counts = data.map((row) => row.count);
     const maxCount = Math.max(...counts, 1);
