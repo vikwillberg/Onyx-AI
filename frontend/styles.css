@@ -711,8 +711,8 @@ body[data-theme="light"] .grid-stack-item-content { background: #ffffff; }
 .panel-dashboard { padding: 12px 16px 16px; background: transparent; border: none; box-shadow: none; }
 
 .dashboard-header {
-  display: flex; flex-direction: column; gap: 12px;
-  padding: 0 0 16px; margin-bottom: 16px; border-bottom: none;
+  display: flex; flex-direction: column; gap: 16px;
+  padding: 0 0 20px; margin-bottom: 20px; border-bottom: 1px solid var(--outline);
 }
 .dashboard-header-row1 {
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
@@ -2092,18 +2092,23 @@ body[data-theme="dark"] .home-chat-bubble.user > div {
   display: flex; gap: 14px; align-items: flex-start;
   padding: 2px 0 14px;
 }
-.home-chat-bubble.typing .typing-dots { display: inline-flex; align-items: center; justify-content: center; padding: 6px 0; width: 24px; height: 24px; }
-.home-chat-bubble.typing .typing-dots span {
-  width: 16px; height: 16px; border-radius: 50%;
-  background: transparent;
-  border: 2px solid var(--accent);
+.typing-fluid-circle {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 3px solid var(--accent);
   border-top-color: transparent;
-  animation: fluidSpin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation: fluidSpin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  margin-top: 2px;
+}
+.typing-fluid-circle.solid {
+  animation: none;
+  border-color: var(--accent);
+  background: var(--accent);
+  transition: all 0.3s ease;
 }
 @keyframes fluidSpin {
-  0% { transform: rotate(0deg); opacity: 0.6; }
-  50% { transform: rotate(180deg); opacity: 1; border-width: 3px; }
-  100% { transform: rotate(360deg); opacity: 0.6; }
+  0% { transform: rotate(0deg); opacity: 0.6; border-width: 2px; }
+  50% { transform: rotate(180deg); opacity: 1; border-width: 4px; }
+  100% { transform: rotate(360deg); opacity: 0.6; border-width: 2px; }
 }
 
 @keyframes fadeInUp {
@@ -2148,7 +2153,7 @@ body[data-theme="dark"] .home-chat-bubble.user > div {
 .home-input-row {
   display: flex; align-items: center; gap: 8px;
 }
-.home-input-box:focus-within { box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08); }
+.home-input-box:focus-within { box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08); outline: none; border-color: var(--outline); }
 .home-input-box.drag-over { border-color: var(--accent); background: var(--accent-soft); }
 .home-attach-btn {
   width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
@@ -2787,12 +2792,17 @@ body[data-theme="light"] .sidebar-icon-moon { display: none !important; }
 }
 
 /* ===== NAV PILLS — Dashboard / Key Insights / Data ===== */
-.dashboard-nav-pills { display: flex; gap: 4px; align-items: center; }
+.dashboard-nav-pills {
+  display: flex; gap: 0; align-items: center;
+  background: var(--surface); border: 1px solid var(--outline);
+  border-radius: 12px; padding: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
 .nav-pill {
-  padding: 12px 32px; font-size: 1rem; font-weight: 600;
-  border-radius: 10px; border: 2px solid transparent;
+  padding: 10px 24px; font-size: 0.95rem; font-weight: 600;
+  border-radius: 8px; border: 2px solid transparent;
   background: transparent; color: var(--muted); cursor: pointer;
-  font-family: inherit; transition: all 0.15s ease; white-space: nowrap;
+  font-family: inherit; transition: all 0.2s ease; white-space: nowrap;
 }
 .nav-pill:hover { color: var(--ink); background: var(--surface-hover); }
 .nav-pill.active {
@@ -3242,6 +3252,23 @@ body[data-theme="dark"] .tile-focus-btn {
   }
 }
 
+/* ===== SAVE DASHBOARD TOAST ===== */
+.save-toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--surface); border: 1px solid var(--outline);
+  border-radius: 12px; padding: 12px 20px;
+  display: flex; align-items: center; gap: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+  z-index: 1000; animation: fadeInUp 0.3s ease-out;
+}
+.save-toast.hidden { display: none; }
+.save-toast-icon { color: var(--accent); display: flex; }
+.save-toast-text { font-weight: 600; color: var(--ink); font-size: 0.95rem; white-space: nowrap; }
+.save-toast-actions { display: flex; align-items: center; gap: 12px; }
+.save-toast-actions .btn-link { color: var(--muted); text-decoration: none; font-size: 0.9rem; font-weight: 500; cursor: pointer; border: none; background: transparent; }
+.save-toast-actions .btn-link:hover { color: var(--ink); }
+.save-toast-actions .btn-primary { padding: 6px 16px; font-size: 0.9rem; }
+
 /* ── Section 3: ChatGPT-style mobile input pill ──────────── */
 @media (max-width: 768px) {
   /* Anchor input bar to the bottom of the viewport */
@@ -3493,7 +3520,7 @@ body[data-theme="dark"] .tile-focus-btn {
   }
 }
 
-/* ── Section 7: Shell, scroll, and dvh fixes ─────────────── */
+/* ... */
 @media (max-width: 768px) {
   /* Use dynamic viewport height to handle mobile browser chrome */
   .app-shell {

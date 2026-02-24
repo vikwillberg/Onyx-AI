@@ -1,0 +1,501 @@
+participant_id,age,role,primary_task_type,ai_usage_frequency_per_day,task_completion_without_ai_score,task_completion_with_ai_score,self_perceived_ai_dependency,confidence_without_ai,confidence_with_ai,awareness_of_ai_dependency
+1,25,Freelancer,Writing,7,5,5,8,10,10,Medium
+2,31,Freelancer,Writing,11,6,8,2,1,6,High
+3,40,Student,Research,5,8,8,1,9,9,Medium
+4,20,Student,Coding,11,3,8,8,3,3,Medium
+5,32,Student,Learning,3,6,6,2,7,7,Medium
+6,32,Professional,Research,14,5,7,9,9,9,High
+7,40,Student,Research,5,3,9,9,2,6,Low
+8,19,Professional,Decision Making,5,1,7,9,10,10,Medium
+9,44,Student,Decision Making,8,4,6,10,5,5,Medium
+10,18,Student,Coding,3,2,3,9,10,10,Low
+11,33,Freelancer,Decision Making,12,2,4,4,6,8,High
+12,26,Freelancer,Learning,14,4,6,5,9,9,High
+13,24,Professional,Coding,5,7,7,2,8,9,Medium
+14,30,Freelancer,Learning,0,6,6,10,9,9,Low
+15,28,Student,Writing,3,9,9,9,6,9,High
+16,25,Student,Research,8,8,8,5,9,9,High
+17,38,Student,Learning,0,3,7,7,9,9,Low
+18,42,Freelancer,Learning,4,7,10,3,2,5,Low
+19,32,Student,Learning,10,4,5,6,5,6,Medium
+20,30,Professional,Coding,7,4,9,4,2,6,Low
+21,20,Freelancer,Decision Making,6,8,8,10,9,9,Low
+22,22,Professional,Decision Making,5,4,10,2,5,6,Low
+23,36,Professional,Writing,11,5,5,4,7,7,Low
+24,43,Student,Research,10,7,7,10,4,7,Low
+25,36,Freelancer,Learning,12,5,5,4,7,7,Low
+26,39,Freelancer,Writing,5,3,3,10,3,4,Medium
+27,28,Professional,Decision Making,8,8,8,10,6,6,Medium
+28,40,Freelancer,Research,3,5,7,10,2,4,Low
+29,25,Freelancer,Research,1,7,7,10,3,6,Low
+30,21,Professional,Research,2,8,8,1,1,5,High
+31,22,Freelancer,Decision Making,2,9,9,7,9,9,Medium
+32,21,Professional,Decision Making,0,4,4,7,1,9,Medium
+33,34,Student,Coding,8,7,7,10,5,9,High
+34,22,Freelancer,Research,0,6,7,4,2,5,Medium
+35,34,Professional,Learning,14,6,6,8,2,5,Medium
+36,40,Professional,Learning,1,1,10,5,5,7,Low
+37,28,Professional,Decision Making,12,1,3,4,10,10,Medium
+38,18,Professional,Coding,14,7,8,9,3,7,Low
+39,32,Professional,Coding,0,7,10,8,3,3,High
+40,37,Freelancer,Learning,11,3,7,6,8,10,Medium
+41,21,Professional,Writing,7,9,9,10,2,9,Medium
+42,32,Freelancer,Decision Making,5,5,7,6,4,6,Low
+43,42,Student,Coding,14,3,5,1,2,3,Medium
+44,19,Student,Coding,10,4,8,5,5,5,Low
+45,32,Student,Writing,10,10,10,10,3,8,Medium
+46,40,Student,Learning,11,9,9,10,3,3,Medium
+47,43,Student,Writing,5,8,9,3,4,4,High
+48,17,Professional,Decision Making,12,9,9,6,2,10,Low
+49,28,Professional,Learning,2,3,8,7,7,10,Medium
+50,32,Student,Writing,9,6,6,5,6,8,Low
+51,34,Freelancer,Coding,12,10,10,5,3,5,Low
+52,31,Freelancer,Writing,9,6,10,3,1,6,Medium
+53,22,Professional,Decision Making,0,8,8,4,2,6,High
+54,36,Professional,Learning,3,10,10,4,4,4,Medium
+55,42,Freelancer,Research,0,5,9,5,3,9,Medium
+56,44,Professional,Coding,1,5,8,6,8,8,Low
+57,25,Freelancer,Learning,12,8,10,1,10,10,Low
+58,32,Professional,Learning,3,9,9,3,9,9,High
+59,29,Professional,Decision Making,8,7,9,10,4,5,Low
+60,16,Student,Decision Making,8,1,7,8,5,7,Low
+61,21,Freelancer,Coding,2,4,7,4,5,9,High
+62,21,Freelancer,Writing,6,2,4,9,3,9,Medium
+63,27,Student,Writing,4,5,8,3,2,9,Low
+64,41,Freelancer,Coding,5,2,3,7,6,6,High
+65,38,Professional,Learning,10,9,9,4,9,10,High
+66,19,Freelancer,Writing,5,9,9,9,8,10,Low
+67,20,Student,Coding,9,7,7,7,4,5,Low
+68,28,Professional,Learning,4,6,6,3,10,10,Low
+69,28,Professional,Learning,12,4,6,3,8,10,High
+70,22,Student,Coding,13,6,6,10,7,8,Medium
+71,41,Freelancer,Research,10,3,8,10,9,9,High
+72,16,Professional,Writing,11,7,9,2,5,10,Medium
+73,42,Student,Writing,8,8,8,7,2,9,Medium
+74,42,Professional,Writing,14,1,4,2,1,8,Low
+75,42,Student,Research,3,4,10,5,3,4,Low
+76,16,Freelancer,Writing,6,6,6,4,1,10,Low
+77,32,Freelancer,Writing,6,8,10,1,6,6,Medium
+78,41,Professional,Learning,4,4,8,4,8,8,Low
+79,31,Freelancer,Coding,7,9,9,8,5,7,Low
+80,37,Freelancer,Writing,11,2,3,7,4,6,Medium
+81,18,Professional,Research,7,3,3,1,2,5,Medium
+82,41,Student,Decision Making,7,2,6,9,8,10,Low
+83,23,Professional,Learning,6,2,7,8,5,9,Low
+84,17,Student,Coding,2,5,8,5,5,9,Medium
+85,24,Freelancer,Learning,11,5,7,3,2,3,High
+86,42,Professional,Coding,3,10,10,6,7,7,Low
+87,34,Professional,Research,6,5,7,9,8,8,Low
+88,23,Freelancer,Writing,14,10,10,7,4,4,High
+89,40,Professional,Writing,0,7,7,7,6,6,High
+90,41,Professional,Writing,4,8,8,2,1,9,High
+91,27,Professional,Coding,13,5,9,6,5,5,Low
+92,16,Freelancer,Research,5,9,9,2,7,9,Low
+93,41,Freelancer,Writing,2,1,6,10,7,7,High
+94,44,Student,Research,0,4,6,4,2,9,Medium
+95,30,Student,Coding,5,3,4,7,4,7,Medium
+96,31,Student,Decision Making,3,4,4,7,5,9,Medium
+97,23,Professional,Research,6,3,4,7,8,8,High
+98,21,Professional,Writing,0,6,7,3,2,6,Medium
+99,27,Freelancer,Decision Making,4,5,10,2,8,8,Low
+100,34,Freelancer,Research,10,2,10,7,7,7,High
+101,23,Professional,Coding,3,3,8,9,10,10,Low
+102,37,Professional,Learning,9,9,9,1,2,6,Low
+103,16,Professional,Writing,5,9,9,10,8,8,High
+104,20,Professional,Research,6,10,10,7,2,9,High
+105,18,Student,Writing,8,4,4,5,6,6,Medium
+106,34,Student,Learning,1,9,9,8,2,3,Medium
+107,16,Professional,Research,10,6,8,7,5,9,Medium
+108,41,Student,Writing,11,7,7,5,10,10,High
+109,43,Student,Writing,7,7,8,6,9,10,High
+110,33,Student,Coding,2,4,8,8,9,9,Medium
+111,32,Professional,Writing,10,8,8,6,3,4,Low
+112,19,Student,Coding,10,2,7,1,7,9,Medium
+113,17,Professional,Coding,5,4,6,10,6,9,High
+114,35,Freelancer,Coding,0,1,9,5,3,10,High
+115,17,Professional,Coding,3,3,6,7,9,9,High
+116,43,Student,Decision Making,8,2,7,7,6,6,Low
+117,17,Student,Learning,1,4,7,9,10,10,Low
+118,38,Freelancer,Decision Making,5,10,10,6,7,7,High
+119,16,Freelancer,Coding,12,5,6,10,5,9,Medium
+120,18,Student,Decision Making,11,2,10,4,9,9,Low
+121,38,Professional,Learning,1,10,10,3,7,8,Medium
+122,26,Professional,Writing,6,9,9,1,1,6,High
+123,41,Professional,Research,11,4,7,3,8,9,Medium
+124,33,Professional,Writing,8,9,9,2,10,10,Medium
+125,19,Professional,Writing,5,6,6,6,9,9,Low
+126,17,Freelancer,Decision Making,8,8,8,5,9,9,High
+127,17,Student,Learning,14,9,10,4,10,10,Low
+128,31,Professional,Learning,9,2,8,1,10,10,High
+129,17,Freelancer,Coding,3,6,6,2,10,10,High
+130,33,Professional,Coding,1,7,7,1,5,7,Low
+131,17,Freelancer,Decision Making,9,7,7,4,5,6,Medium
+132,27,Student,Learning,3,7,9,9,10,10,Medium
+133,27,Freelancer,Writing,8,3,10,9,3,5,High
+134,29,Freelancer,Research,0,3,5,7,6,6,Medium
+135,38,Student,Writing,3,4,6,8,2,5,Low
+136,37,Professional,Decision Making,1,9,9,3,2,3,High
+137,39,Professional,Decision Making,11,4,10,5,6,6,Low
+138,21,Professional,Decision Making,2,4,9,1,5,5,High
+139,20,Professional,Research,8,3,3,8,2,5,Low
+140,38,Freelancer,Decision Making,5,1,3,3,4,5,High
+141,33,Professional,Decision Making,13,7,7,3,6,8,High
+142,25,Student,Coding,6,7,7,3,3,5,Low
+143,27,Professional,Writing,8,9,10,5,1,9,Medium
+144,33,Professional,Decision Making,10,3,9,1,7,8,Medium
+145,44,Student,Research,5,8,10,6,1,6,High
+146,19,Student,Coding,2,1,3,8,2,8,High
+147,22,Professional,Coding,14,2,10,8,4,4,High
+148,30,Student,Learning,4,10,10,7,8,8,Low
+149,44,Professional,Coding,8,10,10,5,5,9,Medium
+150,40,Student,Research,6,7,7,3,4,8,High
+151,17,Freelancer,Decision Making,5,7,9,6,10,10,Low
+152,25,Freelancer,Coding,3,4,5,3,8,8,High
+153,17,Student,Learning,3,2,8,3,3,7,High
+154,44,Student,Coding,10,6,9,5,9,9,Low
+155,32,Freelancer,Writing,4,1,8,10,2,8,Low
+156,27,Student,Coding,0,6,10,7,6,6,Low
+157,29,Freelancer,Learning,9,3,6,6,8,8,Medium
+158,41,Student,Coding,11,6,6,2,3,7,Low
+159,40,Professional,Coding,0,6,7,8,1,8,Medium
+160,19,Professional,Decision Making,2,8,8,1,10,10,Low
+161,26,Professional,Learning,2,7,7,10,3,5,High
+162,25,Freelancer,Research,5,9,9,3,6,6,Medium
+163,20,Student,Research,3,9,9,10,2,9,Medium
+164,44,Professional,Writing,4,7,9,4,5,10,High
+165,32,Student,Coding,3,1,4,1,8,9,Low
+166,18,Professional,Coding,8,1,8,9,9,9,Low
+167,25,Freelancer,Coding,1,8,8,7,4,10,Medium
+168,16,Professional,Research,12,1,3,10,10,10,Low
+169,40,Professional,Research,1,10,10,7,7,7,Low
+170,30,Freelancer,Learning,9,3,10,1,1,3,Low
+171,17,Professional,Coding,5,4,10,8,1,3,Medium
+172,30,Professional,Learning,5,1,10,6,1,4,High
+173,17,Professional,Learning,7,2,7,8,2,5,High
+174,20,Student,Decision Making,5,10,10,4,5,5,Medium
+175,38,Professional,Research,1,6,6,10,5,6,Medium
+176,42,Freelancer,Writing,3,3,9,8,10,10,High
+177,40,Freelancer,Writing,8,1,7,1,7,8,Medium
+178,37,Student,Coding,12,9,9,3,3,4,High
+179,16,Professional,Coding,11,5,6,10,5,5,High
+180,19,Professional,Writing,6,10,10,7,4,4,Medium
+181,37,Student,Writing,3,6,6,10,10,10,Medium
+182,23,Freelancer,Writing,13,10,10,4,3,7,High
+183,16,Student,Coding,0,2,4,5,4,8,Medium
+184,40,Freelancer,Coding,12,3,5,3,2,7,Medium
+185,37,Student,Coding,7,8,8,6,5,9,High
+186,19,Professional,Research,2,10,10,2,10,10,Low
+187,28,Freelancer,Decision Making,6,8,8,6,6,6,Medium
+188,26,Freelancer,Decision Making,11,6,10,3,5,5,High
+189,39,Professional,Research,14,8,9,7,9,10,Low
+190,27,Professional,Research,7,7,10,1,8,9,Medium
+191,23,Professional,Research,4,5,5,5,6,6,Low
+192,21,Freelancer,Coding,0,4,6,4,1,10,Low
+193,28,Freelancer,Writing,13,8,8,10,8,8,Medium
+194,28,Student,Coding,14,6,6,3,9,10,Low
+195,19,Professional,Research,2,7,9,6,9,9,Medium
+196,18,Freelancer,Writing,14,1,10,10,5,6,High
+197,34,Professional,Decision Making,5,6,9,5,4,8,Medium
+198,42,Freelancer,Writing,7,9,9,1,7,7,Low
+199,32,Student,Coding,9,6,6,7,10,10,Medium
+200,31,Freelancer,Coding,2,3,4,3,9,9,Low
+201,41,Student,Decision Making,9,9,9,4,1,3,High
+202,34,Professional,Coding,8,1,5,2,8,10,Low
+203,34,Student,Decision Making,13,10,10,9,7,7,Medium
+204,30,Professional,Research,4,7,7,4,10,10,Medium
+205,38,Professional,Decision Making,2,4,4,4,2,8,Low
+206,22,Professional,Decision Making,13,8,8,3,2,3,Low
+207,19,Student,Research,12,5,5,5,1,7,Low
+208,42,Freelancer,Decision Making,12,7,7,9,5,5,Low
+209,28,Student,Research,6,6,6,5,1,10,Low
+210,21,Professional,Research,0,7,8,1,7,7,Low
+211,28,Student,Learning,13,4,10,6,8,8,High
+212,17,Professional,Research,5,6,6,7,8,8,Low
+213,21,Freelancer,Learning,10,2,7,3,4,9,Low
+214,38,Student,Coding,6,6,6,7,2,3,High
+215,26,Freelancer,Decision Making,0,5,8,10,8,8,Medium
+216,30,Student,Decision Making,11,10,10,7,9,9,High
+217,26,Student,Writing,10,5,5,5,3,9,High
+218,33,Professional,Coding,12,4,6,7,10,10,High
+219,20,Student,Coding,3,2,6,5,4,4,Medium
+220,19,Student,Coding,9,9,9,7,6,6,High
+221,38,Freelancer,Coding,1,6,10,9,2,7,Medium
+222,21,Professional,Coding,9,4,8,3,10,10,High
+223,27,Professional,Learning,1,9,9,4,5,7,Medium
+224,35,Student,Coding,2,7,7,9,7,7,Low
+225,19,Freelancer,Research,13,7,9,3,4,4,Low
+226,18,Student,Learning,9,1,4,2,9,10,Medium
+227,23,Professional,Decision Making,14,6,6,4,8,10,Low
+228,27,Freelancer,Learning,8,7,7,4,6,6,Low
+229,16,Professional,Writing,14,9,9,4,7,8,High
+230,42,Freelancer,Decision Making,4,9,9,7,8,10,Medium
+231,21,Freelancer,Learning,1,2,6,9,8,8,Medium
+232,20,Freelancer,Learning,8,4,5,4,1,8,Medium
+233,27,Freelancer,Writing,7,3,8,9,2,6,Low
+234,17,Freelancer,Writing,10,9,10,3,1,3,Low
+235,42,Student,Decision Making,5,4,5,4,8,10,High
+236,37,Student,Writing,0,7,9,5,8,8,High
+237,32,Freelancer,Learning,12,8,8,1,2,5,High
+238,29,Student,Decision Making,3,3,4,5,8,8,High
+239,29,Professional,Writing,1,1,4,10,1,10,Low
+240,31,Student,Decision Making,8,6,9,8,5,8,High
+241,26,Student,Writing,13,2,4,8,5,9,Low
+242,39,Professional,Decision Making,1,8,8,1,9,9,Medium
+243,18,Student,Writing,4,8,8,1,3,8,Low
+244,31,Student,Research,11,10,10,9,3,7,Low
+245,40,Professional,Research,7,9,9,9,9,9,Low
+246,27,Professional,Writing,1,6,6,5,3,8,High
+247,43,Professional,Research,7,6,7,2,10,10,Medium
+248,44,Freelancer,Writing,13,6,9,1,1,4,Medium
+249,33,Professional,Research,3,4,9,7,9,9,Medium
+250,35,Freelancer,Coding,4,10,10,2,3,4,High
+251,34,Student,Coding,7,8,8,8,8,9,Low
+252,29,Freelancer,Decision Making,3,8,10,5,9,9,High
+253,39,Professional,Decision Making,11,10,10,6,3,5,High
+254,34,Freelancer,Coding,12,2,8,7,1,10,Medium
+255,42,Professional,Research,11,10,10,8,7,10,Medium
+256,32,Student,Decision Making,0,8,8,3,8,8,High
+257,37,Freelancer,Decision Making,14,10,10,10,2,5,Medium
+258,43,Student,Writing,8,5,9,2,1,10,Low
+259,30,Professional,Writing,3,8,8,4,10,10,Low
+260,23,Freelancer,Coding,5,5,5,1,8,8,High
+261,31,Student,Decision Making,9,1,7,9,9,9,High
+262,17,Student,Coding,6,3,3,7,3,6,Low
+263,29,Student,Coding,5,10,10,4,1,3,High
+264,25,Freelancer,Learning,6,1,5,9,1,10,High
+265,26,Professional,Writing,5,9,9,8,7,9,High
+266,23,Professional,Learning,9,6,9,7,5,5,Low
+267,36,Student,Writing,0,10,10,7,1,5,Low
+268,38,Professional,Research,1,8,10,10,6,8,High
+269,16,Professional,Writing,9,7,7,10,8,8,High
+270,33,Student,Learning,2,8,8,5,2,6,Medium
+271,17,Student,Decision Making,7,3,6,1,1,4,High
+272,21,Student,Research,9,10,10,10,9,9,Medium
+273,38,Student,Learning,6,2,6,9,9,9,Low
+274,38,Freelancer,Writing,5,8,8,7,3,7,Medium
+275,37,Student,Writing,5,5,5,5,5,6,High
+276,26,Freelancer,Learning,14,9,9,5,7,7,Medium
+277,25,Freelancer,Writing,3,2,4,2,9,9,Low
+278,27,Student,Learning,9,9,9,5,8,9,High
+279,31,Freelancer,Learning,3,3,3,6,3,10,Low
+280,29,Freelancer,Decision Making,2,10,10,2,4,6,Low
+281,19,Freelancer,Coding,14,2,7,5,8,9,Medium
+282,35,Student,Learning,5,10,10,3,3,6,Medium
+283,28,Student,Research,8,9,9,9,2,5,High
+284,37,Freelancer,Decision Making,10,3,6,5,8,9,Medium
+285,27,Professional,Research,5,4,9,9,6,8,Low
+286,23,Professional,Research,14,5,5,9,4,4,Medium
+287,25,Professional,Research,7,8,8,8,5,5,Medium
+288,41,Professional,Writing,8,9,9,7,6,6,Low
+289,16,Professional,Research,1,4,5,2,6,7,Medium
+290,34,Student,Learning,14,5,6,6,1,6,Low
+291,19,Student,Learning,10,4,7,4,5,8,High
+292,19,Student,Coding,14,3,9,4,7,7,Medium
+293,25,Student,Learning,13,9,9,8,8,10,Medium
+294,41,Professional,Writing,4,1,3,5,5,10,Medium
+295,38,Professional,Research,3,5,7,3,6,6,High
+296,40,Freelancer,Writing,9,7,8,9,9,9,Medium
+297,30,Freelancer,Coding,6,6,10,1,1,3,Low
+298,21,Freelancer,Coding,11,9,9,4,4,4,High
+299,42,Freelancer,Coding,9,2,7,7,10,10,Medium
+300,18,Student,Coding,0,10,10,3,10,10,Low
+301,17,Student,Decision Making,6,3,10,5,5,5,Medium
+302,40,Student,Learning,7,3,8,5,8,8,Low
+303,27,Student,Learning,10,1,4,1,2,5,Low
+304,37,Student,Learning,14,9,9,5,4,7,Medium
+305,27,Student,Coding,7,7,7,3,4,4,Medium
+306,38,Professional,Research,6,5,7,6,2,3,Medium
+307,31,Student,Coding,13,9,9,5,8,8,High
+308,38,Student,Writing,0,1,9,1,3,10,High
+309,40,Professional,Research,4,6,6,7,6,6,Low
+310,22,Professional,Decision Making,9,4,9,9,4,9,High
+311,17,Student,Decision Making,7,3,7,5,1,4,Medium
+312,18,Professional,Coding,1,3,10,7,9,9,Medium
+313,27,Student,Writing,13,10,10,1,5,5,High
+314,21,Student,Writing,9,1,7,5,9,9,Low
+315,17,Freelancer,Research,14,4,5,4,10,10,Medium
+316,40,Freelancer,Coding,4,4,8,3,4,10,Medium
+317,29,Student,Decision Making,0,3,8,3,6,6,High
+318,23,Student,Research,10,4,9,3,3,5,Low
+319,18,Freelancer,Learning,14,10,10,5,4,5,Medium
+320,23,Student,Coding,2,5,5,2,8,9,High
+321,29,Professional,Writing,5,8,9,4,1,8,Medium
+322,36,Student,Writing,14,6,6,7,7,10,High
+323,29,Student,Research,7,6,6,1,9,9,High
+324,44,Student,Learning,8,4,7,9,9,9,High
+325,19,Professional,Research,6,6,8,5,9,9,Low
+326,26,Student,Learning,14,5,10,3,10,10,Low
+327,40,Freelancer,Research,11,4,8,4,7,10,High
+328,24,Student,Decision Making,14,3,10,2,1,9,High
+329,16,Freelancer,Research,8,7,7,6,7,10,Medium
+330,31,Student,Decision Making,6,7,7,9,3,3,Medium
+331,33,Student,Learning,8,10,10,3,3,3,High
+332,21,Professional,Learning,2,10,10,6,10,10,Medium
+333,44,Student,Decision Making,7,9,9,10,7,7,Medium
+334,44,Freelancer,Writing,5,4,7,9,2,9,High
+335,38,Professional,Coding,8,7,7,2,10,10,Low
+336,44,Professional,Research,7,8,8,2,3,6,Low
+337,19,Professional,Decision Making,10,6,6,2,10,10,Low
+338,41,Professional,Research,2,7,7,10,5,5,Low
+339,44,Professional,Coding,1,8,8,4,10,10,Medium
+340,25,Professional,Writing,1,3,6,9,3,4,Low
+341,31,Professional,Learning,1,4,8,9,7,7,High
+342,33,Student,Writing,7,2,4,3,1,8,Low
+343,28,Freelancer,Coding,1,8,8,8,8,8,Medium
+344,22,Professional,Learning,2,6,6,2,1,6,Medium
+345,17,Freelancer,Decision Making,7,6,6,3,3,3,Medium
+346,23,Student,Writing,9,9,10,4,5,5,Low
+347,37,Freelancer,Writing,10,3,4,2,3,6,Medium
+348,33,Professional,Coding,7,8,10,6,1,8,Medium
+349,22,Student,Research,8,2,4,10,6,6,Low
+350,35,Student,Learning,3,8,10,8,5,9,Medium
+351,30,Student,Research,1,8,9,6,10,10,Low
+352,38,Freelancer,Coding,12,9,9,8,3,3,Low
+353,17,Student,Coding,13,9,9,6,7,7,High
+354,33,Professional,Research,0,5,8,9,4,4,Medium
+355,38,Freelancer,Decision Making,8,4,4,7,10,10,High
+356,28,Student,Writing,7,3,4,3,2,7,Low
+357,39,Freelancer,Decision Making,13,10,10,7,10,10,High
+358,22,Freelancer,Learning,9,2,10,10,2,6,Low
+359,37,Student,Learning,12,7,10,8,2,3,Low
+360,23,Student,Writing,12,2,7,9,1,7,Medium
+361,28,Professional,Decision Making,7,10,10,1,4,9,High
+362,34,Professional,Writing,8,1,5,6,8,8,Medium
+363,44,Professional,Learning,12,1,10,2,8,8,Medium
+364,41,Freelancer,Coding,3,3,9,8,5,6,Low
+365,25,Freelancer,Writing,8,4,7,2,1,8,Medium
+366,42,Student,Research,9,5,5,10,10,10,High
+367,33,Freelancer,Research,6,7,10,8,9,9,Low
+368,37,Freelancer,Decision Making,12,4,9,8,5,7,Medium
+369,28,Professional,Writing,3,3,9,5,5,5,Low
+370,42,Student,Decision Making,0,4,5,4,5,5,Medium
+371,31,Professional,Research,2,9,9,4,8,8,Low
+372,39,Student,Learning,13,6,10,5,1,8,High
+373,39,Freelancer,Decision Making,14,7,7,8,9,9,High
+374,37,Student,Writing,9,7,7,9,4,4,Medium
+375,18,Student,Decision Making,4,4,7,6,1,9,Medium
+376,35,Freelancer,Decision Making,14,5,6,5,3,3,Medium
+377,28,Freelancer,Learning,5,7,7,7,3,10,High
+378,21,Professional,Decision Making,2,7,7,4,3,3,Low
+379,39,Freelancer,Coding,4,5,7,10,7,8,High
+380,21,Freelancer,Decision Making,7,3,10,9,4,6,High
+381,32,Professional,Writing,13,6,6,8,10,10,Low
+382,17,Student,Coding,2,2,8,7,4,7,High
+383,16,Freelancer,Coding,0,8,8,9,7,8,Low
+384,43,Student,Research,6,6,6,1,9,10,Medium
+385,38,Freelancer,Writing,5,6,7,3,7,7,Medium
+386,31,Professional,Learning,10,2,5,6,1,10,Medium
+387,33,Professional,Research,9,4,4,10,5,5,High
+388,18,Freelancer,Research,5,8,8,2,10,10,High
+389,38,Professional,Coding,9,9,9,8,2,5,Low
+390,28,Student,Decision Making,5,4,6,1,10,10,Low
+391,43,Freelancer,Writing,5,8,9,10,10,10,High
+392,35,Student,Decision Making,1,2,4,2,2,9,Low
+393,42,Student,Coding,7,9,10,5,2,9,Medium
+394,19,Student,Research,13,4,5,8,3,8,Low
+395,19,Student,Research,2,9,9,9,4,6,High
+396,20,Professional,Learning,5,2,7,8,4,4,Medium
+397,26,Freelancer,Decision Making,0,3,6,7,7,8,Low
+398,40,Freelancer,Coding,1,8,8,9,5,7,Medium
+399,21,Professional,Learning,4,5,6,2,10,10,Medium
+400,40,Professional,Research,0,6,6,7,5,5,High
+401,40,Professional,Learning,3,3,4,8,9,9,Low
+402,29,Freelancer,Decision Making,1,10,10,10,6,6,Medium
+403,18,Freelancer,Research,6,9,9,8,1,5,High
+404,22,Professional,Writing,7,3,9,7,6,6,Low
+405,32,Freelancer,Decision Making,2,1,4,1,6,8,Low
+406,41,Student,Coding,14,7,7,8,9,9,Low
+407,25,Professional,Decision Making,3,1,3,9,8,8,Medium
+408,37,Professional,Writing,7,2,10,10,5,9,Medium
+409,40,Student,Decision Making,7,10,10,5,7,7,Medium
+410,33,Freelancer,Writing,8,7,7,1,2,9,Low
+411,42,Student,Writing,0,8,8,7,6,6,Medium
+412,44,Student,Research,9,5,5,5,10,10,Medium
+413,28,Freelancer,Writing,0,7,7,5,8,8,High
+414,34,Professional,Writing,4,10,10,3,2,8,Medium
+415,43,Student,Research,14,3,4,4,4,9,High
+416,33,Student,Writing,7,2,3,6,10,10,Low
+417,20,Freelancer,Learning,12,4,10,10,10,10,High
+418,34,Student,Decision Making,9,4,6,2,4,4,Medium
+419,38,Student,Learning,14,10,10,9,2,6,Low
+420,23,Professional,Writing,8,4,7,10,2,6,High
+421,26,Professional,Coding,7,8,10,5,5,5,Low
+422,35,Student,Writing,1,3,6,8,10,10,Medium
+423,30,Freelancer,Decision Making,12,7,7,5,5,8,Medium
+424,32,Freelancer,Learning,0,6,8,10,5,6,Low
+425,29,Freelancer,Coding,14,8,9,1,9,9,Medium
+426,36,Professional,Learning,7,5,5,4,7,7,Medium
+427,31,Professional,Coding,0,9,9,6,4,5,Medium
+428,20,Professional,Learning,2,1,4,4,1,9,High
+429,23,Professional,Research,5,5,6,1,6,6,Low
+430,40,Student,Writing,7,7,7,3,2,5,Medium
+431,41,Student,Learning,3,5,9,9,2,10,Low
+432,32,Professional,Writing,1,1,9,4,2,7,Medium
+433,23,Student,Decision Making,8,2,7,1,1,4,Medium
+434,34,Professional,Learning,9,7,7,8,10,10,Low
+435,28,Freelancer,Learning,6,3,10,9,9,9,Medium
+436,40,Professional,Coding,2,3,4,10,7,8,High
+437,42,Freelancer,Coding,1,7,7,6,1,6,High
+438,23,Freelancer,Decision Making,5,8,8,6,8,8,Medium
+439,19,Student,Writing,8,2,7,8,7,10,Low
+440,32,Student,Writing,7,1,4,9,5,10,Medium
+441,27,Student,Decision Making,6,3,10,5,8,8,Medium
+442,25,Freelancer,Decision Making,13,7,7,2,5,8,Low
+443,26,Professional,Coding,8,1,5,9,4,4,High
+444,17,Student,Research,2,9,9,3,10,10,Medium
+445,33,Student,Decision Making,7,10,10,7,9,9,Low
+446,43,Professional,Decision Making,2,4,5,8,9,9,High
+447,44,Professional,Coding,12,9,9,7,7,7,Medium
+448,25,Freelancer,Coding,1,9,10,7,6,6,Low
+449,44,Professional,Learning,14,5,10,5,8,8,Medium
+450,41,Student,Coding,2,4,10,2,8,8,High
+451,37,Professional,Writing,2,7,7,9,4,10,High
+452,22,Student,Writing,4,6,6,7,6,6,High
+453,26,Student,Writing,1,10,10,9,10,10,Medium
+454,16,Freelancer,Writing,5,8,8,10,6,7,High
+455,42,Professional,Coding,1,8,9,7,3,6,Medium
+456,23,Student,Decision Making,12,7,7,5,4,6,High
+457,33,Professional,Research,8,3,6,6,9,9,Low
+458,16,Freelancer,Writing,8,9,10,7,8,8,High
+459,41,Freelancer,Learning,4,3,5,1,1,7,Low
+460,44,Professional,Coding,3,3,7,2,3,4,Low
+461,38,Freelancer,Decision Making,10,3,8,7,1,10,Low
+462,24,Student,Learning,10,9,9,3,6,8,Medium
+463,20,Student,Learning,1,5,7,1,3,9,Medium
+464,26,Professional,Learning,9,4,5,6,9,9,Medium
+465,28,Professional,Learning,7,4,5,5,4,10,Medium
+466,41,Freelancer,Learning,1,8,10,2,10,10,Low
+467,42,Professional,Decision Making,12,10,10,6,7,7,Medium
+468,27,Student,Coding,11,8,10,2,8,8,Low
+469,40,Student,Coding,0,10,10,9,10,10,Low
+470,30,Student,Learning,1,8,10,8,1,4,Low
+471,43,Professional,Coding,14,2,5,2,10,10,High
+472,21,Freelancer,Learning,5,2,8,10,5,10,High
+473,43,Freelancer,Coding,9,10,10,1,7,9,Medium
+474,22,Professional,Coding,5,8,8,10,7,7,Medium
+475,19,Professional,Learning,5,7,8,9,10,10,Low
+476,39,Freelancer,Learning,11,5,10,10,8,10,Medium
+477,30,Professional,Decision Making,11,7,9,6,9,9,High
+478,23,Professional,Learning,4,6,6,3,3,5,Low
+479,25,Professional,Research,10,8,8,3,6,6,Medium
+480,31,Professional,Coding,11,1,8,5,10,10,Medium
+481,34,Professional,Coding,0,2,9,4,1,5,Low
+482,23,Student,Writing,6,10,10,8,6,9,High
+483,31,Freelancer,Coding,11,8,8,9,1,7,Medium
+484,26,Student,Decision Making,8,3,9,6,7,10,Medium
+485,36,Freelancer,Research,1,8,8,6,9,9,Low
+486,24,Student,Research,12,10,10,6,8,8,Medium
+487,34,Student,Learning,12,1,9,2,5,9,Low
+488,21,Freelancer,Learning,3,1,9,8,6,8,High
+489,39,Freelancer,Research,0,8,8,6,4,7,Medium
+490,34,Student,Learning,1,8,8,5,5,5,Medium
+491,24,Professional,Decision Making,10,2,10,10,6,9,Medium
+492,30,Student,Learning,13,5,5,3,3,9,Low
+493,35,Student,Learning,6,8,8,6,7,7,Medium
+494,16,Student,Writing,8,10,10,3,8,8,Medium
+495,37,Student,Learning,6,5,7,9,5,8,High
+496,19,Professional,Writing,13,6,9,7,7,10,Low
+497,23,Student,Decision Making,14,7,7,2,1,9,Low
+498,37,Student,Learning,2,2,5,10,5,10,Low
+499,42,Freelancer,Learning,7,8,8,3,7,9,Medium
+500,28,Student,Decision Making,3,5,7,7,1,7,Low

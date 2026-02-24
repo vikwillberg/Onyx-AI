@@ -73,6 +73,25 @@ const CHART_COLORS = {
   palette: ["#F97316", "#0EA5E9", "#6366F1", "#10B981", "#EC4899", "#8B5CF6", "#FDBA74", "#EF4444", "#14B8A6", "#84CC16", "#64748B", "#FB923C"],
 };
 
+const COLOR_PALETTES = {
+  vibrant:       ["#FF5722", "#3B82F6", "#F59E0B", "#10B981", "#EC4899", "#8B5CF6", "#EF4444", "#06B6D4", "#84CC16", "#F97316", "#6366F1", "#14B8A6"],
+  professional:  ["#1E3A8A", "#0F766E", "#3B82F6", "#0D9488", "#64748B", "#1E40AF", "#115E59", "#2563EB", "#475569", "#0284C7", "#0E7490", "#334155"],
+  dark:          ["#9333EA", "#DB2777", "#F59E0B", "#7C3AED", "#EC4899", "#FBBF24", "#A855F7", "#F472B6", "#D97706", "#6D28D9", "#BE185D", "#EAB308"],
+  pastel:        ["#93C5FD", "#86EFAC", "#FDE68A", "#C4B5FD", "#FBCFE8", "#A5F3FC", "#FCA5A5", "#BEF264", "#DDD6FE", "#FECDD3", "#99F6E4", "#FED7AA"],
+  neon:          ["#00FF87", "#FF006E", "#FFBE0B", "#00B4D8", "#E500FF", "#FB5607", "#3A86FF", "#8338EC", "#FF006E", "#06D6A0", "#FFD166", "#118AB2"],
+  monochrome:    ["#1C1917", "#44403C", "#78716C", "#A8A29E", "#57534E", "#292524", "#8A8580", "#6B7280", "#374151", "#4B5563", "#9CA3AF", "#334155"],
+};
+
+function getActivePalette() {
+  const raw = (state.businessContext?.color_palette || "").toLowerCase().trim();
+  if (raw && COLOR_PALETTES[raw]) return COLOR_PALETTES[raw];
+  if (raw) {
+    const match = Object.keys(COLOR_PALETTES).find((k) => raw.includes(k));
+    if (match) return COLOR_PALETTES[match];
+  }
+  return CHART_COLORS.palette;
+}
+
 const PLOTLY_THEMES = {
   dark: {
     axisTitle: "#d6d3d1",
@@ -193,8 +212,9 @@ const elements = {
   closeAddVisual: document.getElementById("close-add-visual"),
   continueSave: document.getElementById("continue-save"),
   saveStatus: document.getElementById("save-status"),
-  saveLoginCta: document.getElementById("save-login-cta"),
-  saveStartOver: document.getElementById("save-start-over"),
+  saveToast: document.getElementById("save-toast"),
+  saveToastSignin: document.getElementById("save-toast-signin"),
+  saveToastDismiss: document.getElementById("save-toast-dismiss"),
   stepIndicator: document.getElementById("step-indicator"),
   categoryGrid: document.getElementById("category-grid"),
   categoryQuestions: document.getElementById("category-questions"),
@@ -1128,45 +1148,47 @@ function startTitleEdit(span, visual) {
 }
 
 /* ===== Nav Pills (Overview / Key Insights / Data) ===== */
-function switchNavTab(tab) {
-  const pills = document.querySelectorAll(".nav-pill");
+function switchDashboardTab(tab) {
+  const pills = document.querySelectorAll(".dashboard-nav-pills .nav-pill");
   pills.forEach((pill) => pill.classList.toggle("active", pill.dataset.nav === tab));
 
-  const kpiStrip = document.getElementById("kpi-strip");
   const insightsWrap = document.getElementById("insights-strip-wrap");
   const filterBar = elements.filterBar;
   const dashboardCanvas = document.querySelector(".dashboard-canvas");
   const analyticsView = document.getElementById("analytics-view");
   const dataView = document.getElementById("data-view");
 
-  const isOverview = tab === "overview";
-  const isAnalytics = tab === "analytics";
-  const isData = tab === "data";
-
-  /* Overview: show KPI strip, filter bar, dashboard grid */
-  if (kpiStrip) kpiStrip.classList.toggle("hidden", !isOverview);
-  if (filterBar) filterBar.classList.toggle("hidden", !isOverview);
-  if (dashboardCanvas) dashboardCanvas.classList.toggle("hidden", !isOverview);
-
-  /* Key Insights: show only insights strip */
-  if (insightsWrap) insightsWrap.classList.toggle("hidden", !isAnalytics);
-
-  /* Data: show analytics overview cards + data table */
-  if (analyticsView) analyticsView.classList.toggle("hidden", !isData);
-  if (dataView) dataView.classList.toggle("hidden", !isData);
-
-  /* Snapshot button — only on Key Insights tab */
-  const snapshotBtn = document.getElementById("snapshot-insights-btn");
-  if (snapshotBtn) snapshotBtn.classList.toggle("hidden", !isAnalytics);
-
-  if (isAnalytics) renderInsightsStrip();
-  if (isData) { renderAnalyticsView(); renderDataView(); }
-
-  /* Resize charts when switching back to overview */
-  if (isOverview) {
-    setTimeout(() => {
-      elements.dashboardGrid?.querySelectorAll(".chart").forEach((c) => Plotly.Plots.resize(c));
-    }, 100);
+  if (tab === "overview") {
+    if (dashboardCanvas) dashboardCanvas.classList.remove("hidden");
+    if (analyticsView) analyticsView.classList.add("hidden");
+    if (dataView) dataView.classList.add("hidden");
+    if (insightsWrap) insightsWrap.classList.add("hidden");
+    if (filterBar) filterBar.classList.remove("hidden");
+    /* Render grid if needed */
+    if (state.grid) state.grid.batchUpdate();
+    requestAnimationFrame(() => updateLayoutFromGrid());
+  } else if (tab === "analytics") {
+    if (dashboardCanvas) dashboardCanvas.classList.add("hidden");
+    if (analyticsView) analyticsView.classList.remove("hidden");
+    if (dataView) dataView.classList.add("hidden");
+    if (filterBar) filterBar.classList.add("hidden");
+    
+    // First render the data completeness/stats grid
+    renderAnalyticsView();
+    
+    // Then show the AI narrative insights below it
+    if (insightsWrap) {
+      insightsWrap.classList.remove("hidden");
+      if (analyticsView) analyticsView.appendChild(insightsWrap);
+    }
+    renderInsightsStrip();
+  } else if (tab === "data") {
+    if (dashboardCanvas) dashboardCanvas.classList.add("hidden");
+    if (analyticsView) analyticsView.classList.add("hidden");
+    if (dataView) dataView.classList.remove("hidden");
+    if (insightsWrap) insightsWrap.classList.add("hidden");
+    if (filterBar) filterBar.classList.add("hidden");
+    renderDataViewTable();
   }
 }
 
@@ -1554,8 +1576,8 @@ function appendHomeBubble(role, text) {
   const bubble = document.createElement("div");
   bubble.className = `home-chat-bubble ${role}`;
   if (role === "typing") {
-    /* AI icon + animated dots */
-    bubble.innerHTML = `<div class="home-chat-ai-icon">${AI_SPARK_SVG}</div><div class="typing-dots"><span></span></div>`;
+    /* Fluid loading circle, no star icon anymore */
+    bubble.innerHTML = `<div class="typing-fluid-circle"></div>`;
   } else if (role === "assistant") {
     /* AI icon + body wrapper */
     const icon = document.createElement("div");
@@ -2037,34 +2059,29 @@ function simpleMarkdown(text) {
   if (!text) return text;
   let html = text
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g, "<em>$1</em>");
-  /* Convert lines starting with - or * or numbered lists into <ul>/<ol> */
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.*?)\*/g, "<em>$1</em>")
+    .replace(/`(.*?)`/g, "<code>$1</code>");
+
+  // Re-allow the specific color spans used by the AI palette options
+  html = html.replace(/&lt;span style=&quot;color:(#[0-9A-Fa-f]{6})&quot;&gt;(.*?)&lt;\/span&gt;/gi, '<span style="color:$1">$2</span>');
+
   const lines = html.split("\n");
-  let result = [];
-  let inUl = false;
-  let inOl = false;
-  for (const line of lines) {
-    const ulMatch = line.match(/^\s*[-*]\s+(.+)/);
-    const olMatch = line.match(/^\s*\d+\.\s+(.+)/);
-    if (ulMatch) {
-      if (!inUl) { result.push("<ul>"); inUl = true; }
-      if (inOl) { result.push("</ol>"); inOl = false; }
-      result.push(`<li>${ulMatch[1]}</li>`);
-    } else if (olMatch) {
-      if (!inOl) { result.push("<ol>"); inOl = true; }
-      if (inUl) { result.push("</ul>"); inUl = false; }
-      result.push(`<li>${olMatch[1]}</li>`);
+  let out = "";
+  let inList = false;
+  for (let line of lines) {
+    line = line.trim();
+    if (!line) continue;
+    if (line.startsWith("- ")) {
+      if (!inList) { out += "<ul>"; inList = true; }
+      out += `<li>${line.substring(2)}</li>`;
     } else {
-      if (inUl) { result.push("</ul>"); inUl = false; }
-      if (inOl) { result.push("</ol>"); inOl = false; }
-      if (line.trim()) result.push(`<p>${line}</p>`);
-      else result.push("");
+      if (inList) { out += "</ul>"; inList = false; }
+      out += `<p>${line}</p>`;
     }
   }
-  if (inUl) result.push("</ul>");
-  if (inOl) result.push("</ol>");
-  return result.join("\n");
+  if (inList) out += "</ul>";
+  return out;
 }
 
 function appendDashChatBubble(role, html) {
@@ -2677,6 +2694,27 @@ const KPI_H  = 2;
 
 function getDefaultTileLayout(visual) {
   if (visual.type === "kpi") return { w: KPI_W, h: KPI_H };
+  
+  // Dynamic layout based on chart type and data size
+  const dataCount = visual.data ? visual.data.length : 0;
+  
+  if (visual.type === "pie") {
+    // Pie charts look best square
+    return { w: 4, h: 4 };
+  } else if (visual.type === "bar" || visual.type === "histogram") {
+    // Bar charts need more width, especially with many categories
+    return { w: dataCount > 8 ? 8 : 6, h: 4 };
+  } else if (visual.type === "line" || visual.type === "scatter") {
+    // Line and scatter charts are best wide to show trends/distribution
+    return { w: 8, h: 4 };
+  } else if (visual.type === "table") {
+    // Tables need more vertical space if there are many rows, and width depends on columns
+    const cols = visual.config?.columns ? visual.config.columns.length : 3;
+    const w = cols > 5 ? 8 : 6;
+    const h = dataCount > 5 ? 6 : 4;
+    return { w, h };
+  }
+  
   return { w: TILE_W, h: TILE_H };
 }
 
@@ -3058,25 +3096,7 @@ function maybePromptSaveLogin() {
   if (state.token) return;
   if (state.authPrompted) return;
   state.authPrompted = true;
-  /* Show non-intrusive save banner */
-  const existing = document.getElementById("save-login-banner");
-  if (existing) return;
-  const banner = document.createElement("div");
-  banner.id = "save-login-banner";
-  banner.className = "save-login-banner";
-  banner.innerHTML = `
-    <div class="save-login-banner-text">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-      Sign in to save your dashboard
-    </div>
-    <div class="save-login-banner-actions">
-      <button class="btn btn-sm btn-primary" id="save-banner-login">Sign in</button>
-      <button class="btn btn-sm btn-ghost" id="save-banner-dismiss">Maybe later</button>
-    </div>`;
-  document.getElementById("dashboard-section")?.appendChild(banner);
-  document.getElementById("save-banner-login")?.addEventListener("click", () => { banner.remove(); openAuthModal(); });
-  document.getElementById("save-banner-dismiss")?.addEventListener("click", () => banner.remove());
-  setTimeout(() => banner?.remove(), 12000);
+  if (elements.saveToast) elements.saveToast.classList.remove("hidden");
 }
 
 function updateLayoutFromGrid() {
@@ -4061,9 +4081,6 @@ function renderDashboard() {
   state.grid.on("change", () => { updateLayoutFromGrid(); scheduleAutoSave(); });
   state.grid.batchUpdate();
 
-  /* KPIs go into the grid; insights are in the Key Insights tab now */
-  if (elements.kpiStrip) elements.kpiStrip.innerHTML = "";
-
   /* Render KPIs first, then charts; filter out "unique categories" KPIs */
   const kpiVisuals = state.finalVisuals.filter((v) => v.type === "kpi" && !/unique/i.test(v.title || ""));
   const chartVisuals = state.finalVisuals.filter((v) => v.type !== "kpi");
@@ -4186,32 +4203,21 @@ function buildPlotlyLayout(visual, container, plotData) {
   const width = container?.clientWidth || 280;
   const height = container?.clientHeight || 220;
   const isCompact = width < 360 || height < 240;
-  const showPieLegend = dataCount > 4;
+  const showPieLegend = isPie ? dataCount <= 8 : false;
   const axisTitles = getAxisTitles(visual);
   const theme = PLOTLY_THEMES[state.theme] || PLOTLY_THEMES.dark;
-  const axisTitleFont = { size: 12, color: theme.axisTitle, family: "DM Sans" };
-  const axisTickFont  = { size: 12, color: theme.axisTick,  family: "DM Sans" };
-  const pieLegend = {
-    orientation: isCompact ? "h" : "v",
-    y: isCompact ? -0.08 : 0.5,
-    x: isCompact ? 0.5 : 1.02,
-    xanchor: isCompact ? "center" : "left",
-    yanchor: isCompact ? "top" : "middle",
-    font: { size: 11, color: theme.legend, family: "DM Sans" },
-  };
 
-  /* Detect y-axis column format for smart tick formatting */
-  /* Histograms always have Count on y-axis — never apply currency/percentage formatting */
-  const isHistogram = visual.type === "histogram";
-  const yCol = visual.y || visual.values || "";
-  const backendIsCurrency = visual.config?.is_currency === true;
-  const yFmt = isHistogram ? "count" : (backendIsCurrency ? "currency" : detectColumnFormat(yCol));
+  /* Axis fonts and tick formatting */
+  const axisTitleFont = { size: 11, color: theme.axisTitle, family: "Inter" };
+  const axisTickFont = { size: 10, color: theme.axisTick, family: "Inter" };
+
   let yTickPrefix = "";
   let yTickSuffix = "";
   let yTickFormat = "";
+  const yFmt = detectColumnFormat(visual.y || visual.values || "");
   if (yFmt === "currency") {
     yTickPrefix = "$";
-    yTickFormat = ",.2s";
+    yTickFormat = ".2s";
   } else if (yFmt === "percentage") {
     yTickSuffix = "%";
     yTickFormat = ".1f";
@@ -4227,6 +4233,16 @@ function buildPlotlyLayout(visual, container, plotData) {
 
   /* Currency columns need wider left margin for $ prefix; horizontal bars need room for labels */
   const leftMargin = isHorizontalBar ? 110 : yFmt === "currency" ? 60 : 48;
+
+  const pieLegend = {
+    orientation: "h",
+    y: -0.1,
+    x: 0.5,
+    xanchor: "center",
+    yanchor: "top",
+    font: { size: 10 },
+    bgcolor: "rgba(0,0,0,0)",
+  };
 
   return {
     title: { text: "", font: { family: "DM Sans", size: 14 } },
@@ -5508,7 +5524,16 @@ function bindEvents() {
   });
 
   elements.saveStartOver?.addEventListener("click", () => startNewAnalysis());
-  elements.saveLoginCta?.addEventListener("click", () => { state.pendingStep = "save"; openAuthModal(); });
+
+  elements.saveToastSignin?.addEventListener("click", () => {
+    elements.saveToast?.classList.add("hidden");
+    state.pendingStep = "dashboard"; // Stay on dashboard after login
+    openAuthModal();
+  });
+  
+  elements.saveToastDismiss?.addEventListener("click", () => {
+    elements.saveToast?.classList.add("hidden");
+  });
 
   /* logoutBtn (header) removed — logout handled by sidebar-logout-btn above */
 

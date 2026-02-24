@@ -1,0 +1,188 @@
+Country,Capital,Population,Continent
+China,Beijing,1412000000,Asia
+Japan,Tokyo,122000000,Asia
+Mongolia,Ulaanbaatar,3300000,Asia
+North Korea,Pyongyang,26000000,Asia
+South Korea,Seoul,51300000,Asia
+Taiwan,Taipei,23800000,Asia
+Hong Kong,Hong Kong,7500000,Asia
+Macau,Macau,690000,Asia
+Brunei,Bandar Seri Begawan,450000,Asia
+Cambodia,Phnom Penh,17000000,Asia
+East Timor,Dili,1400000,Asia
+Indonesia,Jakarta,276000000,Asia
+Laos,Vientiane,7600000,Asia
+Malaysia,Kuala Lumpur,33000000,Asia
+Myanmar,Naypyidaw,55000000,Asia
+Philippines,Manila,115000000,Asia
+Singapore,Singapore,6000000,Asia
+Thailand,Bangkok,71000000,Asia
+Vietnam,Hanoi,100000000,Asia
+Afghanistan,Kabul,43000000,Asia
+Bangladesh,Dhaka,173000000,Asia
+Bhutan,Thimphu,800000,Asia
+India,New Delhi,1430000000,Asia
+Maldives,MalÃ©,500000,Asia
+Nepal,Kathmandu,30000000,Asia
+Pakistan,Islamabad,241000000,Asia
+Sri Lanka,Sri Jayawardenepura Kotte,22000000,Asia
+Kazakhstan,Astana,20000000,Asia
+Kyrgyzstan,Bishkek,7000000,Asia
+Tajikistan,Dushanbe,10000000,Asia
+Turkmenistan,Ashgabat,6000000,Asia
+Uzbekistan,Tashkent,36000000,Asia
+Armenia,Yerevan,3000000,Asia
+Azerbaijan,Baku,10000000,Asia
+Bahrain,Manama,1500000,Asia
+Cyprus,Nicosia,1300000,Asia
+Georgia,Tbilisi,4000000,Asia
+Iraq,Baghdad,46000000,Asia
+Iran,Tehran,89000000,Asia
+Israel,Jerusalem,9800000,Asia
+Jordan,Amman,11000000,Asia
+Kuwait,Kuwait City,4500000,Asia
+Lebanon,Beirut,5500000,Asia
+Oman,Muscat,5300000,Asia
+Palestine,Ramallah,5000000,Asia
+Qatar,Doha,2800000,Asia
+Saudi Arabia,Riyadh,36000000,Asia
+Syria,Damascus,22000000,Asia
+Turkey,Ankara,85000000,Asia
+United Arab Emirates,Abu Dhabi,10000000,Asia
+Yemen,Sana'a,34000000,Asia
+Russia,Moscow,146000000,Asia
+Algeria,Algiers,46000000,Africa
+Angola,Luanda,36000000,Africa
+Benin,Porto-Novo,14000000,Africa
+Botswana,Gaborone,2600000,Africa
+Burkina Faso,Ouagadougou,23000000,Africa
+Burundi,Gitega,13000000,Africa
+Cabo Verde,Praia,600000,Africa
+Cameroon,YaoundÃ©,29000000,Africa
+Central African Republic,Bangui,5500000,Africa
+Chad,N'Djamena,19000000,Africa
+Comoros,Moroni,900000,Africa
+Congo (Brazzaville),Brazzaville,6100000,Africa
+Congo (Democratic Republic of the),Kinshasa,105000000,Africa
+CÃ´te d'Ivoire,Yamoussoukro,29000000,Africa
+Djibouti,Djibouti,1100000,Africa
+Egypt,Cairo,112000000,Africa
+Equatorial Guinea,Malabo,1800000,Africa
+Eritrea,Asmara,3600000,Africa
+Eswatini,Mbabane,1200000,Africa
+Ethiopia,Addis Ababa,128000000,Africa
+Gabon,Libreville,2400000,Africa
+Gambia,Banjul,2700000,Africa
+Ghana,Accra,34000000,Africa
+Guinea,Conakry,15000000,Africa
+Guinea-Bissau,Bissau,2100000,Africa
+Kenya,Nairobi,56000000,Africa
+Lesotho,Maseru,2300000,Africa
+Liberia,Monrovia,5500000,Africa
+Libya,Tripoli,7000000,Africa
+Madagascar,Antananarivo,31000000,Africa
+Malawi,Lilongwe,21000000,Africa
+Mali,Bamako,23000000,Africa
+Mauritania,Nouakchott,5000000,Africa
+Mauritius,Port Louis,1300000,Africa
+Morocco,Rabat,38000000,Africa
+Mozambique,Maputo,34000000,Africa
+Namibia,Windhoek,2800000,Africa
+Niger,Niamey,28000000,Africa
+Nigeria,Abuja,227000000,Africa
+Rwanda,Kigali,14000000,Africa
+Sao Tome and Principe,SÃ£o TomÃ©,230000,Africa
+Senegal,Dakar,18000000,Africa
+Seychelles,Victoria,120000,Africa
+Sierra Leone,Freetown,8800000,Africa
+Somalia,Mogadishu,18000000,Africa
+South Africa,Pretoria,62000000,Africa
+South Sudan,Juba,12000000,Africa
+Sudan,Khartoum,49000000,Africa
+Tanzania,Dodoma,67000000,Africa
+Togo,LomÃ©,9200000,Africa
+Tunisia,Tunis,12000000,Africa
+Uganda,Kampala,50000000,Africa
+Zambia,Lusaka,21000000,Africa
+Zimbabwe,Harare,17000000,Africa
+Antigua and Barbuda,St. John's,93000,North America
+Bahamas,Nassau,410000,North America
+Barbados,Bridgetown,281000,North America
+Belize,Belmopan,430000,North America
+Canada,Ottawa,40000000,North America
+Costa Rica,San JosÃ©,5300000,North America
+Cuba,Havana,11200000,North America
+Dominica,Roseau,73000,North America
+Dominican Republic,Santo Domingo,11300000,North America
+El Salvador,San Salvador,6400000,North America
+Grenada,St. George's,125000,North America
+Guatemala,Guatemala City,18200000,North America
+Haiti,Port-au-Prince,11700000,North America
+Honduras,Tegucigalpa,10600000,North America
+Jamaica,Kingston,3000000,North America
+Mexico,Mexico City,129000000,North America
+Nicaragua,Managua,6900000,North America
+Panama,Panama City,4500000,North America
+Saint Kitts and Nevis,Basseterre,54000,North America
+Saint Lucia,Castries,184000,North America
+Saint Vincent and the Grenadines,Kingstown,110000,North America
+Trinidad and Tobago,Port of Spain,1500000,North America
+United States,"Washington, D.C.",335000000,North America
+Argentina,Buenos Aires,46000000,South America
+Bolivia,Sucre,12500000,South America
+Brazil,BrasÃ­lia,216000000,South America
+Chile,Santiago,20000000,South America
+Colombia,BogotÃ¡,52000000,South America
+Ecuador,Quito,18000000,South America
+Guyana,Georgetown,820000,South America
+Paraguay,AsunciÃ³n,7200000,South America
+Peru,Lima,34000000,South America
+Suriname,Paramaribo,630000,South America
+Uruguay,Montevideo,3500000,South America
+Venezuela,Caracas,28500000,South America
+Antarctica,NA,5000,Antarctica
+Australia,Canberra,27000000,Australia
+Albania,Tirana,2800000,Europe
+Andorra,Andorra la Vella,80000,Europe
+Austria,Vienna,9100000,Europe
+Belarus,Minsk,9200000,Europe
+Belgium,Brussels,11800000,Europe
+Bosnia and Herzegovina,Sarajevo,3200000,Europe
+Bulgaria,Sofia,6500000,Europe
+Croatia,Zagreb,3800000,Europe
+Czechia,Prague,10900000,Europe
+Denmark,Copenhagen,6000000,Europe
+Estonia,Tallinn,1300000,Europe
+Finland,Helsinki,5600000,Europe
+France,Paris,68000000,Europe
+Germany,Berlin,84000000,Europe
+Greece,Athens,10300000,Europe
+Hungary,Budapest,9600000,Europe
+Iceland,ReykjavÃ­k,390000,Europe
+Ireland,Dublin,5300000,Europe
+Italy,Rome,59000000,Europe
+Latvia,Riga,1900000,Europe
+Liechtenstein,Vaduz,39000,Europe
+Lithuania,Vilnius,2800000,Europe
+Luxembourg,Luxembourg,670000,Europe
+Malta,Valletta,540000,Europe
+Moldova,ChiÈ™inÄƒu,2600000,Europe
+Monaco,Monaco,39000,Europe
+Montenegro,Podgorica,620000,Europe
+Netherlands,Amsterdam,17800000,Europe
+North Macedonia,Skopje,2100000,Europe
+Norway,Oslo,5500000,Europe
+Poland,Warsaw,38000000,Europe
+Portugal,Lisbon,10400000,Europe
+Romania,Bucharest,19000000,Europe
+Russia,Moscow,146000000,Europe
+San Marino,San Marino,34000,Europe
+Serbia,Belgrade,6700000,Europe
+Slovakia,Bratislava,5400000,Europe
+Slovenia,Ljubljana,2100000,Europe
+Spain,Madrid,48000000,Europe
+Sweden,Stockholm,10500000,Europe
+Switzerland,Bern,8900000,Europe
+Ukraine,Kyiv,37000000,Europe
+United Kingdom,London,68000000,Europe
+Vatican City,Vatican City,800,Europe

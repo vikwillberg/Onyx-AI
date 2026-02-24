@@ -582,12 +582,13 @@ RULES — follow these exactly:
 
 WHAT MAKES A GREAT OPENING:
 - Lead with a number that creates curiosity ("Only 3 products drive 60% of revenue — the rest are drag")
-- Hint at a tension or gap in the data ("Revenue peaks in Q1 but order count peaks in Q3 — those should move together")
-- Make it feel like you've already spotted something they haven't
+- Mention a specific outlier or anomaly
+- Suggest a geographic or day-of-week breakdown if those columns exist
 
 ANALYSIS ANGLES TO EXPLORE (pick the most relevant for THIS dataset):
 - Top performers vs long tail (80/20 rule on revenue/volume)
-- Time trends — growth, seasonality, recent drops
+- Time trends — growth, seasonality, best/worst days of the week, recent drops
+- Geographic distribution — maps by city, state, or country
 - Segment gaps — which category/city/channel underperforms vs average
 - Pricing or quantity anomalies — outliers that skew totals
 - Churn signals, drop-offs, or one-time vs repeat patterns
@@ -604,34 +605,39 @@ DATA PROFILE:
 
 INSIGHT_EXTRACTION_SYSTEM = """\
 You are a senior data analyst. Extract structured insights from a user-AI conversation to drive a DIVERSE, HIGH-IMPACT dashboard.
+Your goal is to uncover NEW business insights, not just summarize obvious totals. Focus on outliers, top performers, day-of-week/seasonality trends, geographic distribution, and cross-dimensional comparisons.
 
 Return JSON exactly:
 {
   "data_description": "one crisp sentence describing what this data is about",
   "key_metrics": ["ALL numeric columns worth tracking — revenue, quantity, cost, count, etc."],
-  "segments": ["ALL categorical columns useful for grouping — product, city, channel, category, etc."],
+  "segments": ["ALL categorical columns useful for grouping — product, city, country, channel, category, etc."],
   "time_column": "main date/time column name, or null if none",
   "primary_question": "copy the user's most specific request word-for-word — do NOT paraphrase",
   "analysis_areas": [
     {
       "area": "concise name e.g. 'Revenue by Product' or 'Monthly Trends'",
       "description": "one sentence: what this shows and the business decision it enables",
-      "suggested_chart_types": ["bar", "line", "pie", "scatter", "table", "kpi"],
+      "suggested_chart_types": ["bar", "line", "pie", "scatter", "table", "kpi", "map"],
       "columns_involved": ["exact column names from the dataset"],
       "priority": "high | medium | low"
     }
   ],
   "goals": ["5-7 specific analysis goals — user's question first, then revenue drivers, comparisons, trends, anomalies"],
   "kpi_columns": ["2-4 most important numeric columns to show as headline KPIs"],
+  "kpi_formats": {"exact_column_name": "currency | percentage | number | count"},
   "business_category": "ecommerce | saas | finance | healthcare | marketing | hr | logistics | restaurant | retail | education | general",
   "color_palette": "a specific color palette name based on the user's request (e.g. 'vibrant', 'professional', 'dark', 'monochrome', 'neon', 'pastel', 'custom'), or null if not mentioned"
 }
 
 RULES:
 - analysis_areas[0] MUST directly address the user's primary_question — same focus, specific columns.
-- Include at least 6 analysis_areas covering: top performers, trends over time, segment comparison, distribution, anomaly/outlier, and one cross-dimension analysis.
+- Include at least 6-8 analysis_areas covering: top performers, trends over time, segment comparison, distribution, anomaly/outlier, and one cross-dimension analysis.
+- IMPORTANT: If the data contains geographic columns (City, Country, Latitude/Longitude, Region), you MUST include a "map" widget in your analysis_areas.
+- IMPORTANT: If the data contains a date/time column, include a "day of week" or "seasonality" analysis to find the most profitable/active times.
 - Every area must have at least 2 real column names from the dataset.
 - kpi_columns: pick the columns that become the big headline numbers (total revenue, total orders, avg price, etc.).
+- kpi_formats: a dictionary mapping each column in kpi_columns to its logical format (currency, percentage, count, number). Use 'currency' for monetary values ($), 'count' for raw totals, 'percentage' for rates/ratios.
 - goals[0] = user's exact question; goals[1-2] = revenue/growth insights; goals[3-4] = segment/comparison; goals[5-6] = risk/anomaly.
 - Only use column names that actually exist in the dataset profile.
 - Do NOT include markdown, code fences, or commentary — return raw JSON only.

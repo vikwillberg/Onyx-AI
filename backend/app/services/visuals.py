@@ -920,7 +920,7 @@ def llm_suggest_derived_columns(profile: FileProfile, model_key: Optional[str] =
       day_of_week      – extract day-of-week name from col_a
       hour_extract     – extract hour from col_a
     """
-    if not llm_service.enabled:
+    if not llm_service.enabled and not model_key:
         return []
 
     col_info = []
@@ -1444,7 +1444,14 @@ def build_histogram_visual(dataframe: pd.DataFrame, column: str) -> Optional[Vis
     series = dataframe[column].dropna()
     if series.empty:
         return None
-    bins = pd.cut(series, bins=min(10, max(series.nunique(), 3)))
+    
+    # Skip histograms for columns with extreme variance or too many unique values
+    # (e.g. IDs or high-cardinality continuous values like raw revenue)
+    n_unique = series.nunique()
+    if n_unique > 1000 or n_unique == len(series):
+        return None
+        
+    bins = pd.cut(series, bins=min(10, max(n_unique, 3)))
     counts = bins.value_counts().sort_index()
     data = [
         {"bin": _format_bin_label(interval), "count": int(count)}
@@ -2504,6 +2511,11 @@ def llm_dashboard_plan(
             area_strs = [f"- {a.get('area', '?')}: {a.get('description', '')}" for a in areas if isinstance(a, dict)]
             if area_strs:
                 context_parts.append("Requested analysis areas:\n" + "\n".join(area_strs))
+        if business_context.get("kpi_formats"):
+            formats = business_context["kpi_formats"]
+            format_strs = [f"- {k}: {v}" for k, v in formats.items()]
+            if format_strs:
+                context_parts.append("Data formats:\n" + "\n".join(format_strs))
         if business_context.get("goals"):
             context_parts.append("Analysis goals: " + "; ".join(business_context["goals"]))
         if business_context.get("key_metrics"):

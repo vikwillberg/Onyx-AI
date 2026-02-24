@@ -266,7 +266,7 @@
             <div id="generate-dashboard-row" class="generate-dashboard-row hidden">
               <button id="generate-dashboard-btn" class="btn btn-primary generate-dashboard-btn" type="button">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-                Generate Dashboard
+                Build Dashboard
               </button>
             </div>
             <p class="home-input-hint">CSV, Excel (.xlsx, .xls), TSV · drag files to attach</p>
@@ -395,12 +395,6 @@
             AI
           </button>
 
-          <div id="kpi-strip" class="kpi-strip hidden"></div>
-          <div id="insights-strip-wrap" class="insights-strip-wrap hidden">
-            <div class="insights-strip-heading">Key Insights</div>
-            <div id="insights-strip" class="insights-strip"></div>
-          </div>
-
           <div id="filter-bar" class="filter-bar hidden">
             <div class="filter-bar-row">
               <div class="filter-bar-dates" id="filter-bar-dates"></div>
@@ -525,27 +519,19 @@
             <div id="data-view-table" class="data-view-table"></div>
           </div>
         </section>
-
-        <!-- ========== SAVE ========== -->
-        <section id="save-section" class="panel hidden">
-          <div class="section-header">
-            <div class="section-header-text">
-              <h2>Save your project</h2>
-              <p>Keep this dashboard ready for future sessions.</p>
-            </div>
-          </div>
-          <div class="panel-grid">
-            <div class="card">
-              <h3>Save this dashboard</h3>
-              <p id="save-status" class="hint"></p>
-              <div class="panel-actions">
-                <button id="save-start-over" class="btn btn-outline" type="button">Start new analysis</button>
-                <button id="save-login-cta" class="btn btn-primary hidden" type="button">Log in to save</button>
-              </div>
-            </div>
-          </div>
-        </section>
       </main>
+
+      <!-- Modern Save Dashboard Toast -->
+      <div id="save-toast" class="save-toast hidden">
+        <div class="save-toast-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        </div>
+        <div class="save-toast-text">Sign in to save your dashboard</div>
+        <div class="save-toast-actions">
+          <button id="save-toast-signin" class="btn btn-primary btn-sm" type="button">Sign in</button>
+          <button id="save-toast-dismiss" class="btn-link" type="button">Maybe later</button>
+        </div>
+      </div>
 
       <!-- AI Assistant right sidebar -->
       <aside id="dash-chat-panel" class="dash-chat-panel hidden">
