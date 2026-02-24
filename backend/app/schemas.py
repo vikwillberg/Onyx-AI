@@ -183,6 +183,7 @@ class VisualCustomRequest(BaseModel):
     aggregation: Optional[str] = None
     columns: Optional[list[str]] = None
     visual_id: Optional[str] = None
+    config: Optional[dict] = None
 
 
 class VisualResponse(BaseModel):

@@ -86,7 +86,11 @@ const COLOR_THEMES = {
   neon:        ["#22d3ee", "#a3e635", "#f472b6", "#facc15", "#38bdf8", "#4ade80", "#fb923c", "#e879f9", "#2dd4bf", "#fbbf24", "#818cf8", "#34d399"],
 };
 
-function getActivePalette() {
+function getActivePalette(visual) {
+  /* Per-visual theme override from widget editor */
+  const perVisual = (visual?.config?.color_theme || "").toLowerCase().trim();
+  if (perVisual && COLOR_THEMES[perVisual]) return COLOR_THEMES[perVisual];
+  /* Global theme from business context */
   const raw = (state.businessContext?.color_palette || state.businessContext?.color_theme || "").toLowerCase().trim();
   if (raw && COLOR_THEMES[raw]) return COLOR_THEMES[raw];
   if (raw) {
@@ -2846,6 +2850,10 @@ function openAddVisualPanel(visual = null, triggerEl = null) {
   const titleLabel = panel.querySelector(".widget-config-title span, .widget-config-title-text");
   if (titleLabel) titleLabel.textContent = visual?.title || "New Widget";
 
+  /* Pre-populate the color theme select */
+  const paletteSelect = document.getElementById("widget-palette-select");
+  if (paletteSelect) paletteSelect.value = visual?.config?.color_theme || "";
+
   panel.classList.remove("hidden");
 
   /* Position near the triggering widget */
@@ -2881,7 +2889,49 @@ function closeAddVisualPanel() {
   panel.classList.remove("widget-popover-positioned");
   panel.style.removeProperty("--pop-left");
   panel.style.removeProperty("--pop-top");
+  panel.style.removeProperty("left");
+  panel.style.removeProperty("top");
+  panel.style.removeProperty("transform");
   state.editingVisualId = null;
+}
+
+/* ── Draggable widget editor ──────────────────────────────── */
+function initWidgetEditorDrag() {
+  const panel = elements.addVisualModal;
+  if (!panel) return;
+  const header = panel.querySelector(".widget-config-header");
+  if (!header) return;
+  let isDragging = false, startX = 0, startY = 0, origLeft = 0, origTop = 0;
+
+  header.addEventListener("mousedown", (e) => {
+    if (e.target.closest("button")) return;
+    isDragging = true;
+    const rect = panel.getBoundingClientRect();
+    origLeft = rect.left;
+    origTop = rect.top;
+    startX = e.clientX;
+    startY = e.clientY;
+    /* Switch to absolute positioning for free dragging */
+    panel.style.left = origLeft + "px";
+    panel.style.top = origTop + "px";
+    panel.style.transform = "none";
+    panel.classList.remove("widget-popover-positioned");
+    document.body.style.userSelect = "none";
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    panel.style.left = (origLeft + dx) + "px";
+    panel.style.top  = (origTop  + dy) + "px";
+  });
+
+  document.addEventListener("mouseup", () => {
+    if (!isDragging) return;
+    isDragging = false;
+    document.body.style.userSelect = "";
+  });
 }
 
 function mergeVisualLayouts(nextVisuals, previousVisuals = []) {
@@ -4092,7 +4142,7 @@ function buildPlotlyLayout(visual, container, plotData) {
     uniformtext: { minsize: 9, mode: "hide" },
     hovermode: "closest",
     bargap: 0.22,
-    colorway: getActivePalette(),
+    colorway: getActivePalette(visual),
     annotations: isPie ? (() => {
       const vals = plotData?.[0]?.values || [];
       const total = vals.reduce((s, v) => s + (Number(v) || 0), 0);
@@ -4204,7 +4254,7 @@ function renderVisual(visual, container) {
     const xKey = visual.x;
     const yKey = visual.y || visual.values || "count";
     const sorted = [...data].sort((a, b) => (Number(b[yKey]) || 0) - (Number(a[yKey]) || 0));
-    const palette = getActivePalette();
+    const palette = getActivePalette(visual);
     const useHorizontal = dataCount > 6;
     if (useHorizontal) {
       const displayed = sorted.slice(0, 20).reverse();
@@ -4265,14 +4315,14 @@ function renderVisual(visual, container) {
         textposition: "inside",
         insidetextorientation: "radial",
         hovertemplate: pieHover,
-        marker: { colors: getActivePalette(), line: { color: theme.font, width: 1 } },
+        marker: { colors: getActivePalette(visual), line: { color: theme.font, width: 1 } },
         hole: 0.45,
         pull: dataCount <= 5 ? 0.03 : 0,
         rotation: 45,
       },
     ];
   } else if (visual.type === "line") {
-    const palette = getActivePalette();
+    const palette = getActivePalette(visual);
     const lineColor = palette[0];
     plotData = [
       {
@@ -4288,7 +4338,7 @@ function renderVisual(visual, container) {
       },
     ];
   } else if (visual.type === "scatter") {
-    const palette = getActivePalette();
+    const palette = getActivePalette(visual);
     const colorCol = visual.config?.color_column;
     if (colorCol && data.length && data[0][colorCol] !== undefined) {
       const groups = {};
@@ -4335,7 +4385,7 @@ function renderVisual(visual, container) {
   } else if (visual.type === "histogram") {
     const counts = data.map((row) => row.count);
     const maxCount = Math.max(...counts, 1);
-    const palette = getActivePalette();
+    const palette = getActivePalette(visual);
     const baseColor = palette[2] || "#8b5cf6";
     const bins = data.map((row) => row.bin);
     const barColors = counts.map((c) => {
@@ -4382,7 +4432,7 @@ function renderVisual(visual, container) {
       });
     }
     
-    const palette = getActivePalette();
+    const palette = getActivePalette(visual);
     
     plotData = [
       {
@@ -5097,6 +5147,7 @@ function bindEvents() {
 
   elements.addVisualBtn?.addEventListener("click", () => openAddVisualPanel());
   elements.closeAddVisual?.addEventListener("click", () => closeAddVisualPanel());
+  initWidgetEditorDrag();
 
   /* Step 7: Advanced toggle in widget config panel */
   document.getElementById("widget-advanced-toggle")?.addEventListener("click", function () {
@@ -5131,6 +5182,7 @@ function bindEvents() {
     if (!type) { showToast("Select a chart type"); return; }
     const titleInput = fields.namedItem("title")?.value?.trim();
     const editingVisual = state.finalVisuals.find((v) => v.visual_id === state.editingVisualId);
+    const colorTheme = document.getElementById("widget-palette-select")?.value || "";
     const payload = {
       type,
       title: titleInput || editingVisual?.title || "Custom visual",
@@ -5140,6 +5192,7 @@ function bindEvents() {
       values: fields.namedItem("values")?.value || undefined,
       aggregation: fields.namedItem("aggregation")?.value || undefined,
       columns: getSelectValues(fields.namedItem("columns")),
+      config: colorTheme ? { color_theme: colorTheme } : undefined,
     };
     if (type === "table" && !payload.columns.length) { showToast("Select at least one column for the table"); return; }
     if (["line", "scatter"].includes(type) && (!payload.x || !payload.y)) { showToast("Select both X and Y columns"); return; }

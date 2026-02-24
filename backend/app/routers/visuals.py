@@ -361,6 +361,8 @@ def custom_visual(
     config: Optional[dict] = None
     if payload.columns:
         config = {"columns": payload.columns}
+    if payload.config:
+        config = {**(config or {}), **payload.config}
 
     existing_visual = existing_lookup.get(visual_id)
     if existing_visual and existing_visual.config:
