@@ -435,7 +435,8 @@ input, textarea, select {
   font-family: inherit; font-size: 0.9rem; background: var(--input-bg); color: var(--ink);
   transition: all var(--transition-fast); min-height: 42px;
 }
-input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: var(--focus-ring); }
+input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: var(--focus-ring); }
+textarea:focus { outline: none; border-color: transparent; box-shadow: none; }
 input:focus-visible, textarea:focus-visible, select:focus-visible { outline: none; }
 input::placeholder, textarea::placeholder { color: var(--muted-light); }
 textarea { min-height: 80px; resize: vertical; }
@@ -1676,7 +1677,7 @@ body[data-theme="dark"] .narrative-title {
   border-radius: 14px; padding: 8px 10px;
   transition: border-color 0.2s;
 }
-.dash-input-box:focus-within { border-color: var(--accent); }
+.dash-input-box:focus-within { border-color: var(--outline); }
 .dash-chat-input {
   flex: 1; background: transparent; border: none; outline: none;
   color: var(--ink); font-size: 0.88rem; font-family: inherit;
@@ -2168,7 +2169,7 @@ body[data-theme="dark"] .home-chat-bubble.user > div {
 .home-input-row {
   display: flex; align-items: center; gap: 8px;
 }
-.home-input-box:focus-within { box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08); outline: none; border-color: var(--outline); }
+.home-input-box:focus-within { box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08); outline: none; border-color: var(--outline) !important; }
 .home-input-box.drag-over { border-color: var(--accent); background: var(--accent-soft); }
 .home-attach-btn {
   width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
