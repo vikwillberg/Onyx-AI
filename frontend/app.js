@@ -3922,8 +3922,8 @@ function renderDashboard() {
     const options = {
       w: width,
       h: height,
-      minW: 4,
-      minH: 4,
+      minW: 2,
+      minH: 2,
       autoPosition: !hasLayout,
     };
     if (hasLayout) {
@@ -4550,6 +4550,7 @@ async function autoBuildDashboard() {
       return;
     }
     enterDashboardMode();
+    toggleSidebar(false);
   } catch (err) {
     clearInterval(elapsedTimer);
     markAgentStepDone(rows[2], Math.round((Date.now() - t0) / 1000));
