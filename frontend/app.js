@@ -2587,6 +2587,17 @@ function detectColumnFormat(colName) {
   return "number";
 }
 
+function formatCompactNumber(num) {
+  const abs = Math.abs(num);
+  if (abs >= 1e9) return `${smartNumberFormat(num / 1e9)}B`;
+  if (abs >= 1e6) return `${smartNumberFormat(num / 1e6)}M`;
+  if (abs >= 1e4) return `${smartNumberFormat(num / 1e3)}K`;
+  if (Number.isInteger(num)) return num.toLocaleString();
+  if (abs < 1) return num.toFixed(2);
+  if (abs < 100) return num.toFixed(1);
+  return Math.round(num).toLocaleString();
+}
+
 function formatSmartValue(value, colName) {
   if (value === null || value === undefined || value === "") return "—";
   const num = Number(value);
@@ -2595,12 +2606,10 @@ function formatSmartValue(value, colName) {
   if (fmt === "currency") return formatCurrency(num);
   if (fmt === "percentage") {
     const pct = Math.abs(num) <= 1 ? num * 100 : num;
-    return `${KPI_NUMBER_FORMAT.format(pct)}%`;
+    return `${pct.toFixed(1)}%`;
   }
-  if (fmt === "count") {
-    return Number.isInteger(num) ? num.toLocaleString() : KPI_NUMBER_FORMAT.format(num);
-  }
-  return KPI_NUMBER_FORMAT.format(num);
+  if (fmt === "count") return formatCompactNumber(num);
+  return formatCompactNumber(num);
 }
 
 /* Compute whether bar chart y-values are tightly clustered and need zoom */
@@ -2676,7 +2685,7 @@ function buildXYHoverTemplate(xLabel, yLabel, xCol, yCol) {
   } else if (yFmt === "percentage") {
     yPart = yLabel ? `${yLabel}: %{y:.1f}%` : "%{y:.1f}%";
   } else {
-    yPart = yLabel ? `${yLabel}: %{y:,.2f}` : "%{y:,.2f}";
+    yPart = yLabel ? `${yLabel}: %{y:,.0f}` : "%{y:,.0f}";
   }
   return `${xPart}<br>${yPart}<extra></extra>`;
 }
@@ -3837,7 +3846,7 @@ function renderDashboard() {
   state.grid = GridStack.init({
     float: false,
     cellHeight: 75,
-    margin: "8px",
+    margin: "14px",
     handle: ".grid-stack-item-content",
     animate: true,
     column: 12,
@@ -3895,6 +3904,7 @@ function renderDashboard() {
         </div>
       `;
     } else {
+      const descHtml = visual.description ? `<div class="tile-description">${visual.description}</div>` : "";
       widget.innerHTML = `
         <div class="grid-stack-item-content" data-visual-type="${visual.type}">
           <div class="tile-header">
@@ -3902,6 +3912,7 @@ function renderDashboard() {
               <span>${visual.title}</span>
               <span class="tile-type">${visual.type}</span>
             </div>
+            ${descHtml}
           </div>
           <div class="tile-body" id="dash-${visual.visual_id}" class="gs-no-drag"></div>
         </div>
@@ -3997,10 +4008,12 @@ function buildPlotlyLayout(visual, container, plotData) {
   const yFmt = backendYFormat === "percentage" ? "percentage" : detectColumnFormat(visual.y || visual.values || "");
   if (yFmt === "currency") {
     yTickPrefix = "$";
-    yTickFormat = ".2s";
+    yTickFormat = "~s";
   } else if (yFmt === "percentage") {
     yTickSuffix = "%";
     yTickFormat = ".1f";
+  } else if (yFmt === "count" || yFmt === "number") {
+    yTickFormat = "~s";
   }
 
   /* Auto-zoom y-axis for bar charts with tightly clustered values */
@@ -4084,6 +4097,15 @@ function buildPlotlyLayout(visual, container, plotData) {
       return [{ text: `<b>${fmt}</b>`, x: 0.5, y: 0.5, showarrow: false,
         font: { size: 18, color: theme.font, family: "Space Grotesk, Inter" },
         xanchor: "center", yanchor: "middle" }];
+    })() : (visual.type === "bar" && !isHorizontalBar && plotData?.[0]?.y?.length > 2) ? (() => {
+      const yVals = plotData[0].y.map(Number);
+      const xVals = plotData[0].x;
+      const maxIdx = yVals.indexOf(Math.max(...yVals));
+      const maxVal = yVals[maxIdx];
+      const fmtVal = yFmt === "currency" ? formatCurrency(maxVal) : formatCompactNumber(maxVal);
+      return [{ text: `<b>${fmtVal}</b>`, x: xVals[maxIdx], y: maxVal, showarrow: false,
+        yshift: 10, font: { size: 10, color: theme.axisTitle, family: "Inter" },
+        xanchor: "center", yanchor: "bottom" }];
     })() : [],
   };
 }

@@ -157,6 +157,7 @@ class VisualSpec(BaseModel):
     visual_id: str
     type: str
     title: str
+    description: Optional[str] = None
     x: Optional[str] = None
     y: Optional[str] = None
     values: Optional[str] = None
