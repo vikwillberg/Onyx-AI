@@ -17,7 +17,7 @@ from app.services.llm import (
     MODEL_REGISTRY,
 )
 
-ALLOWED_TYPES = {"bar", "line", "pie", "scatter", "histogram", "table", "map"}
+ALLOWED_TYPES = {"bar", "line", "pie", "scatter", "histogram", "table", "map", "kpi", "text"}
 AGGREGATIONS = {"count", "mean", "sum", "median"}
 AGGREGATION_LABELS = {"mean": "Average", "sum": "Total", "median": "Median"}
 PIE_CATEGORY_LIMIT = 7
@@ -2320,7 +2320,7 @@ def generate_dashboard_visuals(
 
     # Ideal chart mix targets (excluding KPIs) — prioritize actionable types
     chart_slots = max_visuals - KPI_LIMIT
-    ideal_mix = {"line": 2, "bar": max(2, chart_slots // 3), "pie": 1,
+    ideal_mix = {"text": 2, "line": 2, "bar": max(2, chart_slots // 3), "pie": 1,
                  "histogram": 1, "scatter": 0, "table": 1}
 
     def needs_type(t: str) -> bool:
@@ -2788,6 +2788,7 @@ def llm_dashboard_plan(
         "7. DISTRIBUTION — How are values spread? Use histograms only for numeric columns with <100 unique values.\n"
         "8. CONVERSION / OUTCOME ANALYSIS — For binary columns: who converts, at what rate, and what drives it?\n\n"
         "CHART TYPE MIX (use a variety — never repeat the same type 3+ times):\n"
+        "- 1-2 TEXT widgets (use type='text' with config.insight containing a short actionable paragraph)\n"
         "- 0-2 LINE charts (trends over time — MUST use a datetime column for x-axis; skip if no date column)\n"
         "- 2-3 BAR charts (rankings, comparisons, conversion rates, day-of-week patterns)\n"
         "- 1 PIE chart (share/proportion — use column with 2-8 unique values, including binary outcomes)\n"
@@ -2795,6 +2796,9 @@ def llm_dashboard_plan(
         "- 0-1 MAP (ONLY if latitude/longitude columns exist — type='map', x=lon_column, y=lat_column)\n"
         "- 0-1 HISTOGRAM (distribution of a key numeric column)\n"
         "- 0-1 TABLE (top/bottom performers leaderboard)\n\n"
+        "TEXT VISUAL RULES:\n"
+        "- type='text', title = 'Key Insight', config = {\"insight\": \"Your actionable paragraph here.\"}\n"
+        "- Provide a compelling, data-driven story based on the columns you see.\n\n"
         "MAP VISUAL RULES:\n"
         "- type='map', x = longitude column name, y = latitude column name\n"
         "- Set config.lat_column, config.lon_column, config.label_column (name/place), config.value_column (metric)\n"

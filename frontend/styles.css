@@ -1586,7 +1586,7 @@ body[data-theme="dark"] .narrative-title {
 
 /* ===== AI ASSISTANT RIGHT SIDEBAR ===== */
 .dash-chat-panel {
-  width: 360px; display: flex; flex-direction: column;
+  width: 420px; display: flex; flex-direction: column;
   background: var(--bg); border-left: 1px solid var(--outline);
   height: 100%; overflow: hidden;
 }

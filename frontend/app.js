@@ -74,22 +74,21 @@ const CHART_COLORS = {
 };
 
 const COLOR_PALETTES = {
-  vibrant:       ["#FF5722", "#3B82F6", "#F59E0B", "#10B981", "#EC4899", "#8B5CF6", "#EF4444", "#06B6D4", "#84CC16", "#F97316", "#6366F1", "#14B8A6"],
-  professional:  ["#1E3A8A", "#0F766E", "#3B82F6", "#0D9488", "#64748B", "#1E40AF", "#115E59", "#2563EB", "#475569", "#0284C7", "#0E7490", "#334155"],
-  dark:          ["#9333EA", "#DB2777", "#F59E0B", "#7C3AED", "#EC4899", "#FBBF24", "#A855F7", "#F472B6", "#D97706", "#6D28D9", "#BE185D", "#EAB308"],
-  pastel:        ["#93C5FD", "#86EFAC", "#FDE68A", "#C4B5FD", "#FBCFE8", "#A5F3FC", "#FCA5A5", "#BEF264", "#DDD6FE", "#FECDD3", "#99F6E4", "#FED7AA"],
-  neon:          ["#00FF87", "#FF006E", "#FFBE0B", "#00B4D8", "#E500FF", "#FB5607", "#3A86FF", "#8338EC", "#FF006E", "#06D6A0", "#FFD166", "#118AB2"],
-  monochrome:    ["#1C1917", "#44403C", "#78716C", "#A8A29E", "#57534E", "#292524", "#8A8580", "#6B7280", "#374151", "#4B5563", "#9CA3AF", "#334155"],
+  vibrant:       ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#8b5cf6", "#0ea5e9", "#ef4444", "#14b8a6", "#f97316", "#3b82f6", "#84cc16", "#d946ef"],
+  professional:  ["#1e3a8a", "#0f766e", "#3b82f6", "#0d9488", "#64748b", "#1e40af", "#115e59", "#2563eb", "#475569", "#0284c7", "#0e7490", "#334155"],
+  dark:          ["#9333ea", "#db2777", "#f59e0b", "#7c3aed", "#ec4899", "#fbbf24", "#a855f7", "#f472b6", "#d97706", "#6d28d9", "#be185d", "#eab308"],
+  monochrome:    ["#1c1917", "#44403c", "#78716c", "#a8a29e", "#57534e", "#292524", "#8a8580", "#6b7280", "#374151", "#4b5563", "#9ca3af", "#334155"],
+  onyx_default:  ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#8b5cf6", "#0ea5e9", "#ef4444", "#14b8a6"],
 };
 
 function getActivePalette() {
   const raw = (state.businessContext?.color_palette || "").toLowerCase().trim();
   if (raw && COLOR_PALETTES[raw]) return COLOR_PALETTES[raw];
   if (raw) {
-    const match = Object.keys(COLOR_PALETTES).find((k) => raw.includes(k));
-    if (match) return COLOR_PALETTES[match];
+    const fallback = Object.keys(COLOR_PALETTES).find((k) => raw.includes(k));
+    if (fallback) return COLOR_PALETTES[fallback];
   }
-  return CHART_COLORS.palette;
+  return COLOR_PALETTES.vibrant; /* Default to vibrant multi-color palette */
 }
 
 /* Color name → hex mapping for color-matched bar charts */
@@ -531,8 +530,6 @@ function setStep(step) {
   const showFilterBar = step === "dashboard";
   elements.filterBar?.classList.toggle("hidden", !showFilterBar);
   elements.kpiStrip?.classList.toggle("hidden", !showFilterBar);
-  /* Dashboard step is handled by enterDashboardMode() — setStep just manages section visibility */
-  if (step === "dashboard") switchDashboardTab("overview");
   /* Persist session on every step change */
   saveSession();
 
@@ -1198,237 +1195,10 @@ function startTitleEdit(span, visual) {
   });
 }
 
-/* ===== Nav Pills (Overview / Key Insights / Data) ===== */
-function switchDashboardTab(tab) {
-  const pills = document.querySelectorAll(".dashboard-nav-pills .nav-pill");
-  pills.forEach((pill) => pill.classList.toggle("active", pill.dataset.nav === tab));
-
-  const insightsWrap = document.getElementById("insights-strip-wrap");
-  const filterBar = elements.filterBar;
-  const dashboardCanvas = document.querySelector(".dashboard-canvas");
-  const analyticsView = document.getElementById("analytics-view");
-  const dataView = document.getElementById("data-view");
-
-  if (tab === "overview") {
-    if (dashboardCanvas) dashboardCanvas.classList.remove("hidden");
-    if (analyticsView) analyticsView.classList.add("hidden");
-    if (dataView) dataView.classList.add("hidden");
-    if (insightsWrap) insightsWrap.classList.add("hidden");
-    if (filterBar) filterBar.classList.remove("hidden");
-    /* Render grid if needed */
-    if (state.grid) state.grid.batchUpdate();
-    requestAnimationFrame(() => updateLayoutFromGrid());
-  } else if (tab === "analytics") {
-    if (dashboardCanvas) dashboardCanvas.classList.add("hidden");
-    if (analyticsView) analyticsView.classList.remove("hidden");
-    if (dataView) dataView.classList.add("hidden");
-    if (filterBar) filterBar.classList.add("hidden");
-    
-    // First render the data completeness/stats grid
-    renderAnalyticsView();
-    
-    // Then show the AI narrative insights below it
-    if (insightsWrap) {
-      insightsWrap.classList.remove("hidden");
-      if (analyticsView) analyticsView.appendChild(insightsWrap);
-    }
-    renderInsightsStrip();
-  } else if (tab === "data") {
-    if (dashboardCanvas) dashboardCanvas.classList.add("hidden");
-    if (analyticsView) analyticsView.classList.add("hidden");
-    if (dataView) dataView.classList.remove("hidden");
-    if (insightsWrap) insightsWrap.classList.add("hidden");
-    if (filterBar) filterBar.classList.add("hidden");
-    renderDataView();
-  }
-}
-
-function renderAnalyticsView() {
-  const container = document.getElementById("analytics-grid");
-  if (!container) return;
-
-  /* Try merged profile first, then dataset profile, then single-file profile */
-  const detail = state.datasetDetail;
-  const mergedProfile = detail?.merged_profile;
-  const datasetProfile = detail?.profile;
-  const files = datasetProfile?.files || [];
-  const activeProfile = mergedProfile || (files.length ? files[0] : null);
-
-  if (!activeProfile && !files.length) {
-    container.innerHTML = '<div class="empty-state"><p>No profile data available</p><span class="empty-state-hint">Upload and process a dataset first</span></div>';
-    return;
-  }
-
-  const totalRows = mergedProfile ? (mergedProfile.row_count || 0) : files.reduce((s, f) => s + (f.row_count || 0), 0);
-  const allColumns = activeProfile?.columns || files.flatMap((f) => f.columns || []);
-  const totalCols = allColumns.length;
-
-  const typeCount = {};
-  allColumns.forEach((col) => { typeCount[col.inferred_type] = (typeCount[col.inferred_type] || 0) + 1; });
-
-  const totalNulls = allColumns.reduce((s, c) => s + (c.null_count || 0), 0);
-  const totalCells = totalRows * totalCols;
-  const completeness = totalCells > 0 ? ((1 - totalNulls / totalCells) * 100).toFixed(1) : 100;
-  const nullCols = allColumns.filter((c) => c.null_count > 0);
-  const numericCols = allColumns.filter((c) => ["integer", "float", "number", "numeric"].includes((c.inferred_type || "").toLowerCase()));
-  const categoricalCols = allColumns.filter((c) => ["string", "text", "categorical", "object"].includes((c.inferred_type || "").toLowerCase()));
-  const dateCols = allColumns.filter((c) => ["datetime", "date", "timestamp"].includes((c.inferred_type || "").toLowerCase()));
-
-  const completenessColor = completeness >= 95 ? "var(--accent-green)" : completeness >= 80 ? "var(--accent-2)" : "var(--accent-red)";
-
-  /* Type distribution for mini chart */
-  const typeEntries = Object.entries(typeCount).sort((a, b) => b[1] - a[1]);
-  const typeColors = { integer: "#b45309", float: "#d97706", number: "#f59e0b", numeric: "#f59e0b", string: "#059669", text: "#059669", object: "#059669", categorical: "#059669", datetime: "#0ea5e9", date: "#0ea5e9", timestamp: "#0ea5e9", boolean: "#78716c" };
-
-  let html = "";
-
-  /* Row 1: Overview cards */
-  html += `
-    <div class="analytics-card">
-      <h4>Dataset Overview</h4>
-      <div class="analytics-stat">${totalRows.toLocaleString()}</div>
-      <div class="analytics-detail">Total rows · ${totalCols} columns · ${files.length} file(s)</div>
-      <div style="display:flex;gap:16px;margin-top:8px;flex-wrap:wrap">
-        <span class="analytics-detail"><strong>${numericCols.length}</strong> numeric</span>
-        <span class="analytics-detail"><strong>${categoricalCols.length}</strong> categorical</span>
-        <span class="analytics-detail"><strong>${dateCols.length}</strong> date/time</span>
-      </div>
-    </div>
-    <div class="analytics-card">
-      <h4>Data Completeness</h4>
-      <div class="analytics-stat" style="color:${completenessColor}">${completeness}%</div>
-      <div style="height:6px;background:var(--bg-secondary);border-radius:3px;overflow:hidden;margin:8px 0">
-        <div style="height:100%;width:${completeness}%;background:${completenessColor};border-radius:3px;transition:width 0.4s ease"></div>
-      </div>
-      <div class="analytics-detail">${nullCols.length} column(s) with missing values · ${totalNulls.toLocaleString()} total nulls</div>
-    </div>
-    <div class="analytics-card">
-      <h4>Column Types</h4>
-      <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
-        ${typeEntries.map(([t, n]) => {
-          const pct = totalCols > 0 ? (n / totalCols * 100).toFixed(0) : 0;
-          const color = typeColors[t.toLowerCase()] || "var(--muted)";
-          return `<div>
-            <div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:3px">
-              <span style="font-weight:500">${t}</span><span style="color:var(--muted)">${n} (${pct}%)</span>
-            </div>
-            <div style="height:4px;background:var(--bg-secondary);border-radius:2px;overflow:hidden">
-              <div style="height:100%;width:${pct}%;background:${color};border-radius:2px"></div>
-            </div>
-          </div>`;
-        }).join("")}
-      </div>
-    </div>
-  `;
-
-  container.innerHTML = html;
-}
-
-async function renderDataView() {
-  const container = document.getElementById("data-view-table");
-  if (!container) return;
-
-  const dataset = state.currentDataset;
-  if (!dataset) {
-    container.innerHTML = '<div class="empty-state"><p>No dataset loaded</p></div>';
-    return;
-  }
-
-  try {
-    const preview = await apiFetch(`/datasets/${dataset.id}/preview?limit=100&use_merged=true`);
-    const rows = preview.rows || [];
-    const columns = preview.columns || [];
-    if (!rows.length || !columns.length) {
-      container.innerHTML = '<div class="empty-state"><p>No data to display</p></div>';
-      return;
-    }
-
-    /* --- Column profile cards --- */
-    const profile = getActiveProfile();
-    const profileCols = profile?.columns || [];
-    const totalRows = profile?.row_count || rows.length;
-    let profileHtml = "";
-
-    if (profileCols.length) {
-      const valueCounts = {};
-      columns.forEach((colName) => {
-        const counts = {};
-        rows.forEach((row) => { const v = row[colName]; if (v != null && v !== "") counts[v] = (counts[v] || 0) + 1; });
-        valueCounts[colName] = counts;
-      });
-
-      const cards = profileCols.map((col) => {
-        const isNumeric = ["integer", "float", "number", "numeric"].includes((col.inferred_type || "").toLowerCase());
-        const isDate = ["datetime", "date", "timestamp"].includes((col.inferred_type || "").toLowerCase());
-        const nullPct = col.null_ratio != null ? (col.null_ratio * 100).toFixed(0) : 0;
-        const completePct = col.null_ratio != null ? ((1 - col.null_ratio) * 100).toFixed(0) : 100;
-        const barColor = completePct >= 95 ? "var(--accent-green)" : completePct >= 80 ? "var(--accent-2)" : "var(--accent-red)";
-
-        let detailHtml = "";
-        if (isNumeric) {
-          const minV = col.min_value != null ? Number(col.min_value).toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—";
-          const maxV = col.max_value != null ? Number(col.max_value).toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—";
-          const meanV = col.mean_value != null ? Number(col.mean_value).toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—";
-          detailHtml = `<div class="dp-card-stats">
-            <div class="dp-stat"><span class="dp-stat-label">Min</span><span class="dp-stat-value">${minV}</span></div>
-            <div class="dp-stat"><span class="dp-stat-label">Max</span><span class="dp-stat-value">${maxV}</span></div>
-            <div class="dp-stat"><span class="dp-stat-label">Mean</span><span class="dp-stat-value">${meanV}</span></div>
-          </div>`;
-        } else if (isDate) {
-          const minD = col.min_value || "—";
-          const maxD = col.max_value || "—";
-          detailHtml = `<div class="dp-card-range"><span>${minD}</span><span style="color:var(--muted)">→</span><span>${maxD}</span></div>`;
-        } else {
-          const counts = valueCounts[col.name] || {};
-          const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3);
-          const totalNonNull = Object.values(counts).reduce((s, v) => s + v, 0) || 1;
-          if (sorted.length) {
-            detailHtml = `<div class="dp-card-top-values">${sorted.map(([val, cnt]) => {
-              const pct = ((cnt / totalNonNull) * 100).toFixed(0);
-              return `<div class="dp-top-row">
-                <span class="dp-top-label" title="${val}">${val}</span>
-                <div class="dp-top-bar-wrap"><div class="dp-top-bar" style="width:${pct}%"></div></div>
-                <span class="dp-top-pct">${pct}%</span>
-              </div>`;
-            }).join("")}</div>`;
-          }
-        }
-
-        return `<div class="dp-card">
-          <div class="dp-card-header">
-            <span class="dp-card-name">${col.name}</span>
-            <span class="dp-card-type">${col.inferred_type}</span>
-          </div>
-          <div class="dp-card-unique">${col.unique_count != null ? col.unique_count.toLocaleString() : "—"} unique <span class="dp-card-unique-pct">(${totalRows > 0 && col.unique_count != null ? ((col.unique_count / totalRows) * 100).toFixed(0) : 0}%)</span></div>
-          <div class="dp-card-complete">
-            <div class="dp-card-complete-bar"><div style="width:${completePct}%;background:${barColor}"></div></div>
-            <span>${completePct}% complete</span>
-          </div>
-          ${detailHtml}
-        </div>`;
-      }).join("");
-
-      profileHtml = `<div class="data-profile-section">
-        <h4 style="margin:0 0 12px;font-size:0.95rem;font-weight:700;font-family:'Space Grotesk','Inter',sans-serif">Column Profiles</h4>
-        <div class="data-profile-cards">${cards}</div>
-      </div>`;
-    }
-
-    /* --- Data table --- */
-    const headerHtml = columns.map((c) => `<th>${c}</th>`).join("");
-    const bodyHtml = rows.map((row) => `<tr>${columns.map((c) => `<td>${row[c] ?? ""}</td>`).join("")}</tr>`).join("");
-
-    container.innerHTML = `
-      ${profileHtml}
-      <div class="data-view-info">Showing ${rows.length} of ${preview.total_rows || rows.length} rows</div>
-      <table>
-        <thead><tr>${headerHtml}</tr></thead>
-        <tbody>${bodyHtml}</tbody>
-      </table>
-    `;
-  } catch (_err) {
-    container.innerHTML = '<div class="empty-state"><p>Unable to load data preview</p></div>';
-  }
+/* ===== Nav Pills removed for unified dashboard */
+function generateAndShowInsights() {
+  const btn = document.getElementById("snapshot-insights-btn");
+  if (btn) btn.classList.remove("hidden");
 }
 
 /* ===== Global Filter Bar ===== */
@@ -2705,6 +2475,7 @@ const KPI_H  = 2;
 
 function getDefaultTileLayout(visual) {
   if (visual.type === "kpi") return { w: KPI_W, h: KPI_H };
+  if (visual.type === "text") return { w: TILE_W, h: TILE_H };
   return { w: TILE_W, h: TILE_H };
 }
 
@@ -3416,7 +3187,24 @@ async function uploadDatasetFiles(datasetId, files, { skipDuel = false } = {}) {
     await autoMergeFiles();
   }
   if (!skipDuel) {
-    await startDuel();
+    /* Collapse sidebar and go to AI Chat pre-dashboard flow */
+    toggleSidebar(false);
+    setStep("ai-chat");
+    if (!state.aiChatHistory.length) {
+      appendHomeBubble("typing", "");
+      try {
+        const response = await apiFetch(`/datasets/${datasetId}/ai-chat`, {
+          method: "POST",
+          body: JSON.stringify({ message: "Hello, I just uploaded my data.", history: [], model_key: state.selectedModelKey || null }),
+        });
+        document.querySelector(".ai-typing-indicator")?.closest(".home-chat-bubble-wrap")?.remove();
+        const reply = response.reply || "Hi! I've analyzed your data. Tell me what you'd like to explore.";
+        appendHomeBubble("assistant", reply, { isHtml: true });
+        if (response.suggestions?.length) renderHomeSuggestions(response.suggestions);
+      } catch (err) {
+        document.querySelector(".ai-typing-indicator")?.closest(".home-chat-bubble-wrap")?.remove();
+      }
+    }
   }
 }
 
@@ -4296,6 +4084,15 @@ function renderVisual(visual, container) {
     return;
   }
 
+  if (visual.type === "text") {
+    container.style.padding = "20px";
+    container.style.fontSize = "1rem";
+    container.style.lineHeight = "1.6";
+    container.style.color = "var(--ink)";
+    container.innerHTML = `<div class="insight-text">${visual.config?.insight || "Insight unavailable."}</div>`;
+    return;
+  }
+
   if (visual.type === "table") {
     container.classList.add("table-scroll");
     const columns = visual.config?.columns || Object.keys(rawData[0] || {});
@@ -4793,7 +4590,6 @@ function enterDashboardMode() {
   elements.kpiStrip?.classList.remove("hidden");
 
   /* Render dashboard content */
-  switchDashboardTab("overview");
   renderKpiStrip();
   updateFilterBar();
   renderDashboard();
@@ -5124,8 +4920,8 @@ function bindEvents() {
       const nav = btn.dataset.nav;
       document.querySelectorAll(".mobile-nav-item").forEach((b) => b.classList.toggle("active", b === btn));
       if (nav === "home") { setStep("upload"); }
-      else if (nav === "dashboard" && state.currentDataset) { setStep("dashboard"); switchDashboardTab("overview"); }
-      else if (nav === "insights" && state.currentDataset) { setStep("dashboard"); switchDashboardTab("insights"); }
+      else if (nav === "dashboard" && state.currentDataset) { setStep("dashboard"); }
+      else if (nav === "insights" && state.currentDataset) { setStep("dashboard"); }
       else if (nav === "profile") {
         if (state.token) openSettings();
         else openAuthModal();
@@ -5193,9 +4989,6 @@ function bindEvents() {
     updateDatasetNameHint(event.target.value.trim());
   });
 
-  document.querySelectorAll(".nav-pill").forEach((pill) => {
-    pill.addEventListener("click", () => switchDashboardTab(pill.dataset.nav));
-  });
   document.getElementById("snapshot-insights-btn")?.addEventListener("click", snapshotInsights);
 
   document.getElementById("refresh-projects")?.addEventListener("click", loadProjects);
@@ -5561,15 +5354,15 @@ async function loadModels() {
     const models = await apiFetch("/models/");
     state.availableModels = models;
     const available = models.filter((m) => m.available);
-    /* Prefer gemini-3-1-high-pro when available; fall back through preferred list */
-    if (available.find((m) => m.key === "gemini-3-1-high-pro")) {
-      state.selectedModelKey = "gemini-3-1-high-pro";
-      localStorage.setItem(MODEL_KEY_STORAGE, "gemini-3-1-high-pro");
+    /* Prefer claude-haiku when available; fall back through preferred list */
+    if (available.find((m) => m.key === "claude-haiku")) {
+      state.selectedModelKey = "claude-haiku";
+      localStorage.setItem(MODEL_KEY_STORAGE, "claude-haiku");
     } else if (!available.find((m) => m.key === state.selectedModelKey)) {
-      const preferred = ["gemini-3-pro", "claude-sonnet-4-6", "claude-haiku-4-5", "gemini-flash", "llama-groq"];
+      const preferred = ["claude-haiku", "gemini-2-5-flash", "llama-groq", "gpt-4o-mini"];
       const best = preferred.find((k) => available.find((m) => m.key === k))
         || available[0]?.key
-        || "gemini-3-1-high-pro";
+        || "claude-haiku";
       state.selectedModelKey = best;
       localStorage.setItem(MODEL_KEY_STORAGE, best);
     }
