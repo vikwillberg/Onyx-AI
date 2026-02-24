@@ -61,7 +61,7 @@ const state = {
   aiChatHistory: [],
   aiChatDone: false,
   aiChatBusy: false,
-  selectedModelKey: localStorage.getItem("onyx_model") || "gemini-2-0-flash",
+  selectedModelKey: localStorage.getItem("onyx_model") || "gemini-3-1-pro",
   availableModels: [],
   focusedVisualId: null,
 };
@@ -5418,15 +5418,16 @@ async function loadModels() {
     const models = await apiFetch("/models/");
     state.availableModels = models;
     const available = models.filter((m) => m.available);
-    /* Prefer gemini-2-0-flash (free) when available; fall back through preferred list */
-    if (available.find((m) => m.key === "gemini-2-0-flash")) {
-      state.selectedModelKey = "gemini-2-0-flash";
-      localStorage.setItem(MODEL_KEY_STORAGE, "gemini-2-0-flash");
+    const savedKey = localStorage.getItem(MODEL_KEY_STORAGE);
+    /* If user previously chose a model and it's still available, keep it */
+    if (savedKey && available.find((m) => m.key === savedKey)) {
+      state.selectedModelKey = savedKey;
     } else if (!available.find((m) => m.key === state.selectedModelKey)) {
-      const preferred = ["gemini-2-0-flash", "gemini-2-5-flash-lite", "llama-groq", "gpt-4o-mini", "claude-haiku-4-5"];
+      /* Current selection unavailable — fall back through preferred list */
+      const preferred = ["gemini-3-1-pro", "gemini-3-flash", "gemini-2-0-flash", "llama-groq", "gpt-4o-mini", "claude-haiku-4-5"];
       const best = preferred.find((k) => available.find((m) => m.key === k))
         || available[0]?.key
-        || "gemini-2-0-flash";
+        || "gemini-3-1-pro";
       state.selectedModelKey = best;
       localStorage.setItem(MODEL_KEY_STORAGE, best);
     }

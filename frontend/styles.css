@@ -1184,8 +1184,7 @@ body[data-theme="dark"] .sidebar-logo-img.sidebar-logo-dark { display: block; }
 }
 .sidebar-rail-user:hover { opacity: 0.9; background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%); }
 
-/* Legacy compat */
-.sidebar-project-thumb, .sidebar-project-meta, .sidebar-project-badge { display: none; }
+/* Legacy compat — project card elements now visible */
 
 /* ===== COLUMN-VALUE FILTERS ===== */
 .filter-bar-fields {
@@ -2437,9 +2436,9 @@ body[data-theme="dark"] .home-chat-bubble.user > div {
   animation: dashSlideIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
-/* Chat reopen button — visible only in dashboard mode */
+/* Chat reopen button — visible when chat sidebar is collapsed */
 .chat-reopen-btn { display: none; }
-.app-main.dashboard-active .chat-reopen-btn { display: inline-flex; }
+.chat-reopen-btn.active { display: inline-flex; }
 .app-main.dashboard-active .chat-reopen-btn.active {
   background: var(--accent-soft); border-color: var(--accent); color: var(--accent);
 }

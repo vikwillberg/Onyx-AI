@@ -180,7 +180,7 @@ MODEL_REGISTRY: dict[str, dict] = {
     },
 }
 
-_DEFAULT_MODEL_KEY = "gemini-2-0-flash"  # fallback — free tier, always available
+_DEFAULT_MODEL_KEY = "gemini-3-1-pro"  # fallback — best Gemini model
 
 
 class _LLMProvider:
