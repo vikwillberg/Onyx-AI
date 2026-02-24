@@ -694,6 +694,10 @@ def auto_derive_columns(
         days = parsed.dt.day_name()
         if not days.isna().all():
             df["day_of_week"] = days
+    if "month" in derivations and "month" not in df.columns:
+        months = parsed.dt.month_name()
+        if not months.isna().all():
+            df["month"] = months
     return df
 
 

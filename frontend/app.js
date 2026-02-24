@@ -508,7 +508,7 @@ function setStep(step) {
   elements.filterBar?.classList.toggle("hidden", !showFilterBar);
   elements.kpiStrip?.classList.toggle("hidden", !showFilterBar);
   /* Dashboard step is handled by enterDashboardMode() — setStep just manages section visibility */
-  if (step === "dashboard") switchNavTab("overview");
+  if (step === "dashboard") switchDashboardTab("overview");
   /* Persist session on every step change */
   saveSession();
 
@@ -4808,7 +4808,7 @@ function enterDashboardMode() {
   elements.kpiStrip?.classList.remove("hidden");
 
   /* Render dashboard content */
-  switchNavTab("overview");
+  switchDashboardTab("overview");
   renderKpiStrip();
   updateFilterBar();
   renderDashboard();
@@ -5139,8 +5139,8 @@ function bindEvents() {
       const nav = btn.dataset.nav;
       document.querySelectorAll(".mobile-nav-item").forEach((b) => b.classList.toggle("active", b === btn));
       if (nav === "home") { setStep("upload"); }
-      else if (nav === "dashboard" && state.currentDataset) { setStep("dashboard"); switchNavTab("overview"); }
-      else if (nav === "insights" && state.currentDataset) { setStep("dashboard"); switchNavTab("insights"); }
+      else if (nav === "dashboard" && state.currentDataset) { setStep("dashboard"); switchDashboardTab("overview"); }
+      else if (nav === "insights" && state.currentDataset) { setStep("dashboard"); switchDashboardTab("insights"); }
       else if (nav === "profile") {
         if (state.token) openSettings();
         else openAuthModal();
@@ -5209,7 +5209,7 @@ function bindEvents() {
   });
 
   document.querySelectorAll(".nav-pill").forEach((pill) => {
-    pill.addEventListener("click", () => switchNavTab(pill.dataset.nav));
+    pill.addEventListener("click", () => switchDashboardTab(pill.dataset.nav));
   });
   document.getElementById("snapshot-insights-btn")?.addEventListener("click", snapshotInsights);
 
