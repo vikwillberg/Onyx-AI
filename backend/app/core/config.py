@@ -16,13 +16,13 @@ class Settings(BaseSettings):
     storage_dir: str = "./storage"
     openai_api_key: Optional[str] = None
     openai_base_url: Optional[str] = None
-    openai_model: str = "gpt-5.2-pro"
+    openai_model: str = "gpt-4o"
     groq_api_key: Optional[str] = None
     groq_model: str = "llama-3.3-70b-versatile"
     gemini_api_key: Optional[str] = None
     gemini_model: str = "gemini-2.0-flash"
     claude_api_key: Optional[str] = None
-    claude_model: str = "claude-sonnet-4-6-latest"
+    claude_model: str = "claude-haiku-4-5-latest"
     jwt_secret_key: str = "change-me"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 1440

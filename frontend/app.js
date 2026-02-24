@@ -61,7 +61,7 @@ const state = {
   aiChatHistory: [],
   aiChatDone: false,
   aiChatBusy: false,
-  selectedModelKey: localStorage.getItem("onyx_model") || "gemini-3-1-high-pro",
+  selectedModelKey: localStorage.getItem("onyx_model") || "gemini-2-0-flash",
   availableModels: [],
   focusedVisualId: null,
 };
@@ -5354,15 +5354,15 @@ async function loadModels() {
     const models = await apiFetch("/models/");
     state.availableModels = models;
     const available = models.filter((m) => m.available);
-    /* Prefer claude-haiku when available; fall back through preferred list */
-    if (available.find((m) => m.key === "claude-haiku")) {
-      state.selectedModelKey = "claude-haiku";
-      localStorage.setItem(MODEL_KEY_STORAGE, "claude-haiku");
+    /* Prefer gemini-2-0-flash (free) when available; fall back through preferred list */
+    if (available.find((m) => m.key === "gemini-2-0-flash")) {
+      state.selectedModelKey = "gemini-2-0-flash";
+      localStorage.setItem(MODEL_KEY_STORAGE, "gemini-2-0-flash");
     } else if (!available.find((m) => m.key === state.selectedModelKey)) {
-      const preferred = ["claude-haiku", "gemini-2-5-flash", "llama-groq", "gpt-4o-mini"];
+      const preferred = ["gemini-2-0-flash", "gemini-2-5-flash-lite", "llama-groq", "gpt-4o-mini", "claude-haiku-4-5"];
       const best = preferred.find((k) => available.find((m) => m.key === k))
         || available[0]?.key
-        || "claude-haiku";
+        || "gemini-2-0-flash";
       state.selectedModelKey = best;
       localStorage.setItem(MODEL_KEY_STORAGE, best);
     }
@@ -5389,10 +5389,10 @@ function renderModelPickerBtn() {
 
 /* Provider groups — best + free models only */
 const MODEL_GROUPS = [
-  { label: "Anthropic", keys: ["claude-sonnet", "claude-opus", "claude-haiku"] },
-  { label: "Google", keys: ["gemini-2-5-pro-latest", "gemini-2-5-pro", "gemini-2-5-flash", "gemini-flash", "gemini-flash-lite"] },
-  { label: "Meta · Groq", keys: ["llama-4-scout", "llama-groq", "llama-3-1-8b"] },
-  { label: "OpenAI", keys: ["gpt-4o", "gpt-4o-mini", "o4-mini"] },
+  { label: "Google", keys: ["gemini-3-1-pro", "gemini-3-flash", "gemini-2-5-flash-lite", "gemini-2-0-flash"] },
+  { label: "Anthropic", keys: ["claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5"] },
+  { label: "OpenAI", keys: ["gpt-5-2", "gpt-4o-mini"] },
+  { label: "Open Source · Groq", keys: ["gpt-oss-120b", "llama-4-scout", "llama-groq", "llama-3-1-8b"] },
 ];
 
 function renderModelPickerList() {

@@ -240,7 +240,7 @@ class AiChatMessage(BaseModel):
 class AiChatRequest(BaseModel):
     message: str
     history: list[AiChatMessage] = []
-    model_key: Optional[str] = None  # registry key e.g. "claude-sonnet"
+    model_key: Optional[str] = None  # registry key e.g. "claude-3-7-sonnet"
 
 
 class AiChatResponse(BaseModel):

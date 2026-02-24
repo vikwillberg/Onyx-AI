@@ -18,81 +18,44 @@ GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 # "tier": "free" | "paid"
 # pricing is per 1 million tokens (USD), 0 for free tiers.
 MODEL_REGISTRY: dict[str, dict] = {
-    # ── Anthropic / Claude ────────────────────────────────────────────────────
-    "claude-sonnet": {
-        "model_id":     "claude-sonnet-4-20250514",
-        "provider":     "claude",
-        "company":      "Anthropic",
-        "display_name": "Claude Sonnet 4",
-        "description":  "Smart, efficient model for everyday use",
-        "input_price":  3.00,
+    # ── Google / Gemini ───────────────────────────────────────────────────────
+    "gemini-3-1-pro": {
+        "model_id":     "gemini-3.1-pro",
+        "provider":     "gemini",
+        "company":      "Google",
+        "display_name": "Gemini 3.1 Pro",
+        "description":  "Most advanced Gemini — state-of-the-art reasoning",
+        "input_price":  2.50,
         "output_price": 15.00,
-        "credits":      5,
+        "credits":      8,
         "tier": "paid",
         "badge": "latest",
     },
-    "claude-opus": {
-        "model_id":     "claude-opus-4-20250514",
-        "provider":     "claude",
-        "company":      "Anthropic",
-        "display_name": "Claude Opus 4",
-        "description":  "Most powerful model for complex challenges",
-        "input_price":  15.00,
-        "output_price": 75.00,
-        "credits":      15,
-        "tier": "paid",
-        "badge": "",
-    },
-    "claude-haiku": {
-        "model_id":     "claude-3-5-haiku-20241022",
-        "provider":     "claude",
-        "company":      "Anthropic",
-        "display_name": "Claude 3.5 Haiku",
-        "description":  "Fastest model for daily tasks",
-        "input_price":  0.80,
-        "output_price": 4.00,
-        "credits":      2,
-        "tier": "paid",
-        "badge": "fast",
-    },
-    # ── Google / Gemini ───────────────────────────────────────────────────────
-    "gemini-2-5-pro-latest": {
-        "model_id":     "gemini-2.5-pro-preview-06-05",
+    "gemini-3-flash": {
+        "model_id":     "gemini-3.0-flash",
         "provider":     "gemini",
         "company":      "Google",
-        "display_name": "Gemini 2.5 Pro (Latest)",
-        "description":  "Most advanced Gemini model for complex reasoning and analysis",
-        "input_price":  1.25,
-        "output_price": 10.00,
-        "credits":      5,
-        "tier":         "paid",
-        "badge":        "latest",
-    },
-    "gemini-2-5-pro": {
-        "model_id":     "gemini-2.5-pro",
-        "provider":     "gemini",
-        "company":      "Google",
-        "display_name": "Gemini 2.5 Pro",
-        "description":  "Capable Gemini — great for complex reasoning",
-        "input_price":  1.25,
-        "output_price": 10.00,
-        "credits":      5,
-        "tier": "paid",
-        "badge": "",
-    },
-    "gemini-2-5-flash": {
-        "model_id":     "gemini-2.5-flash-preview-05-20",
-        "provider":     "gemini",
-        "company":      "Google",
-        "display_name": "Gemini 2.5 Flash",
-        "description":  "Fast and affordable — great balance of speed and quality",
+        "display_name": "Gemini 3 Flash",
+        "description":  "Fast next-gen Gemini — great balance of speed and quality",
         "input_price":  0.15,
         "output_price": 0.60,
         "credits":      1,
         "tier": "paid",
-        "badge": "latest",
+        "badge": "fast",
     },
-    "gemini-flash": {
+    "gemini-2-5-flash-lite": {
+        "model_id":     "gemini-2.5-flash-lite",
+        "provider":     "gemini",
+        "company":      "Google",
+        "display_name": "Gemini 2.5 Flash-Lite",
+        "description":  "Lightweight and affordable — fastest Gemini responses",
+        "input_price":  0.0,
+        "output_price": 0.0,
+        "credits":      0,
+        "tier": "free",
+        "badge": "free",
+    },
+    "gemini-2-0-flash": {
         "model_id":     "gemini-2.0-flash",
         "provider":     "gemini",
         "company":      "Google",
@@ -104,12 +67,74 @@ MODEL_REGISTRY: dict[str, dict] = {
         "tier": "free",
         "badge": "free",
     },
-    "gemini-flash-lite": {
-        "model_id":     "gemini-2.0-flash-lite",
-        "provider":     "gemini",
-        "company":      "Google",
-        "display_name": "Gemini 2.0 Flash Lite",
-        "description":  "Lightest free model — fastest response times",
+    # ── Anthropic / Claude ────────────────────────────────────────────────────
+    "claude-opus-4-6": {
+        "model_id":     "claude-opus-4-6-latest",
+        "provider":     "claude",
+        "company":      "Anthropic",
+        "display_name": "Claude Opus 4.6",
+        "description":  "Most powerful Claude — unmatched complex reasoning",
+        "input_price":  15.00,
+        "output_price": 75.00,
+        "credits":      15,
+        "tier": "paid",
+        "badge": "latest",
+    },
+    "claude-sonnet-4-6": {
+        "model_id":     "claude-sonnet-4-6-latest",
+        "provider":     "claude",
+        "company":      "Anthropic",
+        "display_name": "Claude Sonnet 4.6",
+        "description":  "Best balance of intelligence and speed",
+        "input_price":  3.00,
+        "output_price": 15.00,
+        "credits":      5,
+        "tier": "paid",
+        "badge": "",
+    },
+    "claude-haiku-4-5": {
+        "model_id":     "claude-haiku-4-5-latest",
+        "provider":     "claude",
+        "company":      "Anthropic",
+        "display_name": "Claude Haiku 4.5",
+        "description":  "Fastest Claude model for daily tasks",
+        "input_price":  1.00,
+        "output_price": 5.00,
+        "credits":      2,
+        "tier": "paid",
+        "badge": "fast",
+    },
+    # ── OpenAI / GPT ─────────────────────────────────────────────────────────
+    "gpt-5-2": {
+        "model_id":     "gpt-5.2-pro",
+        "provider":     "openai",
+        "company":      "OpenAI",
+        "display_name": "GPT-5.2",
+        "description":  "OpenAI's most capable model — frontier intelligence",
+        "input_price":  10.00,
+        "output_price": 30.00,
+        "credits":      12,
+        "tier": "paid",
+        "badge": "latest",
+    },
+    "gpt-4o-mini": {
+        "model_id":     "gpt-4o-mini",
+        "provider":     "openai",
+        "company":      "OpenAI",
+        "display_name": "GPT-4o Mini",
+        "description":  "Affordable fast model — great cost-per-token",
+        "input_price":  0.15,
+        "output_price": 0.60,
+        "credits":      1,
+        "tier": "paid",
+        "badge": "",
+    },
+    "gpt-oss-120b": {
+        "model_id":     "gpt-oss-120b",
+        "provider":     "groq",
+        "company":      "OpenAI · Groq",
+        "display_name": "GPT-OSS 120B",
+        "description":  "Open-source GPT — free on Groq infrastructure",
         "input_price":  0.0,
         "output_price": 0.0,
         "credits":      0,
@@ -153,46 +178,9 @@ MODEL_REGISTRY: dict[str, dict] = {
         "tier": "free",
         "badge": "new",
     },
-    # ── OpenAI / GPT ─────────────────────────────────────────────────────────
-    "gpt-4o": {
-        "model_id":     "gpt-4o",
-        "provider":     "openai",
-        "company":      "OpenAI",
-        "display_name": "GPT-4o",
-        "description":  "Flagship multimodal model — strong reasoning and speed",
-        "input_price":  2.50,
-        "output_price": 10.00,
-        "credits":      5,
-        "tier": "paid",
-        "badge": "latest",
-    },
-    "gpt-4o-mini": {
-        "model_id":     "gpt-4o-mini",
-        "provider":     "openai",
-        "company":      "OpenAI",
-        "display_name": "GPT-4o Mini",
-        "description":  "Affordable fast model — great cost-per-token",
-        "input_price":  0.15,
-        "output_price": 0.60,
-        "credits":      1,
-        "tier": "paid",
-        "badge": "",
-    },
-    "o4-mini": {
-        "model_id":     "o4-mini",
-        "provider":     "openai",
-        "company":      "OpenAI",
-        "display_name": "o4-mini",
-        "description":  "Advanced reasoning model — great for complex analysis",
-        "input_price":  1.10,
-        "output_price": 4.40,
-        "credits":      5,
-        "tier": "paid",
-        "badge": "latest",
-    },
 }
 
-_DEFAULT_MODEL_KEY = "gemini-2-5-pro-latest"  # fallback when no key specified
+_DEFAULT_MODEL_KEY = "gemini-2-0-flash"  # fallback — free tier, always available
 
 
 class _LLMProvider:
@@ -667,7 +655,7 @@ def analyze_data_chat(
     """Run one turn of the data analysis conversation.
 
     Returns (reply_text, is_done, insights_dict_or_none).
-    model_key: registry key (e.g. "claude-sonnet"). If None, uses the default LLMService fallback chain.
+    model_key: registry key (e.g. "claude-3-7-sonnet"). If None, uses the default LLMService fallback chain.
     """
     if not llm_service.enabled and not model_key:
         return (
