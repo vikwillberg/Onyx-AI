@@ -2139,6 +2139,16 @@ def generate_dashboard_visuals(
         if derive_list:
             dataframe = auto_derive_columns(dataframe, datetime_cols, derive_list)
 
+    # Always derive day_of_week and month if a date column exists (for LLM-planned visuals)
+    if datetime_cols:
+        always_derive = []
+        if "day_of_week" not in dataframe.columns:
+            always_derive.append("day_of_week")
+        if "month" not in dataframe.columns:
+            always_derive.append("month")
+        if always_derive:
+            dataframe = auto_derive_columns(dataframe, datetime_cols, always_derive)
+
     # --- Chart-type diversity tracking ---
     type_counts: dict[str, int] = {}
 
@@ -2421,6 +2431,46 @@ def generate_requested_visual(
 
 
 def apply_data_to_spec(spec: VisualSpec, dataframe: pd.DataFrame) -> Optional[VisualSpec]:
+    # ── Derive temporal columns if the spec references them ──
+    DERIVED_COLS = {"day_of_week", "month", "hour_of_day"}
+    needed_derived = set()
+    for attr in (spec.x, spec.y, spec.values):
+        if attr and attr in DERIVED_COLS and attr not in dataframe.columns:
+            needed_derived.add(attr)
+
+    if needed_derived:
+        # Find the best date column to derive from
+        date_col = None
+        for col in dataframe.columns:
+            if col.lower() in needed_derived:
+                continue
+            try:
+                sample = dataframe[col].dropna().head(20)
+                parsed = pd.to_datetime(sample, errors="coerce", format="mixed")
+                if parsed.notna().sum() > len(sample) * 0.5:
+                    date_col = col
+                    break
+            except Exception:
+                continue
+
+        if date_col:
+            dt_series = pd.to_datetime(dataframe[date_col], errors="coerce", format="mixed")
+            if "day_of_week" in needed_derived:
+                DOW_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                dataframe = dataframe.copy()
+                dataframe["day_of_week"] = dt_series.dt.day_name()
+                # Ensure correct ordering by making it categorical
+                dataframe["day_of_week"] = pd.Categorical(dataframe["day_of_week"], categories=DOW_ORDER, ordered=True)
+            if "month" in needed_derived:
+                MONTH_ORDER = ["January", "February", "March", "April", "May", "June",
+                               "July", "August", "September", "October", "November", "December"]
+                dataframe = dataframe.copy()
+                dataframe["month"] = dt_series.dt.month_name()
+                dataframe["month"] = pd.Categorical(dataframe["month"], categories=MONTH_ORDER, ordered=True)
+            if "hour_of_day" in needed_derived:
+                dataframe = dataframe.copy()
+                dataframe["hour_of_day"] = dt_series.dt.hour
+
     if spec.type == "table":
         config = spec.config if isinstance(spec.config, dict) else {}
         if config.get("table_type") == "summary":
@@ -2529,37 +2579,66 @@ def llm_dashboard_plan(
     context_str = "\n".join(context_parts)
 
     system_prompt = (
-        "You are a senior business analyst designing an ACTIONABLE dashboard that helps "
-        "the business owner understand HOW to grow revenue and reduce costs.\n\n"
-        "GOAL: Every visual MUST answer a specific business question. Think like a consultant:\n"
-        "- Which products/services drive the most revenue?\n"
-        "- How is revenue trending over time? Growing or declining?\n"
-        "- What are the busiest days/hours? Where should we staff up?\n"
-        "- Which customer segments or regions are most valuable?\n"
-        "- What's the distribution of order values? Are there outlier opportunities?\n\n"
-        "CHART TYPE MIX (use a variety):\n"
-        "- 1-2 LINE charts (revenue/sales trends over time — use datetime columns for x-axis)\n"
-        "- 2-3 BAR charts (rankings: top products, revenue by category, sales by day)\n"
-        "- 1 PIE chart (revenue share by category — use column with 3-7 unique values)\n"
-        "- 0-1 HISTOGRAM (distribution of order values or prices)\n"
-        "- 0-1 TABLE (top performers leaderboard)\n\n"
+        "You are a senior data analyst designing an INSIGHT-DRIVEN dashboard that helps "
+        "the user DISCOVER something NEW about their data — not just summarize obvious totals.\n\n"
+        "YOUR GOAL: Every visual MUST reveal a pattern, outlier, or comparison the user hasn't seen before.\n\n"
+        "INSIGHT CATEGORIES (include at least 4 of these):\n"
+        "1. TOP PERFORMERS — Which items/categories/regions drive the most value? Show the 80/20 rule.\n"
+        "2. TRENDS OVER TIME — Is the metric growing, declining, or seasonal? Use line charts with date columns.\n"
+        "3. DAY-OF-WEEK / MONTH PATTERNS — Which days or months are most active/profitable? "
+        "   If a date column exists, use derived column 'day_of_week' or 'month' as x-axis with a bar chart.\n"
+        "4. GEOGRAPHIC DISTRIBUTION — If city/country/region columns exist, show a bar chart of top locations. "
+        "   If latitude & longitude columns exist, create a MAP visual (type='map').\n"
+        "5. OUTLIERS & ANOMALIES — Which items have unusually high or low values? Use scatter plots.\n"
+        "6. SEGMENT COMPARISON — Compare categories, types, or groups side by side.\n"
+        "7. DISTRIBUTION — How are values spread? Use histograms only for numeric columns with <100 unique values.\n\n"
+        "CHART TYPE MIX (use a variety — never repeat the same type 3+ times):\n"
+        "- 1-2 LINE charts (trends over time — MUST use a datetime column for x-axis)\n"
+        "- 2-3 BAR charts (rankings, comparisons, day-of-week patterns)\n"
+        "- 1 PIE chart (share/proportion — use column with 3-8 unique values)\n"
+        "- 0-1 SCATTER (correlations or outlier detection between two numeric columns)\n"
+        "- 0-1 MAP (ONLY if latitude/longitude columns exist — type='map', x=lon_column, y=lat_column)\n"
+        "- 0-1 TABLE (top/bottom performers leaderboard)\n\n"
+        "MAP VISUAL RULES:\n"
+        "- type='map', x = longitude column name, y = latitude column name\n"
+        "- Set config.lat_column, config.lon_column, config.label_column (name/place), config.value_column (metric)\n"
+        "- ONLY use if actual latitude/longitude numeric columns exist in the data\n\n"
+        "DERIVED COLUMNS (you can use these even if they don't appear in the column list):\n"
+        "- 'day_of_week' — derived from any date column, values: Monday-Sunday\n"
+        "- 'month' — derived from any date column, values: January-December\n"
+        "- 'hour_of_day' — derived from any datetime column with time component\n\n"
         "BLACKLIST — NEVER use these as chart categories:\n"
-        "- Address columns (street, address, zip, postal code)\n"
-        "- ID columns (order_id, customer_id, transaction_id)\n"
-        "- Columns with >15 unique text values (they make unreadable charts)\n\n"
-        "TITLE STYLE: Use business questions as titles, e.g.:\n"
-        "- 'Which Products Drive the Most Revenue?' instead of 'Revenue by Product'\n"
-        "- 'How Are Sales Trending?' instead of 'Total Price over Order Date'\n\n"
+        "- ID columns (order_id, customer_id, transaction_id, sale_id, participant_id)\n"
+        "- Address columns (street, address, zip, postal code, email, phone, url)\n"
+        "- Columns with >20 unique text values for pie charts (use bar instead)\n\n"
+        "TITLE STYLE: Use insight-driven questions or findings:\n"
+        "- 'Which Products Drive 80% of Revenue?' not 'Revenue by Product'\n"
+        "- 'Are Sales Growing or Declining?' not 'Total Price over Date'\n"
+        "- 'Which Day of the Week Is Most Profitable?' not 'Sales by Day'\n"
+        "- 'Where Are Your Customers Located?' not 'Count by City'\n\n"
+        "EXAMPLES OF GREAT DASHBOARDS BY DATA TYPE:\n"
+        "▸ Sales/E-commerce data (Date, Product, Price, City, Payment Method):\n"
+        "  - Top 10 products by revenue (bar), Monthly revenue trend (line),\n"
+        "  - Revenue by day of week (bar with day_of_week), Sales by city (bar),\n"
+        "  - Payment method share (pie), Price distribution (histogram)\n"
+        "▸ Geographic/Science data (latitude, longitude, magnitude, depth, place):\n"
+        "  - Location map (map), Distribution by region (bar),\n"
+        "  - Magnitude over time (line), Depth vs magnitude correlation (scatter)\n"
+        "▸ Corporate/Finance data (revenue, expenses, profit, fiscal date):\n"
+        "  - Revenue trend over quarters (line), Expense breakdown (pie),\n"
+        "  - Profit margin by company (bar), Revenue vs expenses (scatter)\n"
+        "▸ Survey/HR data (age, role, score, country):\n"
+        "  - Score distribution by role (bar), Age vs score (scatter),\n"
+        "  - Response share by category (pie), Scores over time (line)\n\n"
         "Return JSON with a 'visuals' array. Each visual must have: "
-        "type (one of: bar, line, pie, scatter, histogram, table), "
-        "title (business question or clear insight label), "
-        "x (column name for x-axis/category), "
+        "type (one of: bar, line, pie, scatter, histogram, table, map), "
+        "title (insight-driven question or finding), "
+        "x (column name for x-axis/category — can be a derived column like 'day_of_week'), "
         "y (column name for y-axis/value), "
         "values (column name for pie values or histogram distribution), "
-        "aggregation (one of: count, sum, mean, median). "
-        "ONLY use column names from the provided list. "
-        "For HISTOGRAM: set type='histogram', put the numeric column in 'values', set aggregation='count'. "
-        "For SCATTER: set type='scatter', put one numeric column in 'x', another in 'y'."
+        "aggregation (one of: count, sum, mean, median), "
+        "config (optional object with lat_column, lon_column, label_column, value_column for maps). "
+        "ONLY use column names from the provided list OR the derived columns listed above."
     )
     user_prompt = (
         f"Business category: {category_label}\n"
@@ -2583,7 +2662,7 @@ def llm_dashboard_plan(
 
     column_names = {col.name for col in profile.columns}
     # Also allow derived columns
-    column_names.update(["hour_of_day", "day_of_week"])
+    column_names.update(["hour_of_day", "day_of_week", "month"])
     visuals: list[VisualSpec] = []
 
     for item in response.get("visuals", []):
@@ -2596,14 +2675,25 @@ def llm_dashboard_plan(
             y = item.get("y")
             values = item.get("values")
             aggregation = item.get("aggregation")
+            config = item.get("config")
             if aggregation and aggregation not in AGGREGATIONS:
                 aggregation = None
-            if x and x not in column_names:
-                continue
-            if y and y not in column_names:
-                continue
-            if values and values not in column_names:
-                continue
+            # For map visuals, validate lat/lon columns from config
+            if visual_type == "map":
+                cfg = config if isinstance(config, dict) else {}
+                lat_col = cfg.get("lat_column") or y
+                lon_col = cfg.get("lon_column") or x
+                if lat_col not in column_names or lon_col not in column_names:
+                    continue
+                if not isinstance(config, dict):
+                    config = {"lat_column": lat_col, "lon_column": lon_col}
+            else:
+                if x and x not in column_names:
+                    continue
+                if y and y not in column_names:
+                    continue
+                if values and values not in column_names:
+                    continue
 
             visuals.append(
                 VisualSpec(
@@ -2614,6 +2704,7 @@ def llm_dashboard_plan(
                     y=y,
                     values=values,
                     aggregation=aggregation,
+                    config=config if isinstance(config, dict) else None,
                 )
             )
         except Exception:
