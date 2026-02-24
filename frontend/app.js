@@ -1814,7 +1814,7 @@ async function sendAiChat() {
         state.businessCategory = response.insights.business_category || null;
       }
       state.aiChatDone = true;
-      await autoBuildDashboard();
+      showGenerateDashboardRow(true);
     } else if (response.suggestions && response.suggestions.length) {
       showSuggestionChips(response.suggestions);
     } else {
@@ -1944,7 +1944,7 @@ function initAiChat() {
           state.businessContext = response.insights;
           state.businessCategory = response.insights.business_category || null;
         }
-        await autoBuildDashboard();
+        showGenerateDashboardRow(true);
       } else if (response.suggestions && response.suggestions.length) {
         showSuggestionChips(response.suggestions);
       } else {
@@ -2064,7 +2064,8 @@ function simpleMarkdown(text) {
     .replace(/`(.*?)`/g, "<code>$1</code>");
 
   // Re-allow the specific color spans used by the AI palette options
-  html = html.replace(/&lt;span style=&quot;color:(#[0-9A-Fa-f]{6})&quot;&gt;(.*?)&lt;\/span&gt;/gi, '<span style="color:$1">$2</span>');
+  html = html.replace(/&lt;span style="color:(#[0-9A-Fa-f]{3,6})"&gt;(.*?)&lt;\/span&gt;/gi, '<span style="color:$1">$2</span>');
+  html = html.replace(/&lt;span style=&amp;quot;color:(#[0-9A-Fa-f]{3,6})&amp;quot;&gt;(.*?)&lt;\/span&gt;/gi, '<span style="color:$1">$2</span>');
 
   const lines = html.split("\n");
   let out = "";
