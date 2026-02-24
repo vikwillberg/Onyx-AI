@@ -4519,12 +4519,24 @@ function renderVisual(visual, container) {
     
     const lats = data.map((row) => row[latCol]);
     const lons = data.map((row) => row[lonCol]);
-    const labels = labelCol ? data.map((row) => row[labelCol]) : lats.map((_, i) => `Point ${i + 1}`);
+    const labels = labelCol ? data.map((row) => row[labelCol]) : lats.map((_, i) => `Location ${i + 1}`);
     const values = valueCol ? data.map((row) => row[valueCol]) : null;
     
     const hoverText = values
-      ? labels.map((label, i) => `${label}<br>${valueCol}: ${isCurrency ? formatCurrency(values[i]) : values[i]}`)
-      : labels;
+      ? labels.map((label, i) => `<b>${label}</b><br>${valueCol}: ${isCurrency ? formatCurrency(values[i]) : formatSmartValue(values[i])}`)
+      : labels.map(label => `<b>${label}</b>`);
+      
+    // Better auto-sizing for map markers based on data range
+    let markerSizes = 8;
+    if (values && values.length) {
+      const maxVal = Math.max(...values.map(v => Number(v) || 0), 1);
+      markerSizes = values.map(v => {
+        const num = Number(v) || 0;
+        return Math.max(5, Math.min(24, (num / maxVal) * 24));
+      });
+    }
+    
+    const palette = getActivePalette();
     
     plotData = [
       {
@@ -4535,11 +4547,12 @@ function renderVisual(visual, container) {
         text: hoverText,
         hoverinfo: "text",
         marker: {
-          size: values ? values.map((v) => Math.max(6, Math.min(20, Math.sqrt(v) / 10))) : 8,
-          color: values || CHART_COLORS.primary,
-          colorscale: values ? "Blues" : undefined,
-          showscale: !!values,
-          line: { color: theme.line, width: 1 },
+          size: markerSizes,
+          color: values || palette[0],
+          colorscale: values ? [[0, palette[1] || "#60a5fa"], [1, palette[0] || "#3b82f6"]] : undefined,
+          showscale: false, // Hide colorbar for cleaner look
+          line: { color: "rgba(255,255,255,0.8)", width: 0.5 },
+          opacity: 0.85
         },
       },
     ];
@@ -4549,15 +4562,20 @@ function renderVisual(visual, container) {
       scope: "world",
       projection: { type: "natural earth" },
       showland: true,
-      landcolor: state.theme === "dark" ? "#1e293b" : "#e2e8f0",
+      landcolor: state.theme === "dark" ? "#1e293b" : "#f1f5f9",
       showocean: true,
-      oceancolor: state.theme === "dark" ? "#0f172a" : "#f1f5f9",
+      oceancolor: "rgba(0,0,0,0)", // Transparent ocean blends with background
       showcoastlines: true,
-      coastlinecolor: state.theme === "dark" ? "#334155" : "#94a3b8",
+      coastlinecolor: state.theme === "dark" ? "#334155" : "#cbd5e1",
+      coastlinewidth: 0.5,
       showcountries: true,
-      countrycolor: state.theme === "dark" ? "#334155" : "#cbd5e1",
+      countrycolor: state.theme === "dark" ? "#475569" : "#cbd5e1",
+      countrywidth: 0.5,
       bgcolor: "rgba(0,0,0,0)",
     };
+    // Maps don't need axes
+    mapLayout.xaxis = { visible: false };
+    mapLayout.yaxis = { visible: false };
     mapLayout.margin = { t: 10, b: 10, l: 10, r: 10 };
     
     container.classList.add("chart");
