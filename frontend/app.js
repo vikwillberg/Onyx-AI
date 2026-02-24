@@ -92,6 +92,30 @@ function getActivePalette() {
   return CHART_COLORS.palette;
 }
 
+/* Color name → hex mapping for color-matched bar charts */
+const COLOR_NAME_MAP = {
+  red: "#EF4444", blue: "#3B82F6", green: "#22C55E", yellow: "#EAB308",
+  orange: "#F97316", purple: "#A855F7", pink: "#EC4899", black: "#1F2937",
+  white: "#E5E7EB", grey: "#6B7280", gray: "#6B7280", brown: "#92400E",
+  silver: "#9CA3AF", gold: "#D97706", navy: "#1E3A8A", teal: "#14B8A6",
+  cyan: "#06B6D4", magenta: "#D946EF", lime: "#84CC16", indigo: "#6366F1",
+  violet: "#7C3AED", maroon: "#991B1B", beige: "#D4C5A9", tan: "#D2B48C",
+  coral: "#F87171", salmon: "#FA8072", turquoise: "#2DD4BF", ivory: "#FFFFF0",
+  burgundy: "#800020", charcoal: "#374151", cream: "#FFFDD0", khaki: "#BDB76B",
+  bronze: "#CD7F32", copper: "#B87333", platinum: "#E5E4E2",
+};
+
+function getColorMatchedBarColors(categories, fallbackPalette) {
+  const matched = categories.map((cat) => {
+    const name = String(cat).toLowerCase().trim();
+    return COLOR_NAME_MAP[name] || null;
+  });
+  if (matched.filter(Boolean).length >= categories.length * 0.5) {
+    return matched.map((c, i) => c || fallbackPalette[i % fallbackPalette.length]);
+  }
+  return null;
+}
+
 const PLOTLY_THEMES = {
   dark: {
     axisTitle: "#d6d3d1",
@@ -1110,7 +1134,7 @@ function renderStoryChartHighlighted(container, spec, data) {
     Plotly.newPlot(container, plotData, {
       margin: { t: 6, r: 12, b: 36, l: 44 },
       paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
-      font: { family: "DM Sans", color: theme.font, size: 10 },
+      font: { family: "Inter", color: theme.font, size: 10 },
       autosize: true, showlegend: chartType === "pie",
       xaxis: { automargin: true, gridcolor: theme.grid, zeroline: false, tickfont: { size: 9 } },
       yaxis: { automargin: true, gridcolor: theme.grid, zeroline: false, tickfont: { size: 9 } },
@@ -3005,18 +3029,23 @@ function openAddVisualPanel(visual = null, triggerEl = null) {
 
   /* Position near the triggering widget */
   if (triggerEl) {
-    const rect = triggerEl.getBoundingClientRect();
-    const W = 340;
-    const H = Math.min(panel.scrollHeight || 520, window.innerHeight - 32);
-    let left = rect.right + 14;
-    let top  = rect.top;
-    if (left + W > window.innerWidth - 12) left = rect.left - W - 14;
-    if (top + H  > window.innerHeight - 12) top  = window.innerHeight - H - 12;
-    if (top  < 12) top  = 12;
-    if (left < 12) left = 12;
-    panel.style.setProperty("--pop-left", left + "px");
-    panel.style.setProperty("--pop-top",  top  + "px");
-    panel.classList.add("widget-popover-positioned");
+    const positionPanel = () => {
+      const rect = triggerEl.getBoundingClientRect();
+      const W = 340;
+      const H = Math.max(panel.scrollHeight, 480);
+      let left = rect.right + 14;
+      let top  = Math.max(rect.top, 12);
+      /* Flip to left side if no room on the right */
+      if (left + W > window.innerWidth - 12) left = rect.left - W - 14;
+      /* Clamp vertically so panel stays fully visible */
+      if (top + H > window.innerHeight - 12) top = Math.max(12, window.innerHeight - H - 12);
+      if (left < 12) left = 12;
+      panel.style.setProperty("--pop-left", left + "px");
+      panel.style.setProperty("--pop-top",  top  + "px");
+      panel.classList.add("widget-popover-positioned");
+    };
+    /* Use rAF so the panel has been laid out and scrollHeight is accurate */
+    requestAnimationFrame(positionPanel);
   } else {
     panel.classList.remove("widget-popover-positioned");
     panel.style.removeProperty("--pop-left");
@@ -3427,6 +3456,7 @@ async function selectProject(project, options = {}) {
         renderDashboard();
         state.savedDashboard = true;
         setStep("dashboard");
+        openDashChat();
         return;
       }
     }
@@ -3471,57 +3501,12 @@ async function selectDataset(dataset, options = {}) {
 function renderProjectList() {
   renderSidebarProjects();
   updateSidebarUser();
-  if (!elements.projectList) return;
-  elements.projectList.innerHTML = "";
+  /* Projects are only shown in the sidebar — home page is a clean chat screen */
+  if (elements.homeProjectsWrap) elements.homeProjectsWrap.classList.add("hidden");
+  if (elements.projectList) elements.projectList.innerHTML = "";
   elements.projectListSkeleton?.classList.add("hidden");
   elements.projectsEmpty?.classList.add("hidden");
   elements.projectLoginHint?.classList.add("hidden");
-
-  if (!state.token) {
-    elements.projectLoginHint?.classList.remove("hidden");
-    if (elements.homeProjectsWrap) elements.homeProjectsWrap.classList.add("hidden");
-    return;
-  }
-  if (!state.projects.length) {
-    elements.projectsEmpty?.classList.remove("hidden");
-    if (elements.homeProjectsWrap) elements.homeProjectsWrap.classList.add("hidden");
-    return;
-  }
-  if (elements.homeProjectsWrap) elements.homeProjectsWrap.classList.remove("hidden");
-  state.projects.forEach((project) => {
-    const summary = state.projectSummaries[project.id] || {};
-    const createdAt = formatProjectDate(summary.createdAt || project.created_at);
-    const category = project.business_category;
-    const catLabel = category ? CATEGORIES.find((c) => c.key === category)?.label || category : "";
-
-    const card = document.createElement("div");
-    card.className = "project-card";
-    const thumbUrl = project.thumbnail_data_url || null;
-    const thumbHtml = thumbUrl
-      ? `<div class="project-card-thumb"><img src="${thumbUrl}" alt="Dashboard preview" loading="lazy" /></div>`
-      : `<div class="project-card-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--muted-light)"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>`;
-    const fileCount = summary.fileCount || "";
-    card.innerHTML = `
-      ${thumbHtml}
-      <h4 class="project-card-title">${project.name}</h4>
-      ${project.description ? `<p class="project-card-desc">${project.description}</p>` : ""}
-      <div class="project-card-meta">
-        ${catLabel ? `<span class="project-card-badge">${catLabel}</span>` : ""}
-        ${fileCount ? `<span class="project-card-badge" style="background:var(--bg-secondary);color:var(--muted)">${fileCount} file${fileCount > 1 ? "s" : ""}</span>` : ""}
-        <span class="project-card-date">${createdAt}</span>
-      </div>
-      <button class="project-card-delete" type="button" title="Delete project">&times;</button>
-    `;
-    card.addEventListener("click", (e) => {
-      if (e.target.closest(".project-card-delete")) return;
-      selectProject(project);
-    });
-    card.querySelector(".project-card-delete").addEventListener("click", (e) => {
-      e.stopPropagation();
-      deleteProject(project.id);
-    });
-    elements.projectList.appendChild(card);
-  });
 }
 
 /* ===== Sidebar Projects ===== */
@@ -3556,18 +3541,25 @@ function renderSidebarProjects() {
     const summary = state.projectSummaries[project.id] || {};
     const createdAt = formatProjectDate(summary.createdAt || project.created_at);
     const isActive = state.currentProject?.id === project.id;
+    const category = project.business_category;
+    const catLabel = category ? CATEGORIES.find((c) => c.key === category)?.label || category : "";
 
-    const item = document.createElement("button");
-    item.className = `sidebar-project-item${isActive ? " active" : ""}`;
-    item.type = "button";
+    const item = document.createElement("div");
+    item.className = `sidebar-project-card${isActive ? " active" : ""}`;
+
+    const thumbUrl = project.thumbnail_data_url || null;
+    const thumbHtml = thumbUrl
+      ? `<div class="sidebar-project-thumb"><img src="${thumbUrl}" alt="" loading="lazy" /></div>`
+      : `<div class="sidebar-project-thumb sidebar-project-thumb-empty"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>`;
 
     item.innerHTML = `
-      <div class="sidebar-project-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-      </div>
-      <div class="sidebar-project-info">
+      ${thumbHtml}
+      <div class="sidebar-project-body">
         <span class="sidebar-project-name">${project.name}</span>
-        <span class="sidebar-project-date">${createdAt}</span>
+        <div class="sidebar-project-meta">
+          ${catLabel ? `<span class="sidebar-project-badge">${catLabel}</span>` : ""}
+          <span class="sidebar-project-date">${createdAt}</span>
+        </div>
       </div>
       <span class="sidebar-project-delete" title="Delete project">&times;</span>
     `;
@@ -4021,13 +4013,14 @@ function renderDashboard() {
   state.grid = GridStack.init({
     float: false,
     cellHeight: 75,
-    margin: "6px",
+    margin: "8px",
     handle: ".grid-stack-item-content",
     animate: true,
     column: 12,
-    resizable: { handles: "e,s,se,sw,w,n,nw,ne" },
+    resizable: { handles: "e,s,se" },
     draggable: { scroll: true },
     minRow: 1,
+    oneColumnSize: 768,
   });
   state.grid.on("resizestop", (_event, element) => {
     const chart = element?.querySelector(".chart");
@@ -4035,10 +4028,11 @@ function renderDashboard() {
       Plotly.Plots.resize(chart);
       setTimeout(() => Plotly.Plots.resize(chart), 200);
     }
+    state.grid.compact();
     updateLayoutFromGrid();
     maybePromptSaveLogin();
   });
-  state.grid.on("dragstop", () => { updateLayoutFromGrid(); scheduleAutoSave(); maybePromptSaveLogin(); });
+  state.grid.on("dragstop", () => { state.grid.compact(); updateLayoutFromGrid(); scheduleAutoSave(); maybePromptSaveLogin(); });
   state.grid.on("change", () => { updateLayoutFromGrid(); scheduleAutoSave(); });
   state.grid.batchUpdate();
 
@@ -4104,6 +4098,8 @@ function renderDashboard() {
     const options = {
       w: width,
       h: height,
+      minW: 4,
+      minH: 4,
       autoPosition: !hasLayout,
     };
     if (hasLayout) {
@@ -4205,7 +4201,7 @@ function buildPlotlyLayout(visual, container, plotData) {
   };
 
   return {
-    title: { text: "", font: { family: "DM Sans", size: 14 } },
+    title: { text: "", font: { family: "Inter", size: 14 } },
     margin: isPie
       ? {
           l: 12,
@@ -4216,7 +4212,7 @@ function buildPlotlyLayout(visual, container, plotData) {
       : { l: leftMargin, r: 20, t: 10, b: isHorizontalBar ? 30 : 52 },
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(0,0,0,0)",
-    font: { family: "DM Sans", size: 12, color: theme.font },
+    font: { family: "Inter", size: 12, color: theme.font },
     autosize: true,
     xaxis: {
       automargin: true,
@@ -4353,9 +4349,11 @@ function renderVisual(visual, container) {
     if (useHorizontal) {
       const displayed = sorted.slice(0, 20).reverse();
       const vals = displayed.map((row) => Number(row[yKey]) || 0);
+      const categories = displayed.map((row) => row[xKey]);
+      const colorMatched = getColorMatchedBarColors(categories, palette);
       const maxVal = Math.max(...vals, 1);
       const baseColor = palette[0];
-      const barColors = vals.map((v) => {
+      const barColors = colorMatched || vals.map((v) => {
         const alpha = 0.35 + 0.65 * (v / maxVal);
         return baseColor + Math.round(alpha * 255).toString(16).padStart(2, "0");
       });
@@ -4366,18 +4364,20 @@ function renderVisual(visual, container) {
         {
           type: "bar",
           orientation: "h",
-          y: displayed.map((row) => row[xKey]),
+          y: categories,
           x: vals,
           marker: { color: barColors, line: { color: theme.line, width: 0.5 } },
           hovertemplate: hHover,
         },
       ];
     } else {
-      const barColors = sorted.map((_, i) => palette[i % palette.length]);
+      const categories = sorted.map((row) => row[xKey]);
+      const colorMatched = getColorMatchedBarColors(categories, palette);
+      const barColors = colorMatched || sorted.map((_, i) => palette[i % palette.length]);
       plotData = [
         {
           type: "bar",
-          x: sorted.map((row) => row[xKey]),
+          x: categories,
           y: sorted.map((row) => row[yKey]),
           marker: {
             color: barColors,

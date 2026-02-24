@@ -1492,17 +1492,40 @@ def visual_signature(spec: VisualSpec) -> tuple:
 
 
 def build_table_visual(dataframe: pd.DataFrame, columns: Optional[list[str]] = None) -> VisualSpec:
+    """Build a summary statistics table instead of raw sample data."""
     selected_columns = columns or [str(col) for col in dataframe.columns]
     filtered = [col for col in selected_columns if col in dataframe.columns]
     if not filtered:
         filtered = [str(col) for col in dataframe.columns]
-    table_frame = dataframe[filtered]
+
+    summary_rows = []
+    for col in filtered:
+        series = dataframe[col]
+        row: dict = {"Column": col}
+        if pd.api.types.is_numeric_dtype(series):
+            row["Type"] = "Numeric"
+            row["Unique"] = int(series.nunique())
+            row["Missing"] = f"{series.isna().mean() * 100:.1f}%"
+            row["Min"] = f"{series.min():,.2f}" if series.notna().any() else "—"
+            row["Max"] = f"{series.max():,.2f}" if series.notna().any() else "—"
+            row["Mean"] = f"{series.mean():,.2f}" if series.notna().any() else "—"
+        else:
+            row["Type"] = "Text"
+            row["Unique"] = int(series.nunique())
+            row["Missing"] = f"{series.isna().mean() * 100:.1f}%"
+            top = series.mode()
+            row["Min"] = "—"
+            row["Max"] = "—"
+            row["Mean"] = str(top.iloc[0]) if len(top) > 0 else "—"
+
+        summary_rows.append(row)
+
     return VisualSpec(
         visual_id=build_visual_id("table"),
         type="table",
-        title="Sample Data Table",
-        data=serialize_dataframe(table_frame, limit=12),
-        config={"columns": filtered},
+        title="Data Summary",
+        data=summary_rows,
+        config={"columns": ["Column", "Type", "Unique", "Missing", "Min", "Max", "Mean"]},
     )
 
 

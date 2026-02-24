@@ -19,11 +19,11 @@ GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 # pricing is per 1 million tokens (USD), 0 for free tiers.
 MODEL_REGISTRY: dict[str, dict] = {
     # ── Anthropic / Claude ────────────────────────────────────────────────────
-    "claude-sonnet-4-6": {
-        "model_id":     "claude-sonnet-4-6",
+    "claude-sonnet": {
+        "model_id":     "claude-sonnet-4-20250514",
         "provider":     "claude",
         "company":      "Anthropic",
-        "display_name": "Claude Sonnet 4.6",
+        "display_name": "Claude Sonnet 4",
         "description":  "Smart, efficient model for everyday use",
         "input_price":  3.00,
         "output_price": 15.00,
@@ -31,11 +31,11 @@ MODEL_REGISTRY: dict[str, dict] = {
         "tier": "paid",
         "badge": "latest",
     },
-    "claude-opus-4-6": {
-        "model_id":     "claude-opus-4-6",
+    "claude-opus": {
+        "model_id":     "claude-opus-4-20250514",
         "provider":     "claude",
         "company":      "Anthropic",
-        "display_name": "Claude Opus 4.6",
+        "display_name": "Claude Opus 4",
         "description":  "Most powerful model for complex challenges",
         "input_price":  15.00,
         "output_price": 75.00,
@@ -43,66 +43,42 @@ MODEL_REGISTRY: dict[str, dict] = {
         "tier": "paid",
         "badge": "",
     },
-    "claude-haiku-4-5": {
-        "model_id":     "claude-haiku-4-5-20251001",
+    "claude-haiku": {
+        "model_id":     "claude-3-5-haiku-20241022",
         "provider":     "claude",
         "company":      "Anthropic",
-        "display_name": "Claude Haiku 4.5",
+        "display_name": "Claude 3.5 Haiku",
         "description":  "Fastest model for daily tasks",
         "input_price":  0.80,
         "output_price": 4.00,
         "credits":      2,
         "tier": "paid",
-        "badge": "latest",
+        "badge": "fast",
     },
     # ── Google / Gemini ───────────────────────────────────────────────────────
-    "gemini-3-1-high-pro": {
-        "model_id":     "gemini-3.1-high-pro",
+    "gemini-2-5-pro-latest": {
+        "model_id":     "gemini-2.5-pro-preview-06-05",
         "provider":     "gemini",
         "company":      "Google",
-        "display_name": "Gemini 3.1 High Pro",
-        "description":  "Most advanced Gemini 3.1 model for complex reasoning and analysis",
-        "input_price":  3.00,
-        "output_price": 12.00,
-        "credits":      10,
-        "tier":         "paid",
-        "badge":        "new",
-    },
-    "gemini-3-pro": {
-        "model_id":     "gemini-3.0-pro",
-        "provider":     "gemini",
-        "company":      "Google",
-        "display_name": "Gemini 3.0 Pro",
-        "description":  "Most powerful Gemini 3 — frontier reasoning and analysis",
-        "input_price":  2.50,
+        "display_name": "Gemini 2.5 Pro (Latest)",
+        "description":  "Most advanced Gemini model for complex reasoning and analysis",
+        "input_price":  1.25,
         "output_price": 10.00,
-        "credits":      8,
+        "credits":      5,
         "tier":         "paid",
-        "badge":        "new",
-    },
-    "gemini-3-flash": {
-        "model_id":     "gemini-3.0-flash",
-        "provider":     "gemini",
-        "company":      "Google",
-        "display_name": "Gemini 3.0 Flash",
-        "description":  "Gemini 3 Flash — fast and capable",
-        "input_price":  0.30,
-        "output_price": 1.20,
-        "credits":      2,
-        "tier":         "paid",
-        "badge":        "new",
+        "badge":        "latest",
     },
     "gemini-2-5-pro": {
         "model_id":     "gemini-2.5-pro",
         "provider":     "gemini",
         "company":      "Google",
         "display_name": "Gemini 2.5 Pro",
-        "description":  "Most capable Gemini — best for complex reasoning",
+        "description":  "Capable Gemini — great for complex reasoning",
         "input_price":  1.25,
         "output_price": 10.00,
         "credits":      5,
         "tier": "paid",
-        "badge": "latest",
+        "badge": "",
     },
     "gemini-2-5-flash": {
         "model_id":     "gemini-2.5-flash-preview-05-20",
@@ -202,21 +178,21 @@ MODEL_REGISTRY: dict[str, dict] = {
         "tier": "paid",
         "badge": "",
     },
-    "gpt-5-pro": {
-        "model_id":     "gpt-5.2-pro",
+    "o4-mini": {
+        "model_id":     "o4-mini",
         "provider":     "openai",
         "company":      "OpenAI",
-        "display_name": "GPT-5.2 Pro",
-        "description":  "Most capable OpenAI model for detailed insights",
-        "input_price":  5.00,
-        "output_price": 15.00,
-        "credits":      10,
+        "display_name": "o4-mini",
+        "description":  "Advanced reasoning model — great for complex analysis",
+        "input_price":  1.10,
+        "output_price": 4.40,
+        "credits":      5,
         "tier": "paid",
         "badge": "latest",
     },
 }
 
-_DEFAULT_MODEL_KEY = "gemini-3-1-high-pro"  # fallback when no key specified
+_DEFAULT_MODEL_KEY = "gemini-2-5-pro-latest"  # fallback when no key specified
 
 
 class _LLMProvider:
@@ -569,16 +545,9 @@ You are ONYX, a sharp AI data analyst. Your job is to have a brief, focused conv
 
 RULES — follow these exactly:
 1. FIRST MESSAGE: One short paragraph (max 80 words). Pick the single most interesting angle from the data profile — use specific numbers. End with ONE pointed question about what to analyze next. No lists.
-2. FOLLOW-UP: When the user agrees or asks for more, state 2-3 concrete findings using real column names and numbers from the profile. 
-   CRITICAL: At the end of your follow-up, ALWAYS ask the user what color palette they prefer for their dashboard using exactly this formatting:
-   "Before I lock in the dashboard—**which color palette do you prefer?**
-   - **Vibrant** (<span style="color:#FF5722">Orange</span>/<span style="color:#3B82F6">Blue</span>/<span style="color:#F59E0B">Yellow</span>)
-   - **Professional** (<span style="color:#1E3A8A">Navy</span>/<span style="color:#0F766E">Teal</span>/White)
-   - **Dark theme** (<span style="color:#9333EA">Purple</span>/<span style="color:#DB2777">Pink</span>/<span style="color:#F59E0B">Gold</span>)
-   
-   Pick one and I'll build it."
-3. FINALIZE after the user chooses a color palette OR when the user says "build", "create", "go ahead", "yes", "let's do it", or similar. Do NOT keep chatting indefinitely.
-4. FINAL MESSAGE: Write "I have what I need. Building your dashboard with a [chosen palette] color scheme." then a numbered list of exactly what the dashboard will show.
+2. FOLLOW-UP: When the user agrees or asks for more, state 2-3 concrete findings using real column names and numbers from the profile. Then ask "Ready for me to build your dashboard, or want to explore another angle?"
+3. FINALIZE when the user says "build", "create", "go ahead", "yes", "let's do it", "looks good", or similar. Do NOT keep chatting indefinitely.
+4. FINAL MESSAGE: Write "I have what I need. Building your dashboard now." then a numbered list of exactly what the dashboard will show.
 
 WHAT MAKES A GREAT OPENING:
 - Lead with a number that creates curiosity ("Only 3 items drive 60% of the totals — the rest are drag")
@@ -626,8 +595,7 @@ Return JSON exactly:
   "goals": ["5-7 specific analysis goals — user's question first, then main drivers, comparisons, trends, anomalies"],
   "kpi_columns": ["2-4 most important numeric columns to show as headline KPIs"],
   "kpi_formats": {"exact_column_name": "currency | percentage | number | count"},
-  "business_category": "ecommerce | saas | finance | healthcare | science | education | general",
-  "color_palette": "a specific color palette name based on the user's request, or null"
+  "business_category": "ecommerce | saas | finance | healthcare | science | education | general"
 }
 
 RULES:
