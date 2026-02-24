@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     gemini_api_key: Optional[str] = None
     gemini_model: str = "gemini-2.0-flash"
     claude_api_key: Optional[str] = None
-    claude_model: str = "claude-haiku-4-5-latest"
+    claude_model: str = "claude-haiku-4-5-20251001"
     jwt_secret_key: str = "change-me"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 1440

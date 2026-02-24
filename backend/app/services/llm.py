@@ -20,7 +20,7 @@ GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 MODEL_REGISTRY: dict[str, dict] = {
     # ── Google / Gemini ───────────────────────────────────────────────────────
     "gemini-3-1-pro": {
-        "model_id":     "gemini-3.1-pro",
+        "model_id":     "gemini-3.1-pro-preview",
         "provider":     "gemini",
         "company":      "Google",
         "display_name": "Gemini 3.1 Pro",
@@ -32,7 +32,7 @@ MODEL_REGISTRY: dict[str, dict] = {
         "badge": "latest",
     },
     "gemini-3-flash": {
-        "model_id":     "gemini-3.0-flash",
+        "model_id":     "gemini-3-flash-preview",
         "provider":     "gemini",
         "company":      "Google",
         "display_name": "Gemini 3 Flash",
@@ -69,7 +69,7 @@ MODEL_REGISTRY: dict[str, dict] = {
     },
     # ── Anthropic / Claude ────────────────────────────────────────────────────
     "claude-opus-4-6": {
-        "model_id":     "claude-opus-4-6-latest",
+        "model_id":     "claude-opus-4-6",
         "provider":     "claude",
         "company":      "Anthropic",
         "display_name": "Claude Opus 4.6",
@@ -81,7 +81,7 @@ MODEL_REGISTRY: dict[str, dict] = {
         "badge": "latest",
     },
     "claude-sonnet-4-6": {
-        "model_id":     "claude-sonnet-4-6-latest",
+        "model_id":     "claude-sonnet-4-6",
         "provider":     "claude",
         "company":      "Anthropic",
         "display_name": "Claude Sonnet 4.6",
@@ -93,7 +93,7 @@ MODEL_REGISTRY: dict[str, dict] = {
         "badge": "",
     },
     "claude-haiku-4-5": {
-        "model_id":     "claude-haiku-4-5-latest",
+        "model_id":     "claude-haiku-4-5-20251001",
         "provider":     "claude",
         "company":      "Anthropic",
         "display_name": "Claude Haiku 4.5",
@@ -106,7 +106,7 @@ MODEL_REGISTRY: dict[str, dict] = {
     },
     # ── OpenAI / GPT ─────────────────────────────────────────────────────────
     "gpt-5-2": {
-        "model_id":     "gpt-5.2-pro",
+        "model_id":     "gpt-5.2",
         "provider":     "openai",
         "company":      "OpenAI",
         "display_name": "GPT-5.2",
@@ -130,7 +130,7 @@ MODEL_REGISTRY: dict[str, dict] = {
         "badge": "",
     },
     "gpt-oss-120b": {
-        "model_id":     "gpt-oss-120b",
+        "model_id":     "openai/gpt-oss-120b",
         "provider":     "groq",
         "company":      "OpenAI · Groq",
         "display_name": "GPT-OSS 120B",
@@ -477,12 +477,20 @@ def call_chat_for_model(
                 m for m in messages if m["role"] != "system"
             ]
             supports_json = provider not in ("gemini",)
+            # Newer models require max_completion_tokens instead of max_tokens
+            use_new_tokens_param = (
+                (provider == "openai" and any(model_id.startswith(p) for p in ("gpt-5", "o3", "o4")))
+                or (provider == "gemini" and any(model_id.startswith(p) for p in ("gemini-3", "gemini-2.5-pro")))
+            )
             kwargs: dict[str, Any] = dict(
                 model=model_id,
-                temperature=temperature,
                 messages=full_messages,
-                max_tokens=max_tokens,
             )
+            if use_new_tokens_param:
+                kwargs["max_completion_tokens"] = max_tokens
+            else:
+                kwargs["temperature"] = temperature
+                kwargs["max_tokens"] = max_tokens
             if json_mode and supports_json:
                 kwargs["response_format"] = {"type": "json_object"}
             elif json_mode:
@@ -677,6 +685,11 @@ def analyze_data_chat(
     try:
         if model_key and model_key in MODEL_REGISTRY:
             reply = call_chat_for_model(model_key, system, conv_messages, max_tokens=4096, temperature=0.6)
+            # Fallback to LLMService chain if the selected model returned nothing
+            if not reply and llm_service.enabled:
+                logger.info("Model %s returned nothing — falling back to LLMService chain", model_key)
+                messages = [{"role": "system", "content": system}] + conv_messages
+                reply = llm_service.chat(messages, max_tokens=4096, temperature=0.6)
         else:
             messages = [{"role": "system", "content": system}] + conv_messages
             reply = llm_service.chat(messages, max_tokens=4096, temperature=0.6)
