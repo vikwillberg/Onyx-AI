@@ -2982,23 +2982,23 @@ body[data-theme="light"] .sidebar-icon-moon { display: none !important; }
 
 /* ── Hero collapse: slow beautiful fade out ── */
 .copilot-hero-wrap.hero-collapsing .copilot-hero-ring {
-  animation: heroRingDissolve 1.2s ease forwards !important;
+  animation: heroRingDissolve 0.6s ease forwards !important;
 }
-.copilot-hero-wrap.hero-collapsing .copilot-hero-ring:nth-child(2) { animation-delay: 0.1s !important; }
-.copilot-hero-wrap.hero-collapsing .copilot-hero-ring:nth-child(3) { animation-delay: 0.2s !important; }
+.copilot-hero-wrap.hero-collapsing .copilot-hero-ring:nth-child(2) { animation-delay: 0.05s !important; }
+.copilot-hero-wrap.hero-collapsing .copilot-hero-ring:nth-child(3) { animation-delay: 0.1s !important; }
 .copilot-hero-wrap.hero-collapsing .copilot-hero-dot {
-  animation: none !important; opacity: 0 !important; transition: opacity 0.8s;
+  animation: none !important; opacity: 0 !important; transition: opacity 0.4s;
 }
 .copilot-hero-wrap.hero-collapsing {
-  animation: heroBannerFade 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: heroBannerFade 0.75s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 .copilot-hero-wrap.hero-collapsing::before {
   content: ""; position: absolute; inset: 0;
   background: var(--bg); opacity: 0;
-  animation: heroBackgroundFade 0.4s ease forwards;
+  animation: heroBackgroundFade 0.2s ease forwards;
 }
 .copilot-hero-wrap.hero-collapsing .copilot-hero-orb {
-  animation: heroOrbFade 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+  animation: heroOrbFade 0.75s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
   z-index: 2;
 }
 
@@ -3013,15 +3013,14 @@ body[data-theme="light"] .sidebar-icon-moon { display: none !important; }
 }
 
 @keyframes heroBannerFade {
-  0%   { opacity: 1; clip-path: inset(0 0 0 0 round 12px); transform: translateY(0); }
-  50%  { opacity: 1; clip-path: inset(30px 40% 30px 40% round 50px); transform: translateY(-10px); }
-  100% { opacity: 0; clip-path: inset(65px 50% 65px 50% round 50px); transform: translateY(-20px); }
+  0%   { opacity: 1; clip-path: circle(100% at 50% 50%); transform: translateY(0); }
+  100% { opacity: 0; clip-path: circle(0% at 50% 50%); transform: translateY(-20px); }
 }
 
 @keyframes heroOrbFade {
   0%   { transform: translateY(0) scale(1); box-shadow: 0 0 40px rgba(92,124,100,0.65); opacity: 1; }
-  50%  { transform: translateY(-20px) scale(1.1); box-shadow: 0 0 60px rgba(92,124,100,0.4); opacity: 1; }
-  100% { transform: translateY(-50px) scale(0.5); box-shadow: 0 0 0px rgba(92,124,100,0); opacity: 0; }
+  50%  { transform: translateY(-10px) scale(1.1); box-shadow: 0 0 60px rgba(92,124,100,0.4); opacity: 1; }
+  100% { transform: translateY(-30px) scale(0.5); box-shadow: 0 0 0px rgba(92,124,100,0); opacity: 0; }
 }
 .copilot-welcome-title {
   font: 800 1.25rem "Product Sans", "Inter", sans-serif;

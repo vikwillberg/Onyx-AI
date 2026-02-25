@@ -345,7 +345,7 @@ function collapseHomeWelcome() {
   if (elements.homeWelcome) elements.homeWelcome.classList.add("hero-collapsing");
 
   /* Hide the whole welcome container once the animation finishes */
-  const ANIM_MS = 1500;
+  const ANIM_MS = 750;
   setTimeout(() => {
     if (elements.homeWelcome) {
       elements.homeWelcome.classList.add("hidden");
