@@ -2001,8 +2001,10 @@ body[data-theme="dark"] .narrative-title {
   align-items: center; justify-content: flex-start;
   text-align: center; padding: 24px 32px 220px; gap: 0;
   overflow-y: auto; min-height: 0;
+  transition: opacity 0.3s ease;
 }
 .home-welcome.hidden { display: none; }
+.home-welcome.fade-out { opacity: 0; pointer-events: none; }
 .welcome-logo-wrap {
   position: relative; display: inline-block;
   width: 180px; height: 56px; margin-bottom: 28px;

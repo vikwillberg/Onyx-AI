@@ -344,9 +344,9 @@ function collapseHomeWelcome() {
   /* Kick off the CSS animation */
   heroWrap.classList.add("hero-collapsing");
 
-    /* Hide the whole welcome container once the animation finishes */
-    const ANIM_MS = 1500;
-    setTimeout(() => {
+  /* Hide the whole welcome container once the animation finishes */
+  const ANIM_MS = 1200;
+  setTimeout(() => {
     if (elements.homeWelcome) elements.homeWelcome.classList.add("hidden");
     heroWrap.classList.remove("hero-collapsing");
   }, ANIM_MS);
