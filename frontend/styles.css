@@ -2000,14 +2000,22 @@ body[data-theme="dark"] .narrative-title {
   flex: 1; display: flex; flex-direction: column;
   align-items: center; justify-content: flex-start;
   text-align: center; padding: 24px 32px 220px; gap: 0;
-  overflow-y: auto; min-height: 0;
-  transition: opacity 0.3s ease;
+  overflow-y: hidden; min-height: 0;
+  transition: all 0.75s cubic-bezier(0.4, 0, 0.2, 1);
+  max-height: 1000px; /* start fully expanded */
+}
+.home-welcome.hero-collapsing {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  margin-bottom: 0;
 }
 .home-welcome.hidden { display: none; }
 .home-welcome.hero-collapsing .welcome-cards,
 .home-welcome.hero-collapsing .welcome-title,
 .home-welcome.hero-collapsing .welcome-subtitle {
-  transition: opacity 0.5s ease;
+  transition: opacity 0.4s ease;
   opacity: 0;
   pointer-events: none;
 }
@@ -2990,7 +2998,8 @@ body[data-theme="light"] .sidebar-icon-moon { display: none !important; }
   animation: none !important; opacity: 0 !important; transition: opacity 0.4s;
 }
 .copilot-hero-wrap.hero-collapsing {
-  animation: heroBannerFade 0.75s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
+  transition: opacity 0.4s ease;
 }
 .copilot-hero-wrap.hero-collapsing::before {
   content: ""; position: absolute; inset: 0;
@@ -3010,11 +3019,6 @@ body[data-theme="light"] .sidebar-icon-moon { display: none !important; }
 @keyframes heroBackgroundFade {
   0%   { opacity: 0; }
   100% { opacity: 0; } /* Keep transparent since we shrink the actual container */
-}
-
-@keyframes heroBannerFade {
-  0%   { opacity: 1; clip-path: circle(100% at 50% 50%); transform: translateY(0); }
-  100% { opacity: 0; clip-path: circle(0% at 50% 50%); transform: translateY(-20px); }
 }
 
 @keyframes heroOrbFade {
