@@ -4516,7 +4516,7 @@ const CHECK_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" s
 function createAgentStepLog(steps) {
   /* Create and insert a step-log bubble into home chat. Returns {el, rows[]} */
   if (elements.homeChatArea) elements.homeChatArea.classList.remove("hidden");
-  if (elements.homeWelcome) elements.homeWelcome.classList.add("hidden");
+  collapseHomeWelcome();
 
   const wrap = document.createElement("div");
   wrap.className = "agent-log-wrap";
@@ -4683,8 +4683,8 @@ function enterDashboardMode() {
   const homeSection = elements.projectsSection;
 
   /* Hide welcome, show chat area */
-  if (elements.homeWelcome) elements.homeWelcome.classList.add("hidden");
   if (elements.homeChatArea) elements.homeChatArea.classList.remove("hidden");
+  collapseHomeWelcome();
   if (elements.homeSuggestions) elements.homeSuggestions.innerHTML = "";
   /* Clear file chips / hint from input area */
   if (elements.selectedFiles) { elements.selectedFiles.innerHTML = ""; elements.selectedFiles.classList.add("hidden"); }
