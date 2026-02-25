@@ -550,7 +550,7 @@ function setStep(step) {
     updateMobilePageTitle("Hillside AI");
     updateMobileBottomNav("home");
   } else if (step === "ai-chat") {
-    if (elements.homeWelcome) elements.homeWelcome.classList.add("hidden");
+    /* Reveal the chat area so messages can be typed, but let the collapse animation hide the welcome banner */
     if (elements.homeChatArea) elements.homeChatArea.classList.remove("hidden");
     updateMobilePageTitle("Hillside AI");
     updateMobileBottomNav("home");
@@ -3083,6 +3083,8 @@ function startNewAnalysis() {
   exitDashboardMode();
   /* Reset home chat UI */
   _heroCollapsed = false;
+  const heroWrap = document.querySelector(".copilot-hero-wrap");
+  if (heroWrap) heroWrap.classList.remove("hero-collapsing");
   if (elements.homeChatMessages) elements.homeChatMessages.innerHTML = "";
   if (elements.homeChatArea) elements.homeChatArea.classList.add("hidden");
   if (elements.homeWelcome) elements.homeWelcome.classList.remove("hidden");
