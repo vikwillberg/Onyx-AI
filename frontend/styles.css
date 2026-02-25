@@ -1,18 +1,18 @@
 /* ===== ONYX — Design System ===== */
 :root {
   color-scheme: light;
-  --bg: #ffffff;
-  --bg-secondary: #faf9f7;
+  --bg: #fdfdfc;
+  --bg-secondary: #f4f3f0;
   --surface: #ffffff;
-  --surface-hover: #f5f3f0;
+  --surface-hover: #f5f4f2;
   --ink: #1c1917;
   --ink-secondary: #44403c;
   --muted: #78716c;
   --muted-light: #a8a29e;
-  --accent: #5c7c64;
-  --accent-soft: rgba(92, 124, 100, 0.10);
-  --accent-hover: #4b6652;
-  --accent-2: #84a58d;
+  --accent: #10b981;
+  --accent-soft: rgba(16, 185, 129, 0.12);
+  --accent-hover: #059669;
+  --accent-2: #34d399;
   --accent-green: #059669;
   --accent-red: #dc2626;
   --accent-orange: #ea580c;
@@ -31,7 +31,7 @@
   --danger: #dc2626;
   --danger-soft: rgba(220,38,38,0.08);
   --header-height: 56px;
-  --gradient: linear-gradient(135deg, #5c7c64, #84a58d, #a2bca8, #cbd5ce);
+  --gradient: linear-gradient(135deg, #10b981, #34d399, #6ee7b7, #a7f3d0);
   /* Spacing scale */
   --space-xs: 4px; --space-sm: 8px; --space-md: 16px; --space-lg: 24px; --space-xl: 32px; --space-2xl: 48px;
   /* Typography scale */
@@ -54,10 +54,10 @@ body[data-theme="dark"] {
   --ink-secondary: #d6d3d1;
   --muted: #a8a29e;
   --muted-light: #78716c;
-  --accent: #84a58d;
-  --accent-soft: rgba(132, 165, 141, 0.14);
-  --accent-hover: #5c7c64;
-  --accent-2: #a2bca8;
+  --accent: #10b981;
+  --accent-soft: rgba(16, 185, 129, 0.15);
+  --accent-hover: #059669;
+  --accent-2: #34d399;
   --accent-green: #34d399;
   --accent-red: #f87171;
   --accent-orange: #fb923c;
@@ -72,7 +72,7 @@ body[data-theme="dark"] {
   --modal-overlay: rgba(0,0,0,0.7);
   --danger: #f87171;
   --danger-soft: rgba(248,113,113,0.12);
-  --gradient: linear-gradient(135deg, #84a58d, #a2bca8, #cbd5ce, #e2e8e4);
+  --gradient: linear-gradient(135deg, #10b981, #34d399, #6ee7b7, #a7f3d0);
 }
 
 * { box-sizing: border-box; margin: 0; }
@@ -2955,7 +2955,7 @@ body[data-theme="light"] .sidebar-icon-moon { display: none !important; }
 .copilot-hero-wrap {
   width: 100%; height: 130px; border-radius: 12px; overflow: visible;
   margin-bottom: 20px; flex-shrink: 0;
-  background: linear-gradient(135deg, #0f1612 0%, #1c2b22 50%, #0f1612 100%);
+  background: linear-gradient(135deg, #022c22 0%, #064e3b 50%, #022c22 100%);
   position: relative; display: flex; align-items: center; justify-content: center;
   clip-path: inset(0 0 0 0 round 12px);
   will-change: clip-path, transform, opacity;
@@ -2963,8 +2963,8 @@ body[data-theme="light"] .sidebar-icon-moon { display: none !important; }
 .copilot-hero-svg { width: 100%; height: 100%; position: absolute; inset: 0; }
 .copilot-hero-orb {
   position: absolute; width: 70px; height: 70px; border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #a2bca8 0%, #5c7c64 55%, #2d4233 100%);
-  box-shadow: 0 0 40px rgba(92,124,100,0.65), 0 0 80px rgba(92,124,100,0.2);
+  background: radial-gradient(circle at 35% 35%, #6ee7b7 0%, #10b981 55%, #047857 100%);
+  box-shadow: 0 0 40px rgba(16,185,129,0.65), 0 0 80px rgba(16,185,129,0.2);
   animation: heroFloat 3s ease-in-out infinite;
 }
 @keyframes heroFloat {
@@ -2973,7 +2973,7 @@ body[data-theme="light"] .sidebar-icon-moon { display: none !important; }
 }
 .copilot-hero-ring {
   position: absolute; border-radius: 50%;
-  border: 1px solid rgba(92,124,100,0.3);
+  border: 1px solid rgba(16,185,129,0.4);
   animation: heroRingPulse 2.5s ease-in-out infinite;
 }
 .copilot-hero-ring:nth-child(1) { width: 100px; height: 100px; animation-delay: 0s; }
@@ -2985,7 +2985,7 @@ body[data-theme="light"] .sidebar-icon-moon { display: none !important; }
 }
 .copilot-hero-dot {
   position: absolute; width: 5px; height: 5px; border-radius: 50%;
-  background: #84a58d; opacity: 0.5; animation: heroFloat 2s ease-in-out infinite;
+  background: #34d399; opacity: 0.6; animation: heroFloat 2s ease-in-out infinite;
 }
 
 /* ── Hero collapse: slow beautiful fade out ── */
