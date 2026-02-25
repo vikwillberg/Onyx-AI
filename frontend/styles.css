@@ -2004,7 +2004,13 @@ body[data-theme="dark"] .narrative-title {
   transition: opacity 0.3s ease;
 }
 .home-welcome.hidden { display: none; }
-.home-welcome.fade-out { opacity: 0; pointer-events: none; }
+.home-welcome.hero-collapsing .welcome-cards,
+.home-welcome.hero-collapsing .welcome-title,
+.home-welcome.hero-collapsing .welcome-subtitle {
+  transition: opacity 0.5s ease;
+  opacity: 0;
+  pointer-events: none;
+}
 .welcome-logo-wrap {
   position: relative; display: inline-block;
   width: 180px; height: 56px; margin-bottom: 28px;

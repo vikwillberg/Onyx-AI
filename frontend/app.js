@@ -329,8 +329,7 @@ function collapseHomeWelcome() {
   if (elements.homeChatArea) elements.homeChatArea.classList.remove("hidden");
 
   if (_heroCollapsed) {
-    /* Animation already played or element already hidden */
-    if (elements.homeWelcome) elements.homeWelcome.classList.add("hidden");
+    /* Animation already started/played, don't interrupt it or restart it */
     return;
   }
   _heroCollapsed = true;
@@ -343,11 +342,15 @@ function collapseHomeWelcome() {
 
   /* Kick off the CSS animation */
   heroWrap.classList.add("hero-collapsing");
+  if (elements.homeWelcome) elements.homeWelcome.classList.add("hero-collapsing");
 
   /* Hide the whole welcome container once the animation finishes */
   const ANIM_MS = 1500;
   setTimeout(() => {
-    if (elements.homeWelcome) elements.homeWelcome.classList.add("hidden");
+    if (elements.homeWelcome) {
+      elements.homeWelcome.classList.add("hidden");
+      elements.homeWelcome.classList.remove("hero-collapsing");
+    }
     heroWrap.classList.remove("hero-collapsing");
   }, ANIM_MS);
 }
