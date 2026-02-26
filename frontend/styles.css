@@ -1147,7 +1147,7 @@ body[data-theme="light"] .grid-stack-item-content { background: #ffffff; }
 }
 .sidebar-user.hidden { display: none !important; }
 .sidebar-logo-img {
-  height: 28px; width: auto; object-fit: contain;
+  height: 40px; width: auto; object-fit: contain;
   display: block; transition: opacity 0.3s ease;
 }
 .sidebar-logo-img.sidebar-logo-dark { display: none; }
