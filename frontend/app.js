@@ -4472,6 +4472,13 @@ function renderVisual(visual, container) {
       showcountries: true,
       countrycolor: state.theme === "dark" ? "#475569" : "#cbd5e1",
       countrywidth: 0.5,
+      showsubunits: true,
+      subunitcolor: state.theme === "dark" ? "#475569" : "#cbd5e1",
+      subunitwidth: 0.5,
+      showlakes: true,
+      lakecolor: "rgba(0,0,0,0)",
+      resolution: 50,
+      fitbounds: "locations", // Auto-zoom to bounding box of the plotted points
       bgcolor: "rgba(0,0,0,0)",
     };
     // Maps don't need axes
