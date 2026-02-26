@@ -3123,9 +3123,12 @@ body[data-theme="light"] .sidebar-icon-moon { display: none !important; }
   border-radius: 999px; background: var(--surface); border: 1px solid var(--outline);
   font-size: 0.78rem; font-weight: 500; color: var(--ink);
 }
-.agent-generating-dot {
-  width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
-  animation: agentPulse 1.2s ease-in-out infinite;
+.agent-generating-spinner {
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--accent);
+}
+.agent-generating-spinner svg {
+  width: 14px; height: 14px;
 }
 
 /* ===== STEP 9: TILE CARD POLISH ===== */

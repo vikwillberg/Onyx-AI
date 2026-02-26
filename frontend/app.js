@@ -4603,7 +4603,7 @@ async function autoBuildDashboard() {
   /* Step 11: pulsing dot + live timer in the running step */
   const elapsedEl = rows[2].querySelector(".agent-step-elapsed");
   if (elapsedEl) {
-    elapsedEl.innerHTML = `<span class="generating-status-row"><span class="agent-generating-dot"></span><span class="generating-timer" id="gen-timer-txt">0s</span></span>`;
+    elapsedEl.innerHTML = `<span class="generating-status-row"><span class="agent-generating-spinner">${SPINNER_SVG}</span><span class="generating-timer" id="gen-timer-txt">0s</span></span>`;
   }
   let elapsedTimer = setInterval(() => {
     const s = Math.round((Date.now() - t0) / 1000);
