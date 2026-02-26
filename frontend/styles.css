@@ -508,7 +508,7 @@ select[multiple] { min-height: 110px; }
 /* ===== GRIDSTACK ===== */
 .grid-stack { background: transparent; border-radius: var(--radius); min-height: 200px; padding: 0; border: none; }
 .grid-stack-placeholder > .placeholder-content { border: 2px dashed var(--accent) !important; border-radius: var(--radius) !important; background: var(--accent-soft) !important; opacity: 0.5; }
-.grid-stack > .grid-stack-item { transition: none; }
+.grid-stack > .grid-stack-item { transition: none; padding: 14px !important; }
 .grid-stack > .grid-stack-item.ui-draggable-dragging { z-index: 10; opacity: 0.88; box-shadow: 0 12px 28px rgba(0,0,0,0.15); }
 /* Resize handles — invisible, aligned with border, cursor-only feedback */
 .grid-stack > .grid-stack-item > .ui-resizable-handle { opacity: 0 !important; }
