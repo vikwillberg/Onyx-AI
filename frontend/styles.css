@@ -9,29 +9,30 @@
   --ink-secondary: #44403c;
   --muted: #78716c;
   --muted-light: #a8a29e;
-  --accent: #10b981;
-  --accent-soft: rgba(16, 185, 129, 0.12);
-  --accent-hover: #059669;
-  --accent-2: #34d399;
-  --accent-green: #059669;
+  --accent: #84cc16; /* Warm lime/yellow-green */
+  --accent-soft: rgba(132, 204, 22, 0.12);
+  --accent-hover: #65a30d;
+  --accent-2: #a3e635;
+  --accent-green: #65a30d;
   --accent-red: #dc2626;
   --accent-orange: #ea580c;
   --outline: #e7e5e4;
   --outline-hover: #d6d3d1;
   --tile-outline: #e7e5e4;
-  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
-  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --success: #84cc16;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
+  --shadow: 0 4px 12px rgba(0,0,0,0.06);
+  --shadow-md: 0 8px 24px rgba(0,0,0,0.08);
+  --shadow-lg: 0 16px 40px rgba(0,0,0,0.12);
   --radius: 12px;
   --radius-sm: 8px;
   --radius-lg: 16px;
   --table-divider: #f5f5f4;
   --input-bg: #ffffff;
   --modal-overlay: rgba(0,0,0,0.4);
-  --danger: #dc2626;
-  --danger-soft: rgba(220,38,38,0.08);
-  --header-height: 56px;
-  --gradient: linear-gradient(135deg, #10b981, #34d399, #6ee7b7, #a7f3d0);
+  --gradient: linear-gradient(135deg, #84cc16, #a3e635, #bef264, #d9f99d);
   /* Spacing scale */
   --space-xs: 4px; --space-sm: 8px; --space-md: 16px; --space-lg: 24px; --space-xl: 32px; --space-2xl: 48px;
   /* Typography scale */
@@ -54,11 +55,11 @@ body[data-theme="dark"] {
   --ink-secondary: #d6d3d1;
   --muted: #a8a29e;
   --muted-light: #78716c;
-  --accent: #10b981;
-  --accent-soft: rgba(16, 185, 129, 0.15);
-  --accent-hover: #059669;
-  --accent-2: #34d399;
-  --accent-green: #34d399;
+  --accent: #a3e635; /* Lighter warm green for dark mode visibility */
+  --accent-soft: rgba(163, 230, 53, 0.15);
+  --accent-hover: #84cc16;
+  --accent-2: #bef264;
+  --accent-green: #bef264;
   --accent-red: #f87171;
   --accent-orange: #fb923c;
   --outline: #3a3633;
@@ -72,7 +73,7 @@ body[data-theme="dark"] {
   --modal-overlay: rgba(0,0,0,0.7);
   --danger: #f87171;
   --danger-soft: rgba(248,113,113,0.12);
-  --gradient: linear-gradient(135deg, #10b981, #34d399, #6ee7b7, #a7f3d0);
+  --gradient: linear-gradient(135deg, #a3e635, #bef264, #d9f99d, #ecfccb);
 }
 
 * { box-sizing: border-box; margin: 0; }
@@ -2962,15 +2963,19 @@ body[data-theme="light"] .sidebar-icon-moon { display: none !important; }
   will-change: clip-path, transform, opacity;
 }
 .copilot-hero-svg { width: 100%; height: 100%; position: absolute; inset: 0; }
-.copilot-hero-orb {
-  position: absolute; width: 70px; height: 70px; border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #6ee7b7 0%, #10b981 55%, #047857 100%);
-  box-shadow: 0 0 40px rgba(16,185,129,0.65), 0 0 80px rgba(16,185,129,0.2);
-  animation: heroFloat 3s ease-in-out infinite;
+
+.copilot-hero-hill {
+  position: absolute; bottom: 0; left: 0; width: 100%; height: 60px;
+  transform-origin: bottom center;
+  z-index: 1;
 }
+.copilot-hero-hill svg {
+  width: 100%; height: 100%; display: block;
+}
+
 @keyframes heroFloat {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-8px) scale(1.04); }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
 }
 .copilot-hero-ring {
   position: absolute; border-radius: 50%;
@@ -3007,8 +3012,8 @@ body[data-theme="light"] .sidebar-icon-moon { display: none !important; }
   background: var(--bg); opacity: 0;
   animation: heroBackgroundFade 0.2s ease forwards;
 }
-.copilot-hero-wrap.hero-collapsing .copilot-hero-orb {
-  animation: heroOrbFade 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+.copilot-hero-wrap.hero-collapsing .copilot-hero-hill {
+  animation: heroHillFade 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
   z-index: 2;
 }
 
@@ -3022,10 +3027,9 @@ body[data-theme="light"] .sidebar-icon-moon { display: none !important; }
   100% { opacity: 0; } /* Keep transparent since we shrink the actual container */
 }
 
-@keyframes heroOrbFade {
-  0%   { transform: translateY(0) scale(1); box-shadow: 0 0 40px rgba(92,124,100,0.65); opacity: 1; }
-  30%  { transform: translateY(-5px) scale(0.9); box-shadow: 0 0 30px rgba(92,124,100,0.4); opacity: 1; }
-  100% { transform: translateY(-30px) scale(0); box-shadow: 0 0 0px rgba(92,124,100,0); opacity: 0; }
+@keyframes heroHillFade {
+  0%   { transform: scaleY(1); opacity: 1; }
+  100% { transform: scaleY(0); opacity: 0; }
 }
 .copilot-welcome-title {
   font: 800 1.25rem "Product Sans", "Inter", sans-serif;
