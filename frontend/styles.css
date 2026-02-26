@@ -2997,7 +2997,7 @@ body[data-theme="light"] .sidebar-icon-moon { display: none !important; }
   animation: heroBackgroundFade 0.2s ease forwards;
 }
 .copilot-hero-wrap.hero-collapsing .copilot-hero-hill {
-  animation: heroHillFade 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+  animation: heroHillFade 0.75s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
   z-index: 2;
 }
 
@@ -3013,6 +3013,7 @@ body[data-theme="light"] .sidebar-icon-moon { display: none !important; }
 
 @keyframes heroHillFade {
   0%   { transform: scaleY(1); opacity: 1; }
+  60%  { opacity: 1; }
   100% { transform: scaleY(0); opacity: 0; }
 }
 .copilot-welcome-title {
