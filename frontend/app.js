@@ -5643,11 +5643,12 @@ async function init() {
 
   // Restore previous session if available (works for both auth and non-auth users)
   const saved = loadSession();
+  let restored = false;
   if (saved && saved.projectId && saved.datasetId) {
     try {
       // For authenticated users, find project in loaded list
       let project = state.projects.find((p) => p.id === saved.projectId);
-      
+
       // For non-authenticated users or if project not in list, try to fetch directly
       if (!project && saved.projectId) {
         try {
@@ -5656,7 +5657,7 @@ async function init() {
           project = null;
         }
       }
-      
+
       if (project) {
         state.currentProject = project;
         const datasets = await apiFetch(`/projects/${project.id}/datasets`);
@@ -5670,21 +5671,21 @@ async function init() {
           state.businessContext = project.business_context || {};
           state.businessCategory = project.business_category || null;
           updateCurrentProjectName();
-          
+
           // Restore to the saved step if it's valid
           if (saved.step === "dashboard" && state.finalVisuals.length) {
             enterDashboardMode();
-            return;
+            restored = true;
           } else if (saved.step === "ai-chat") {
             setStep("ai-chat");
-            return;
+            restored = true;
           } else if (saved.step === "duel") {
             if (state.finalVisuals.length) {
               enterDashboardMode();
             } else {
               setStep("upload");
             }
-            return;
+            restored = true;
           }
         }
       }
@@ -5693,7 +5694,9 @@ async function init() {
     }
   }
   updateMobileGreeting();
-  setStep("upload");
+  if (!restored) {
+    setStep("upload");
+  }
 }
 
 init();
