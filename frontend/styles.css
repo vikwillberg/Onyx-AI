@@ -3143,12 +3143,6 @@ body[data-theme="dark"] .tile-focus-btn {
   background: rgba(33, 31, 29, 0.94) !important;
 }
 
-/* ===== STEP 14: GRIDSTACK VERTICAL SPACING (CSS override) ===== */
-.grid-stack > .grid-stack-item {
-  padding-top: 4px;
-  padding-bottom: 4px;
-}
-
 /* ===== COPILOT WELCOME — new layout containers ===== */
 .copilot-welcome-content {
   max-width: 480px; width: 100%; text-align: left; padding-top: 16px;
