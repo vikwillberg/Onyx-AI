@@ -2955,17 +2955,17 @@ body[data-theme="light"] .sidebar-icon-moon { display: none !important; }
 
 /* ===== STEP 3: COPILOT WELCOME SCREEN ===== */
 .copilot-hero-wrap {
-  width: 100%; height: 130px; border-radius: 12px; overflow: visible;
+  width: 100%; height: 130px; border-radius: 12px; overflow: hidden;
   margin-bottom: 20px; flex-shrink: 0;
   background: linear-gradient(135deg, #022c22 0%, #064e3b 50%, #022c22 100%);
-  position: relative; display: flex; align-items: center; justify-content: center;
-  clip-path: inset(0 0 0 0 round 12px);
-  will-change: clip-path, transform, opacity;
+  position: relative; display: flex; align-items: flex-end; justify-content: center;
+  will-change: transform, opacity, max-height;
 }
 .copilot-hero-svg { width: 100%; height: 100%; position: absolute; inset: 0; }
 
 .copilot-hero-hill {
-  position: absolute; bottom: 0; left: 0; width: 100%; height: 60px;
+  position: absolute; bottom: -10px; left: 50%; width: 280px; height: 110px;
+  transform: translateX(-50%);
   transform-origin: bottom center;
   z-index: 1;
 }
@@ -2977,29 +2977,12 @@ body[data-theme="light"] .sidebar-icon-moon { display: none !important; }
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-4px); }
 }
-.copilot-hero-ring {
-  position: absolute; border-radius: 50%;
-  border: 1px solid rgba(16,185,129,0.4);
-  animation: heroRingPulse 2.5s ease-in-out infinite;
-}
-.copilot-hero-ring:nth-child(1) { width: 100px; height: 100px; animation-delay: 0s; }
-.copilot-hero-ring:nth-child(2) { width: 140px; height: 140px; animation-delay: 0.5s; }
-.copilot-hero-ring:nth-child(3) { width: 180px; height: 180px; animation-delay: 1s; border-style: dashed; }
-@keyframes heroRingPulse {
-  0%, 100% { opacity: 0.3; transform: scale(1); }
-  50% { opacity: 0.7; transform: scale(1.05); }
-}
 .copilot-hero-dot {
   position: absolute; width: 5px; height: 5px; border-radius: 50%;
-  background: #34d399; opacity: 0.6; animation: heroFloat 2s ease-in-out infinite;
+  background: #bef264; opacity: 0.6; animation: heroFloat 2s ease-in-out infinite;
 }
 
 /* ── Hero collapse: slow beautiful fade out ── */
-.copilot-hero-wrap.hero-collapsing .copilot-hero-ring {
-  animation: heroRingDissolve 0.6s ease forwards !important;
-}
-.copilot-hero-wrap.hero-collapsing .copilot-hero-ring:nth-child(2) { animation-delay: 0.05s !important; }
-.copilot-hero-wrap.hero-collapsing .copilot-hero-ring:nth-child(3) { animation-delay: 0.1s !important; }
 .copilot-hero-wrap.hero-collapsing .copilot-hero-dot {
   animation: none !important; opacity: 0 !important; transition: opacity 0.4s;
 }
