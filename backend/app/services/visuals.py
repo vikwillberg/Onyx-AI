@@ -549,7 +549,7 @@ def compute_kpi_trend(
 
     if datetime_col and datetime_col in dataframe.columns:
         frame = dataframe[[datetime_col, metric_col]].copy()
-        frame[datetime_col] = pd.to_datetime(frame[datetime_col], errors="coerce", format="mixed")
+        frame[datetime_col] = pd.to_datetime(frame[datetime_col].astype(str), errors="coerce", format="mixed")
         frame = frame.dropna()
         if frame.empty or len(frame) < 2:
             return result
@@ -1691,7 +1691,7 @@ def build_line_visual(
         value_col = None
     columns = [datetime_col] + ([value_col] if value_col else [])
     frame = dataframe[columns].copy()
-    frame[datetime_col] = pd.to_datetime(frame[datetime_col], errors="coerce", format="mixed")
+    frame[datetime_col] = pd.to_datetime(frame[datetime_col].astype(str), errors="coerce", format="mixed")
     drop_fields = [datetime_col] + ([value_col] if value_col else [])
     frame = frame.dropna(subset=drop_fields)
     if frame.empty:
