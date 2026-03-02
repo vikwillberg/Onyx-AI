@@ -158,6 +158,7 @@ class VisualSpec(BaseModel):
     type: str
     title: str
     description: Optional[str] = None
+    insight: Optional[str] = None
     x: Optional[str] = None
     y: Optional[str] = None
     values: Optional[str] = None
@@ -230,7 +231,7 @@ class FilterRequest(BaseModel):
 
 
 class DashboardRequest(BaseModel):
-    max_visuals: int = 10
+    max_visuals: int = Field(default=9, ge=1, le=20)
     model_key: Optional[str] = None
 
 

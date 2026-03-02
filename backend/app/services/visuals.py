@@ -2087,8 +2087,20 @@ def generate_dashboard_visuals(
     categorical_cols = rank_categorical_columns(profile)
     datetime_cols = rank_datetime_columns(profile)
 
-    # AI-powered column name humanization — runs once, shared across all visuals
-    label_map: dict[str, str] = llm_humanize_column_names(profile, model_key=model_key)
+    # --- Run independent LLM calls in parallel for speed ---
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        fut_labels = executor.submit(llm_humanize_column_names, profile, model_key=model_key)
+        fut_derived = executor.submit(suggest_derived_columns, profile, model_key=model_key)
+        fut_roles = executor.submit(llm_column_role_hints, profile, model_key=model_key)
+        fut_plan = executor.submit(
+            llm_dashboard_plan, profile, business_category, business_context,
+            max_visuals, model_key=model_key,
+        )
+        label_map = fut_labels.result()
+        smart_derivations = fut_derived.result()
+        role_hints = fut_roles.result()
+        _precomputed_llm_plan = fut_plan.result()
 
     template = TEMPLATE_REGISTRY.get(business_category or "", None)
     overrides = template.get("column_role_overrides", {}) if template else {}
@@ -2099,7 +2111,6 @@ def generate_dashboard_visuals(
         dataframe = auto_derive_columns(dataframe, datetime_cols, derivations)
 
     # --- AI / heuristic derived columns (date diffs, ratios, extractions) ---
-    smart_derivations = suggest_derived_columns(profile, model_key=model_key)
     if smart_derivations:
         from app.services.ingestion import profile_series
         dataframe, added_cols = apply_derived_columns(dataframe, smart_derivations)
@@ -2130,8 +2141,6 @@ def generate_dashboard_visuals(
                 col._template_boost = 1.0  # type: ignore[attr-defined]
             if extra_segment and any(h in lower for h in extra_segment):
                 col._template_boost = 0.7  # type: ignore[attr-defined]
-
-    role_hints = llm_column_role_hints(profile, model_key=model_key)
 
     visuals: list[VisualSpec] = []
     signatures: set[tuple] = set()
@@ -2346,9 +2355,9 @@ def generate_dashboard_visuals(
             )
             _append_visual(vis)
 
-    # --- LLM-powered dashboard plan FIRST (primary driver for diversity) ---
+    # --- LLM-powered dashboard plan (precomputed in parallel) ---
     if len(visuals) < max_visuals:
-        llm_specs = llm_dashboard_plan(profile, business_category, business_context, max_visuals - len(visuals), model_key=model_key)
+        llm_specs = _precomputed_llm_plan or []
         for spec in llm_specs:
             vis = apply_data_to_spec(spec, dataframe)
             _append_visual(vis)
@@ -2700,7 +2709,7 @@ def llm_dashboard_plan(
     profile: FileProfile,
     business_category: Optional[str] = None,
     business_context: Optional[dict] = None,
-    max_visuals: int = 8,
+    max_visuals: int = 9,
     model_key: Optional[str] = None,
 ) -> list[VisualSpec]:
     """Use LLM to generate an intelligent dashboard plan based on the data profile and business context."""

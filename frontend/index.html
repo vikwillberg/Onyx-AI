@@ -6,17 +6,38 @@
     <title>Hillside AI</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@10.1.2/dist/gridstack.min.css" />
-    <link rel="stylesheet" href="/static/styles.css?v=20260226" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+    <link rel="stylesheet" href="/static/styles.css?v=20260227_5" />
   </head>
   <body>
     <!-- Full-screen transition overlay -->
     <div id="transition-overlay" class="transition-overlay hidden">
       <div class="transition-content">
+        <svg class="transition-hill" viewBox="0 0 300 120" fill="none" xmlns="http://www.w3.org/2000/svg" width="160">
+          <defs>
+            <linearGradient id="backPeak" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#fde047" />
+              <stop offset="100%" stop-color="#84cc16" />
+            </linearGradient>
+            <linearGradient id="frontPeak" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#84cc16" />
+              <stop offset="100%" stop-color="#15803d" />
+            </linearGradient>
+            <linearGradient id="rightPeak" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#4ade80" />
+              <stop offset="100%" stop-color="#16a34a" />
+            </linearGradient>
+          </defs>
+          <!-- Back tall peak (yellowish) -->
+          <path d="M 60 110 C 80 40, 150 40, 180 110 Z" fill="url(#backPeak)" />
+          <!-- Right overlapping peak (light green) -->
+          <path d="M 120 110 C 160 50, 240 50, 280 110 Z" fill="url(#rightPeak)" />
+          <!-- Front sweeping peak (darker green) -->
+          <path d="M 10 110 C 50 70, 180 60, 260 110 Z" fill="url(#frontPeak)" />
+        </svg>
+        <p id="transition-message" class="transition-slogan">Generating visuals...</p>
         <div class="spinner transition-spinner"></div>
-        <p id="transition-message">Generating visuals...</p>
       </div>
     </div>
     <div class="app-shell">
@@ -29,8 +50,8 @@
           <!-- Top: Logo & Toggle -->
           <div class="sidebar-top">
             <div class="sidebar-brand">
-              <img class="sidebar-logo-img sidebar-logo-light" src="/static/hillside-logo-light.png" alt="Hillside AI" />
-              <img class="sidebar-logo-img sidebar-logo-dark" src="/static/hillside-logo-dark.png" alt="Hillside AI" />
+              <img class="sidebar-logo-img sidebar-logo-light" src="/static/logo-light.png" alt="Onyx AI" />
+              <img class="sidebar-logo-img sidebar-logo-dark" src="/static/logo-dark.png" alt="Onyx AI" />
               <button id="sidebar-collapse" class="sidebar-collapse-btn" type="button" title="Collapse sidebar">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
               </button>
@@ -115,73 +136,72 @@
       </aside>
 
       <main class="app-main">
-        <!-- Mobile-only top bar: hamburger | page title | avatar -->
-        <div id="mobile-top-bar" class="mobile-top-bar">
-          <button id="mobile-hamburger" class="mobile-hamburger" type="button" aria-label="Open menu">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-          </button>
-          <span id="mobile-page-title" class="mobile-page-title">Hillside AI</span>
-          <button id="mobile-avatar-btn" class="mobile-avatar-btn" type="button" aria-label="Profile &amp; settings">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          </button>
-        </div>
-
         <!-- ========== HOME: ChatGPT/Claude-style chat ========== -->
         <section id="projects-section" class="panel home-section hidden">
 
           <!-- Welcome state (before first message) -->
           <div id="home-welcome" class="home-welcome">
-            <!-- Mobile greeting (Gemini-style) — hidden on desktop -->
-            <div id="mobile-greeting" class="mobile-greeting">
-              <p class="mobile-greeting-hi">Hi <span id="mobile-greeting-name">there</span> 👋</p>
-              <h1 class="mobile-greeting-where">Where should<br>we start?</h1>
-            </div>
-            <!-- Mobile quick-action pills — hidden on desktop -->
-            <div id="mobile-quick-pills" class="mobile-quick-pills">
-              <button class="mobile-quick-pill" type="button" data-prompt="Analyze sales performance — identify top products, revenue trends, and growth opportunities">
-                <span class="pill-emoji">&#x1F4C8;</span>
-                <span class="pill-label">Sales Analysis</span>
-                <span class="pill-desc">Revenue trends &amp; top performers</span>
-              </button>
-              <button class="mobile-quick-pill" type="button" data-prompt="Show customer segments, retention patterns, and behavior insights from my data">
-                <span class="pill-emoji">&#x1F465;</span>
-                <span class="pill-label">Customer Insights</span>
-                <span class="pill-desc">Segments &amp; retention</span>
-              </button>
-              <button class="mobile-quick-pill" type="button" data-prompt="Analyze operational efficiency, costs, and identify areas for improvement">
-                <span class="pill-emoji">&#x23F1;&#xFE0F;</span>
-                <span class="pill-label">Operations</span>
-                <span class="pill-desc">Efficiency &amp; cost drivers</span>
-              </button>
-              <button class="mobile-quick-pill" type="button" data-prompt="Find key trends, anomalies, and patterns in my data that I should act on">
-                <span class="pill-emoji">&#x2728;</span>
-                <span class="pill-label">Trend Detection</span>
-                <span class="pill-desc">Patterns &amp; anomalies</span>
-              </button>
-            </div>
             <!-- Hero illustration -->
             <div class="copilot-hero-wrap">
               <div class="copilot-hero-ring"></div>
               <div class="copilot-hero-ring"></div>
               <div class="copilot-hero-ring"></div>
-              
-              <!-- Hillside AI Hill Graphic -->
-              <div class="copilot-hero-hill">
-                <svg viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-                  <path class="hill-path-bg" d="M0,100 Q50,20 100,50 T200,100 Z" fill="var(--accent-soft)" />
-                  <path class="hill-path-fg" d="M20,100 Q80,10 130,60 T200,100 Z" fill="url(#hill-gradient)" />
+              <div class="copilot-hero-orb"></div>
+              <div class="copilot-hero-dot" style="top:24%;left:18%"></div>
+              <div class="copilot-hero-dot" style="top:62%;right:20%;animation-delay:1.2s"></div>
+              <div class="copilot-hero-dot" style="top:35%;right:10%;animation-delay:2.4s"></div>
+              <div class="copilot-hero-dot" style="top:18%;left:55%;animation-delay:0.5s"></div>
+              <!-- Sun (light mode) -->
+              <div class="hero-sun">
+                <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <defs>
-                    <linearGradient id="hill-gradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stop-color="var(--accent)" />
-                      <stop offset="100%" stop-color="var(--accent-hover)" />
-                    </linearGradient>
+                    <radialGradient id="sunGrad" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#fef3c7"/><stop offset="60%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#f59e0b"/></radialGradient>
                   </defs>
+                  <circle cx="20" cy="20" r="10" fill="url(#sunGrad)"/>
                 </svg>
               </div>
-
-              <div class="copilot-hero-dot" style="top:22%;left:16%"></div>
-              <div class="copilot-hero-dot" style="top:68%;right:18%;animation-delay:0.8s"></div>
-              <div class="copilot-hero-dot" style="top:38%;right:12%;animation-delay:1.5s"></div>
+              <!-- Moon (dark mode) -->
+              <div class="hero-moon">
+                <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="moonGrad" x1="30%" y1="0%" x2="70%" y2="100%"><stop offset="0%" stop-color="#e2e8f0"/><stop offset="100%" stop-color="#94a3b8"/></linearGradient>
+                  </defs>
+                  <path d="M28 20a12 12 0 0 1-12-12 12 12 0 1 0 12 12Z" fill="url(#moonGrad)"/>
+                </svg>
+              </div>
+              <div class="copilot-hero-hill">
+                <svg viewBox="0 0 600 120" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="heroBackPeakLight" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stop-color="#34d399" />
+                      <stop offset="100%" stop-color="#10b981" />
+                    </linearGradient>
+                    <linearGradient id="heroFrontPeakLight" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stop-color="#059669" />
+                      <stop offset="100%" stop-color="#047857" />
+                    </linearGradient>
+                    <linearGradient id="heroRightPeakLight" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stop-color="#6ee7b7" />
+                      <stop offset="100%" stop-color="#34d399" />
+                    </linearGradient>
+                    <linearGradient id="heroBackPeakDark" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stop-color="#166534" />
+                      <stop offset="100%" stop-color="#14532d" />
+                    </linearGradient>
+                    <linearGradient id="heroFrontPeakDark" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stop-color="#15803d" />
+                      <stop offset="100%" stop-color="#064e3b" />
+                    </linearGradient>
+                    <linearGradient id="heroRightPeakDark" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stop-color="#22c55e" />
+                      <stop offset="100%" stop-color="#16a34a" />
+                    </linearGradient>
+                  </defs>
+                  <path class="hill-back" d="M0 120 C60 40, 200 30, 340 120 Z" fill="url(#heroBackPeakLight)" />
+                  <path class="hill-right" d="M260 120 C360 50, 500 45, 600 120 Z" fill="url(#heroRightPeakLight)" />
+                  <path class="hill-front" d="M0 120 C120 75, 400 65, 600 120 Z" fill="url(#heroFrontPeakLight)" />
+                </svg>
+              </div>
             </div>
             <h1 class="welcome-title">What would you like to analyze?</h1>
             <p class="welcome-subtitle">Attach a CSV or Excel file and let AI build your dashboard</p>
@@ -280,7 +300,7 @@
             <div id="generate-dashboard-row" class="generate-dashboard-row hidden">
               <button id="generate-dashboard-btn" class="btn btn-primary generate-dashboard-btn" type="button">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-                Build Dashboard
+                Generate Dashboard
               </button>
             </div>
             <p class="home-input-hint">CSV, Excel (.xlsx, .xls), TSV · drag files to attach</p>
@@ -370,8 +390,6 @@
                   <svg class="edit-pencil" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </div>
               </div>
-              <!-- Center: removed nav pills -->
-              <div style="flex:1"></div>
               <!-- Right: actions -->
               <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
                 <span id="auto-save-status" class="auto-save-status"></span>
@@ -392,10 +410,6 @@
               <button id="export-csv" class="btn btn-outline btn-sm" type="button" title="Download snapshot">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
               </button>
-              <button id="snapshot-insights-btn" class="btn btn-outline btn-sm hidden" type="button" title="Save Key Insights as PNG">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Save Snapshot
-              </button>
             </div>
           </div>
 
@@ -404,6 +418,12 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C12 2 13.5 7.5 16 10C18.5 12.5 22 12 22 12C22 12 18.5 11.5 16 14C13.5 16.5 12 22 12 22C12 22 10.5 16.5 8 14C5.5 11.5 2 12 2 12C2 12 5.5 12.5 8 10C10.5 7.5 12 2 12 2Z"/></svg>
             AI
           </button>
+
+          <div id="kpi-strip" class="kpi-strip hidden"></div>
+          <div id="insights-strip-wrap" class="insights-strip-wrap hidden">
+            <div class="insights-strip-heading">Key Insights</div>
+            <div id="insights-strip" class="insights-strip"></div>
+          </div>
 
           <div id="filter-bar" class="filter-bar hidden">
             <div class="filter-bar-row">
@@ -435,10 +455,8 @@
           <div id="add-visual-modal" class="widget-config-panel hidden">
             <div class="widget-config-header">
               <div class="widget-config-title">
-                <div class="widget-config-title-icon">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-                </div>
-                <span class="widget-config-title-text">Edit Widget</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                Widget
               </div>
               <div class="widget-config-actions">
                 <button id="widget-config-delete" class="widget-config-icon-btn" type="button" title="Remove from dashboard">
@@ -499,22 +517,16 @@
                 </button>
                 <div class="widget-config-advanced-body" id="widget-advanced-body">
                   <div class="widget-config-field">
-                    <label class="widget-config-label">Chart Theme</label>
+                    <label class="widget-config-label">Color Palette</label>
                     <select class="widget-config-select" id="widget-palette-select">
-                      <option value="">Default (Vibrant)</option>
-                      <option value="ocean">Ocean</option>
-                      <option value="sunset">Sunset</option>
-                      <option value="forest">Forest</option>
-                      <option value="royal">Royal</option>
-                      <option value="corporate">Corporate</option>
-                      <option value="earth">Earth</option>
-                      <option value="candy">Candy</option>
-                      <option value="monochrome">Monochrome</option>
-                      <option value="neon">Neon</option>
+                      <option value="">Default</option>
+                      <option value="teal">Teal</option>
+                      <option value="warm">Warm</option>
+                      <option value="cool">Cool</option>
                     </select>
                   </div>
                 </div>
-                <button class="widget-config-save" type="submit">Save changes</button>
+                <button class="btn btn-primary widget-config-save" type="submit">Save changes</button>
               </form>
             </div>
           </div>
@@ -528,19 +540,27 @@
             </div>
           </div>
         </section>
-      </main>
 
-      <!-- Modern Save Dashboard Toast -->
-      <div id="save-toast" class="save-toast hidden">
-        <div class="save-toast-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-        </div>
-        <div class="save-toast-text">Sign in to save your dashboard</div>
-        <div class="save-toast-actions">
-          <button id="save-toast-signin" class="btn btn-primary btn-sm" type="button">Sign in</button>
-          <button id="save-toast-dismiss" class="btn-link" type="button">Maybe later</button>
-        </div>
-      </div>
+        <!-- ========== SAVE ========== -->
+        <section id="save-section" class="panel hidden">
+          <div class="section-header">
+            <div class="section-header-text">
+              <h2>Save your project</h2>
+              <p>Keep this dashboard ready for future sessions.</p>
+            </div>
+          </div>
+          <div class="panel-grid">
+            <div class="card">
+              <h3>Save this dashboard</h3>
+              <p id="save-status" class="hint"></p>
+              <div class="panel-actions">
+                <button id="save-start-over" class="btn btn-outline" type="button">Start new analysis</button>
+                <button id="save-login-cta" class="btn btn-primary hidden" type="button">Log in to save</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
 
       <!-- AI Assistant right sidebar -->
       <aside id="dash-chat-panel" class="dash-chat-panel hidden">
@@ -588,8 +608,8 @@
 
         <div class="auth-hero">
           <div class="auth-logo-wrap">
-            <img class="auth-logo auth-logo-light" src="/static/hillside-logo-light.png" alt="Hillside AI" />
-            <img class="auth-logo auth-logo-dark" src="/static/hillside-logo-dark.png" alt="Hillside AI" />
+            <img class="auth-logo auth-logo-light" src="/static/hillside-logo-light.png?v=7" alt="Hillside AI" />
+            <img class="auth-logo auth-logo-dark" src="/static/hillside-logo-dark.png?v=7" alt="Hillside AI" />
           </div>
           <h2 class="auth-title">Welcome back</h2>
           <p class="auth-subtitle">Sign in to save dashboards and keep your projects across sessions.</p>
@@ -737,16 +757,15 @@
     <!-- Mobile bottom navigation -->
     <nav id="mobile-bottom-nav" class="mobile-bottom-nav">
       <button class="mobile-nav-item active" data-nav="home" type="button">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        <span>Chat</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>Home</span>
       </button>
       <button class="mobile-nav-item" data-nav="dashboard" type="button">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
         <span>Dashboard</span>
-        <span class="mobile-nav-badge hidden" id="dashboard-nav-badge"></span>
       </button>
       <button class="mobile-nav-item" data-nav="insights" type="button">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C12 2 13.5 7.5 16 10C18.5 12.5 22 12 22 12C22 12 18.5 11.5 16 14C13.5 16.5 12 22 12 22C12 22 10.5 16.5 8 14C5.5 11.5 2 12 2 12C2 12 5.5 12.5 8 10C10.5 7.5 12 2 12 2Z"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z"/></svg>
         <span>Insights</span>
       </button>
       <button class="mobile-nav-item" data-nav="profile" type="button">
@@ -771,6 +790,6 @@
     <script src="https://cdn.jsdelivr.net/npm/gridstack@10.1.2/dist/gridstack-all.js"></script>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="/static/app.js?v=20260226"></script>
+    <script src="/static/app.js"></script>
   </body>
 </html>

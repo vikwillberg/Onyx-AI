@@ -197,9 +197,7 @@ const elements = {
   sessionEmail: document.getElementById("session-email"),
   loginBtn: document.getElementById("login-btn"),
   logoutBtn: document.getElementById("logout-btn"),
-  projectList: document.getElementById("project-list"),
-  projectListSkeleton: document.getElementById("project-list-skeleton"),
-  projectsEmpty: document.getElementById("projects-empty"),
+  projectList: document.getElementById("sidebar-project-list"), // mapped to sidebar
   appSidebar: document.getElementById("app-sidebar"),
   sidebarToggle: document.getElementById("sidebar-toggle"),
   sidebarCollapse: document.getElementById("sidebar-collapse"),
@@ -345,7 +343,7 @@ function collapseHomeWelcome() {
   if (elements.homeWelcome) elements.homeWelcome.classList.add("hero-collapsing");
 
   /* Hide the whole welcome container once the animation finishes */
-  const ANIM_MS = 750;
+  const ANIM_MS = 1050;
   setTimeout(() => {
     if (elements.homeWelcome) {
       elements.homeWelcome.classList.add("hidden");
@@ -375,7 +373,7 @@ async function autoSaveDashboard() {
       try {
         const canvas = await html2canvas(target, {
           scale: 0.35, useCORS: true, logging: false,
-          backgroundColor: getComputedStyle(document.body).getPropertyValue("--bg") || "#ffffff",
+          backgroundColor: getComputedStyle(document.body).getPropertyValue("--bg").trim() || "#ffffff",
           width: target.scrollWidth, height: Math.min(target.scrollHeight, 900),
         });
         thumb = canvas.toDataURL("image/jpeg", 0.5);
@@ -411,6 +409,19 @@ function applyTheme(theme) {
   document.body.dataset.theme = nextTheme;
   localStorage.setItem(THEME_KEY, nextTheme);
   updateSidebarThemeIcon();
+  updateHeroHillColors(nextTheme);
+}
+
+function updateHeroHillColors(theme) {
+  const suffix = theme === "dark" ? "Dark" : "Light";
+  const hill = document.querySelector(".copilot-hero-hill");
+  if (!hill) return;
+  const back = hill.querySelector(".hill-back");
+  const right = hill.querySelector(".hill-right");
+  const front = hill.querySelector(".hill-front");
+  if (back) back.setAttribute("fill", `url(#heroBackPeak${suffix})`);
+  if (right) right.setAttribute("fill", `url(#heroRightPeak${suffix})`);
+  if (front) front.setAttribute("fill", `url(#heroFrontPeak${suffix})`);
 }
 
 function updateSidebarThemeIcon() {
@@ -538,6 +549,11 @@ function setStep(step) {
     renderKpiStrip();
     updateFilterBar();
     resizeDashCharts();
+    
+    // Make sure the AI button is visible if chat is collapsed
+    if (elements.projectsSection?.classList.contains("chat-collapsed")) {
+      document.getElementById("chat-reopen-btn")?.classList.add("active");
+    }
   }
   const showFilterBar = step === "dashboard";
   elements.filterBar?.classList.toggle("hidden", !showFilterBar);
@@ -1345,7 +1361,7 @@ async function exportDashboardSnapshot() {
   try {
     const target = elements.dashboardSection;
     const canvas = await html2canvas(target, {
-      backgroundColor: getComputedStyle(document.body).getPropertyValue("--bg") || "#ffffff",
+      backgroundColor: getComputedStyle(document.body).getPropertyValue("--bg").trim() || "#ffffff",
       scale: 2,
       useCORS: true,
       logging: false,
@@ -1409,8 +1425,8 @@ function appendHomeBubble(role, text) {
   const bubble = document.createElement("div");
   bubble.className = `home-chat-bubble ${role}`;
   if (role === "typing") {
-    /* Fluid loading circle, no star icon anymore */
-    bubble.innerHTML = `<div class="typing-fluid-circle"></div>`;
+    /* Spinning circle animation */
+    bubble.innerHTML = `<div class="chat-spinner-wrap"><div class="typing-fluid-circle"></div></div>`;
   } else if (role === "assistant") {
     /* AI icon + body wrapper */
     const icon = document.createElement("div");
@@ -1583,10 +1599,15 @@ async function sendAiChat() {
 
   state.aiChatBusy = true;
 
-  /* Create an empty assistant bubble that we'll stream text into */
+  /* Create an empty assistant bubble — spinner replaces the AI icon until first token */
   const streamBubble = appendHomeBubble("assistant", "");
   const bodyEl = streamBubble?.querySelector(".home-chat-bubble-body");
+  const iconEl = streamBubble?.querySelector(".home-chat-ai-icon");
   let fullReply = "";
+  let firstTokenReceived = false;
+
+  /* Replace AI icon with spinner; body stays empty */
+  if (iconEl) iconEl.innerHTML = `<div class="typing-fluid-circle"></div>`;
 
   try {
     const resp = await fetch(`${API_BASE}/datasets/${state.currentDataset.id}/ai-chat-stream`, {
@@ -1619,7 +1640,11 @@ async function sendAiChat() {
         try {
           const payload = JSON.parse(line.slice(6));
           if (payload.t !== undefined) {
-            /* Text token chunk */
+            /* Text token chunk — restore AI icon on first token */
+            if (!firstTokenReceived) {
+              firstTokenReceived = true;
+              if (iconEl) iconEl.innerHTML = AI_SPARK_SVG;
+            }
             fullReply += payload.t;
             if (bodyEl) bodyEl.innerHTML = simpleMarkdown(fullReply);
             const chatArea = elements.homeChatArea;
@@ -1650,6 +1675,7 @@ async function sendAiChat() {
     state.aiChatHistory.push({ role: "assistant", content: fullReply });
 
   } catch (err) {
+    if (iconEl && !firstTokenReceived) iconEl.innerHTML = AI_SPARK_SVG;
     if (!fullReply && bodyEl) bodyEl.innerHTML = simpleMarkdown("Something went wrong. Please try again.");
     console.error("AI chat stream error:", err);
   } finally {
@@ -1918,7 +1944,7 @@ function appendDashChatBubble(role, html) {
   const bubble = document.createElement("div");
   bubble.className = `dash-chat-bubble ${role}`;
   if (role === "typing") {
-    bubble.textContent = "Thinking...";
+    bubble.innerHTML = `<div class="chat-spinner-wrap"><div class="typing-fluid-circle"></div></div>`;
   } else if (role === "assistant") {
     bubble.innerHTML = simpleMarkdown(html);
   } else {
@@ -3211,7 +3237,6 @@ async function loadProjects() {
     renderProjectList();
     return;
   }
-  elements.projectListSkeleton?.classList.remove("hidden");
   try {
     const projects = await apiFetch("/projects/");
     state.projects = projects;
@@ -3227,7 +3252,7 @@ async function loadProjects() {
       })
     );
   } finally {
-    elements.projectListSkeleton?.classList.add("hidden");
+    // loading complete
   }
   renderProjectList();
 }
@@ -3396,10 +3421,6 @@ function renderProjectList() {
   updateSidebarUser();
   /* Projects are only shown in the sidebar — home page is a clean chat screen */
   if (elements.homeProjectsWrap) elements.homeProjectsWrap.classList.add("hidden");
-  if (elements.projectList) elements.projectList.innerHTML = "";
-  elements.projectListSkeleton?.classList.add("hidden");
-  elements.projectsEmpty?.classList.add("hidden");
-  elements.projectLoginHint?.classList.add("hidden");
 }
 
 /* ===== Sidebar Projects ===== */
@@ -3430,7 +3451,8 @@ function renderSidebarProjects() {
     return;
   }
 
-  state.projects.forEach((project) => {
+  const sorted = [...state.projects].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  sorted.forEach((project) => {
     const summary = state.projectSummaries[project.id] || {};
     const createdAt = formatProjectDate(summary.createdAt || project.created_at);
     const isActive = state.currentProject?.id === project.id;
@@ -3454,7 +3476,12 @@ function renderSidebarProjects() {
           <span class="sidebar-project-date">${createdAt}</span>
         </div>
       </div>
-      <span class="sidebar-project-delete" title="Delete project">&times;</span>
+      <button class="sidebar-project-delete" title="Delete project" type="button">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+      </button>
     `;
     item.addEventListener("click", (e) => {
       if (e.target.closest(".sidebar-project-delete")) return;
@@ -3905,7 +3932,7 @@ function renderDashboard() {
   }
   state.grid = GridStack.init({
     float: false,
-    cellHeight: 75,
+    cellHeight: 80,
     margin: "14px",
     handle: ".grid-stack-item-content",
     animate: true,
@@ -3965,6 +3992,17 @@ function renderDashboard() {
       `;
     } else {
       const descHtml = visual.description ? `<div class="tile-description">${visual.description}</div>` : "";
+      const insightText = visual.insight || visual.config?.insight;
+      const insightHtml = insightText ? `
+        <div class="tile-insight-container expanded">
+          <div class="tile-insight-wrapper">
+            <div class="tile-insight-text">${insightText}</div>
+          </div>
+          <button class="tile-insight-toggle" title="Toggle insight" type="button">
+            <svg class="insight-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
+          </button>
+        </div>
+      ` : "";
       widget.innerHTML = `
         <div class="grid-stack-item-content" data-visual-type="${visual.type}">
           <div class="tile-header">
@@ -3974,7 +4012,8 @@ function renderDashboard() {
             </div>
             ${descHtml}
           </div>
-          <div class="tile-body" id="dash-${visual.visual_id}" class="gs-no-drag"></div>
+          <div class="tile-body gs-no-drag" id="dash-${visual.visual_id}"></div>
+          ${insightHtml}
         </div>
         <!-- Focus overlay (Feature 2) -->
         <div class="tile-focus-overlay">
@@ -4030,6 +4069,22 @@ function renderDashboard() {
     widget.querySelector(".remove-tile")?.addEventListener("click", (event) => {
       event.stopPropagation();
       removeVisual(visual.visual_id);
+    });
+
+    widget.querySelector(".tile-insight-toggle")?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const container = widget.querySelector(".tile-insight-container");
+      if (container) {
+        container.classList.toggle("expanded");
+        const chevron = container.querySelector(".insight-chevron");
+        if (chevron) {
+          if (container.classList.contains("expanded")) {
+            chevron.innerHTML = '<polyline points="18 15 12 9 6 15"></polyline>';
+          } else {
+            chevron.innerHTML = '<polyline points="6 9 12 15 18 9"></polyline>';
+          }
+        }
+      }
     });
 
     if (!isKpi) {
@@ -4106,7 +4161,7 @@ function buildPlotlyLayout(visual, container, plotData) {
           t: 10,
           b: showPieLegend && isCompact ? 70 : 28,
         }
-      : { l: leftMargin, r: 20, t: 10, b: isHorizontalBar ? 30 : 52 },
+      : { l: leftMargin, r: 16, t: 10, b: isHorizontalBar ? 32 : 48 },
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(0,0,0,0)",
     font: { family: "Inter", size: 12, color: theme.font },
@@ -5403,7 +5458,7 @@ function bindEvents() {
         scale: 0.35,
         useCORS: true,
         logging: false,
-        backgroundColor: getComputedStyle(document.body).getPropertyValue("--bg") || "#ffffff",
+        backgroundColor: getComputedStyle(document.body).getPropertyValue("--bg").trim() || "#ffffff",
         width: target.scrollWidth,
         height: Math.min(target.scrollHeight, 900),
       });
@@ -5623,7 +5678,6 @@ async function init() {
   bindEvents();
   initSuggestionDropdown();
   setAgentStatus("idle");
-  elements.projectListSkeleton?.classList.remove("hidden");
 
   /* Load models in parallel with projects — non-blocking */
   loadModels();
@@ -5638,7 +5692,7 @@ async function init() {
       setAuthenticatedView();
     }
   } finally {
-    elements.projectListSkeleton?.classList.add("hidden");
+    // setup complete
   }
 
   // Restore previous session if available (works for both auth and non-auth users)

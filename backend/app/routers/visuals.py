@@ -127,7 +127,7 @@ def dashboard_visuals(
     try:
         visuals = generate_dashboard_visuals(
             profile, dataframe,
-            max_visuals=max(1, min(payload.max_visuals, 20)),
+            max_visuals=max(1, min(payload.max_visuals, 9)),
             business_category=business_category,
             business_context=business_context,
             model_key=payload.model_key or None,
