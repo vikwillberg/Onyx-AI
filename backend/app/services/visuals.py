@@ -2702,6 +2702,10 @@ def apply_data_to_spec(spec: VisualSpec, dataframe: pd.DataFrame) -> Optional[Vi
         return None
     if isinstance(spec.config, dict) and spec.config:
         visual.config = {**(visual.config or {}), **spec.config}
+    if spec.insight:
+        visual.insight = spec.insight
+    if spec.description:
+        visual.description = spec.description
     return visual
 
 
@@ -2845,21 +2849,21 @@ def llm_dashboard_plan(
         "▸ Survey/HR data (age, role, score, country):\n"
         "  - Score distribution by role (bar), Age vs score (scatter),\n"
         "  - Response share by category (pie), Scores over time (line)\n\n"
-        "DESCRIPTION FIELD (REQUIRED for every visual):\n"
-        "- Each visual MUST include a 'description' string (1-2 sentences, max 30 words).\n"
-        "- The description explains WHAT the chart reveals and WHY it matters.\n"
+        "INSIGHT FIELD (REQUIRED for every visual):\n"
+        "- Each visual MUST include an 'insight' string (1-2 sentences, max 30 words).\n"
+        "- The insight explains WHAT the chart reveals and WHY it matters.\n"
         "- Highlight the top performer, biggest outlier, or key takeaway with a specific number.\n"
         "- Examples:\n"
         "  'Electronics leads with $45K revenue — 3x more than the next category. Focus marketing here.'\n"
         "  'Sales peak on Tuesdays (+28% vs avg). Schedule promotions for maximum impact.'\n"
         "  'Top 3 products drive 72% of total revenue. The remaining 47 products share just 28%.'\n"
         "  'Tokyo accounts for 41% of all orders — a clear geographic concentration risk.'\n"
-        "- Use K for thousands, M for millions, B for billions in descriptions (e.g. $12.5K, 1.2M users).\n"
+        "- Use K for thousands, M for millions, B for billions in insights (e.g. $12.5K, 1.2M users).\n"
         "- Round numbers sensibly: use whole numbers for counts, 1 decimal for percentages, 2 for currencies under $100.\n\n"
         "Return JSON with a 'visuals' array. Each visual must have: "
         "type (one of: bar, line, pie, scatter, histogram, table, map), "
         "title (insight-driven question or finding), "
-        "description (1-2 sentence insight explaining what the chart reveals — REQUIRED), "
+        "insight (1-2 sentence insight explaining what the chart reveals — REQUIRED), "
         "x (column name for x-axis/category — can be a derived column like 'day_of_week'), "
         "y (column name for y-axis/value), "
         "values (column name for pie values or histogram distribution), "
@@ -2924,16 +2928,16 @@ def llm_dashboard_plan(
                 if values and values not in column_names:
                     continue
 
-            description = item.get("description") or None
-            if description:
-                description = str(description).strip()[:200]
+            insight = item.get("insight") or None
+            if insight:
+                insight = str(insight).strip()[:200]
 
             visuals.append(
                 VisualSpec(
                     visual_id=build_visual_id(visual_type),
                     type=visual_type,
                     title=title,
-                    description=description,
+                    insight=insight,
                     x=x,
                     y=y,
                     values=values,

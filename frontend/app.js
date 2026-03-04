@@ -1097,7 +1097,7 @@ function renderStoryChart(container, spec, data) {
     }
     
     const layout = {
-      margin: { t: 10, r: 20, b: 40, l: 50 },
+      margin: { t: 20, r: 24, b: 44, l: 54 },
       paper_bgcolor: "rgba(0,0,0,0)",
       plot_bgcolor: "rgba(0,0,0,0)",
       font: { family: "Inter", color: theme.font, size: 11 },
@@ -1773,7 +1773,15 @@ function initAiChat() {
   // Send an initial greeting automatically
   setTimeout(async () => {
     state.aiChatBusy = true;
-    const typingBubble = appendChatBubble("typing", "");
+    const streamBubble = appendChatBubble("assistant", "");
+    const bodyEl = streamBubble?.querySelector(".home-chat-bubble-body") || streamBubble;
+    const iconEl = streamBubble?.querySelector(".home-chat-ai-icon");
+    if (iconEl) iconEl.innerHTML = `<div class="typing-fluid-circle"></div>`;
+    else if (bodyEl) bodyEl.innerHTML = `<div class="chat-spinner-wrap"><div class="typing-fluid-circle"></div></div>`;
+
+    let fullReply = "";
+    let firstTokenReceived = false;
+
     try {
       const DICT_PATS = ["dictionary", "data_dict", "codebook", "metadata", "column_desc", "field_desc", "schema", "lookup", "legend"];
       const hasDictFile = (state.pendingFiles || []).some((f) => {
@@ -1783,30 +1791,70 @@ function initAiChat() {
       const greeting = hasDictFile
         ? "Hello, I just uploaded my data along with a data dictionary file. Please use the dictionary to understand what each column means."
         : "Hello, I just uploaded my data.";
-      const response = await apiFetch(`/datasets/${state.currentDataset.id}/ai-chat`, {
+
+      const resp = await fetch(`${API_BASE}/datasets/${state.currentDataset.id}/ai-chat-stream`, {
         method: "POST",
+        headers: { "Content-Type": "application/json", ...(state.token ? { Authorization: `Bearer ${state.token}` } : {}) },
         body: JSON.stringify({ message: greeting, history: [], model_key: state.selectedModelKey || null }),
       });
-      typingBubble?.remove();
-      const reply = response.reply || "Hi! I've analyzed your data. Tell me what you'd like to explore.";
-      appendChatBubble("assistant", reply);
-      state.aiChatHistory.push({ role: "user", content: greeting });
-      state.aiChatHistory.push({ role: "assistant", content: reply });
-      if (response.done) {
-        state.aiChatDone = true;
-        if (response.insights) {
-          state.businessContext = response.insights;
-          state.businessCategory = response.insights.business_category || null;
+
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const payload = JSON.parse(line.slice(6));
+            if (payload.t !== undefined) {
+              if (!firstTokenReceived) {
+                firstTokenReceived = true;
+                if (iconEl) iconEl.innerHTML = AI_SPARK_SVG;
+                else if (bodyEl) bodyEl.innerHTML = "";
+              }
+              fullReply += payload.t;
+              if (bodyEl) bodyEl.innerHTML = simpleMarkdown(fullReply);
+              if (elements.homeChatArea) elements.homeChatArea.scrollTop = elements.homeChatArea.scrollHeight;
+            }
+            if (payload.done !== undefined) {
+              if (payload.model_name) updateModelBadge(payload.model_name);
+              if (payload.done) {
+                state.aiChatDone = true;
+                if (payload.insights) {
+                  state.businessContext = payload.insights;
+                  state.businessCategory = payload.insights.business_category || null;
+                }
+                showGenerateDashboardRow(true);
+              } else if (payload.suggestions && payload.suggestions.length) {
+                showSuggestionChips(payload.suggestions);
+              } else {
+                showSuggestionChips(buildDataAwareSuggestions(true));
+              }
+            }
+          } catch (_e) {}
         }
-        showGenerateDashboardRow(true);
-      } else if (response.suggestions && response.suggestions.length) {
-        showSuggestionChips(response.suggestions);
-      } else {
-        showSuggestionChips(buildDataAwareSuggestions(true));
       }
+
+      if (!fullReply) {
+        fullReply = "Hi! I've analyzed your data. Tell me what you'd like to explore.";
+        if (bodyEl) bodyEl.innerHTML = simpleMarkdown(fullReply);
+      }
+      state.aiChatHistory.push({ role: "user", content: greeting });
+      state.aiChatHistory.push({ role: "assistant", content: fullReply });
+
     } catch (err) {
-      typingBubble?.remove();
-      appendChatBubble("assistant", "Hi! I've analyzed your data. Tell me what you'd like to explore.");
+      if (!firstTokenReceived) {
+        if (iconEl) iconEl.innerHTML = AI_SPARK_SVG;
+        if (bodyEl) bodyEl.innerHTML = simpleMarkdown("Hi! I've analyzed your data. Tell me what you'd like to explore.");
+      }
       showSuggestionChips(buildDataAwareSuggestions(true));
       console.error("AI chat init error:", err);
     } finally {
@@ -2151,60 +2199,81 @@ async function sendDashChat() {
           renderDashChatVisualCard(visual);
           elements.dashChatMessages.scrollTop = elements.dashChatMessages.scrollHeight;
         } else {
-          throw new Error("No visual returned");
+          appendDashChatBubble("assistant", "I couldn't generate that visual. Try being more specific about which columns to use.");
         }
-      } catch (vizErr) {
-        /* Fallback: if AI generation fails, fall through to normal chat */
-        console.warn("AI visual generation failed, falling back to chat:", vizErr);
+        state.aiChatHistory.push({ role: "user", content: message });
+        state.aiChatHistory.push({ role: "assistant", content: "Generated a visual." });
+        scheduleChatHistorySave();
+      } catch (err) {
         typingBubble?.remove();
-        const fallbackTyping = appendDashChatBubble("typing", "");
-        try {
-          const response = await apiFetch(`/datasets/${state.currentDataset.id}/ai-chat`, {
-            method: "POST",
-            body: JSON.stringify({ message, history: state.aiChatHistory, model_key: state.selectedModelKey || null }),
-          });
-          fallbackTyping?.remove();
-          const reply = response.reply || "I couldn't generate that visual. Try being more specific about which columns to use.";
-          appendDashChatBubble("assistant", reply);
-          state.aiChatHistory.push({ role: "user", content: message });
-          state.aiChatHistory.push({ role: "assistant", content: reply });
-          scheduleChatHistorySave();
-        } catch (_e) {
-          fallbackTyping?.remove();
-          appendDashChatBubble("assistant", "I couldn't generate that visual right now. Please try again.");
-        }
+        appendDashChatBubble("assistant", "I encountered an error building that chart.");
       }
     } else {
-      /* --- Normal conversational path --- */
-      const response = await apiFetch(`/datasets/${state.currentDataset.id}/ai-chat`, {
+      /* --- Conversational path --- */
+      const resp = await fetch(`${API_BASE}/datasets/${state.currentDataset.id}/ai-chat-stream`, {
         method: "POST",
-        body: JSON.stringify({ message, history: state.aiChatHistory, model_key: state.selectedModelKey || null }),
+        headers: { "Content-Type": "application/json", ...(state.token ? { Authorization: `Bearer ${state.token}` } : {}) },
+        body: JSON.stringify({ message, history: state.aiChatHistory, model_key: state.selectedModelKey || null, mode: "refine" }),
       });
-      typingBubble?.remove();
-      const reply = response.reply || "I'm not sure how to help with that. Try asking differently.";
-      appendDashChatBubble("assistant", reply);
-      state.aiChatHistory.push({ role: "user", content: message });
-      state.aiChatHistory.push({ role: "assistant", content: reply });
-      scheduleChatHistorySave();
 
-      // If the AI decided it's "done" and has insights, generate visuals as previews
-      if (response.done && response.insights) {
-        state.businessContext = response.insights;
-        appendDashChatBubble("assistant", "Generating visual suggestions...");
-        try {
-          const vizResp = await apiFetch(`/visuals/${state.currentDataset.id}/dashboard?max_visuals=5`, { method: "POST" });
-          const newVisuals = vizResp.visuals || [];
-          if (newVisuals.length) {
-            appendDashChatBubble("assistant", "Here are some visuals I created. Click **Add** to add any to your dashboard:");
-            newVisuals.forEach((visual) => renderDashChatVisualCard(visual));
-            elements.dashChatMessages.scrollTop = elements.dashChatMessages.scrollHeight;
-          } else {
-            appendDashChatBubble("assistant", "I couldn't generate any new visuals for this request.");
-          }
-        } catch (_e) {
-          appendDashChatBubble("assistant", "I couldn't generate visuals, but your conversation is saved.");
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const payload = JSON.parse(line.slice(6));
+            if (payload.t !== undefined) {
+              if (!firstTokenReceived) {
+                firstTokenReceived = true;
+                streamBubble.innerHTML = "";
+              }
+              fullReply += payload.t;
+              streamBubble.innerHTML = simpleMarkdown(fullReply);
+              elements.dashChatMessages.scrollTop = elements.dashChatMessages.scrollHeight;
+            }
+            if (payload.done !== undefined) {
+              // Final metadata
+              if (payload.done) {
+                if (payload.insights) {
+                  state.businessContext = payload.insights;
+                }
+                appendDashChatBubble("assistant", "Generating your requested widget...");
+                try {
+                  const vizResp = await apiFetch(`/visuals/${state.currentDataset.id}/ai-generate`, {
+                    method: "POST",
+                    body: JSON.stringify({ prompt: "Generate the visual based on our discussion.", history: state.aiChatHistory.concat([{ role: "user", content: message }, { role: "assistant", content: fullReply }]) }),
+                  });
+                  const newVisuals = vizResp.visuals || [];
+                  if (newVisuals.length) {
+                    appendDashChatBubble("assistant", "Here is the visual we discussed. Click **Add** to add it to your dashboard:");
+                    newVisuals.forEach((visual) => renderDashChatVisualCard(visual));
+                    elements.dashChatMessages.scrollTop = elements.dashChatMessages.scrollHeight;
+                  } else {
+                    appendDashChatBubble("assistant", "I couldn't generate any new visuals for this request.");
+                  }
+                } catch (_e) {
+                  appendDashChatBubble("assistant", "I couldn't generate visuals, but your conversation is saved.");
+                }
+              }
+            }
+          } catch (_e) {}
         }
       }
+
+      if (!fullReply) fullReply = "I'm not sure how to help with that. Try asking differently.";
+      state.aiChatHistory.push({ role: "user", content: message });
+      state.aiChatHistory.push({ role: "assistant", content: fullReply });
+      scheduleChatHistorySave();
     }
   } catch (err) {
     typingBubble?.remove();
@@ -2226,21 +2295,64 @@ function initAiChatRefine() {
   setTimeout(async () => {
     if (state.aiChatBusy) return;
     state.aiChatBusy = true;
-    const typingBubble = appendChatBubble("typing", "");
+    const streamBubble = appendChatBubble("assistant", "");
+    const bodyEl = streamBubble?.querySelector(".home-chat-bubble-body") || streamBubble;
+    const iconEl = streamBubble?.querySelector(".home-chat-ai-icon");
+    if (iconEl) iconEl.innerHTML = `<div class="typing-fluid-circle"></div>`;
+    else if (bodyEl) bodyEl.innerHTML = `<div class="chat-spinner-wrap"><div class="typing-fluid-circle"></div></div>`;
+
+    let fullReply = "";
+    let firstTokenReceived = false;
+    const refineMsg = "The user already has a dashboard and wants to refine it. Ask them what other insights would be helpful and suggest 2-3 new analysis angles.";
+
     try {
-      const refineMsg = "The user already has a dashboard and wants to refine it. Ask them what other insights would be helpful and suggest 2-3 new analysis angles.";
-      const response = await apiFetch(`/datasets/${state.currentDataset.id}/ai-chat`, {
+      const resp = await fetch(`${API_BASE}/datasets/${state.currentDataset.id}/ai-chat-stream`, {
         method: "POST",
-        body: JSON.stringify({ message: refineMsg, history: state.aiChatHistory, model_key: state.selectedModelKey || null }),
+        headers: { "Content-Type": "application/json", ...(state.token ? { Authorization: `Bearer ${state.token}` } : {}) },
+        body: JSON.stringify({ message: refineMsg, history: state.aiChatHistory, model_key: state.selectedModelKey || null, mode: "refine" }),
       });
-      typingBubble?.remove();
-      const reply = response.reply || "How is the dashboard working for you? What other insights would be helpful?";
-      appendChatBubble("assistant", reply);
+
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const payload = JSON.parse(line.slice(6));
+            if (payload.t !== undefined) {
+              if (!firstTokenReceived) {
+                firstTokenReceived = true;
+                if (iconEl) iconEl.innerHTML = AI_SPARK_SVG;
+                else if (bodyEl) bodyEl.innerHTML = "";
+              }
+              fullReply += payload.t;
+              if (bodyEl) bodyEl.innerHTML = simpleMarkdown(fullReply);
+              if (elements.homeChatArea) elements.homeChatArea.scrollTop = elements.homeChatArea.scrollHeight;
+            }
+          } catch (_e) {}
+        }
+      }
+
+      if (!fullReply) {
+        fullReply = "How is the dashboard working for you? What other insights would be helpful?";
+        if (bodyEl) bodyEl.innerHTML = simpleMarkdown(fullReply);
+      }
       state.aiChatHistory.push({ role: "user", content: refineMsg });
-      state.aiChatHistory.push({ role: "assistant", content: reply });
+      state.aiChatHistory.push({ role: "assistant", content: fullReply });
     } catch (err) {
-      typingBubble?.remove();
-      appendChatBubble("assistant", "How is the dashboard working for you? What other insights would be helpful?");
+      if (!firstTokenReceived) {
+        if (iconEl) iconEl.innerHTML = AI_SPARK_SVG;
+        if (bodyEl) bodyEl.innerHTML = simpleMarkdown("How is the dashboard working for you? What other insights would be helpful?");
+      }
       console.error("AI chat refine error:", err);
     } finally {
       state.aiChatBusy = false;
@@ -3933,11 +4045,11 @@ function renderDashboard() {
   state.grid = GridStack.init({
     float: false,
     cellHeight: 80,
-    margin: "14px",
+    margin: "24px",
     handle: ".grid-stack-item-content",
     animate: true,
     column: 12,
-    resizable: { handles: "e,s,se" },
+    resizable: { handles: "e,w,s,n,se,sw,ne,nw" },
     draggable: { scroll: true },
     minRow: 1,
     oneColumnSize: 768,
@@ -3999,7 +4111,7 @@ function renderDashboard() {
             <div class="tile-insight-text">${insightText}</div>
           </div>
           <button class="tile-insight-toggle" title="Toggle insight" type="button">
-            <svg class="insight-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
+            <svg class="insight-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </button>
         </div>
       ` : "";
@@ -4079,7 +4191,7 @@ function renderDashboard() {
         const chevron = container.querySelector(".insight-chevron");
         if (chevron) {
           if (container.classList.contains("expanded")) {
-            chevron.innerHTML = '<polyline points="18 15 12 9 6 15"></polyline>';
+            chevron.innerHTML = '<polyline points="6 9 12 15 18 9"></polyline>';
           } else {
             chevron.innerHTML = '<polyline points="6 9 12 15 18 9"></polyline>';
           }
@@ -5662,6 +5774,102 @@ function toggleModelPicker(btnEl) {
   }
 }
 
+/* ===== Tutorial Overlay ===== */
+const tutorialSteps = [
+  {
+    title: "Upload & Chat",
+    desc: "Start by securely uploading your data files. Chat with our AI to uncover initial insights—feel free to use the suggested prompts if you need a jumping-off point.",
+    img: "/static/tutorial_images/step1.png"
+  },
+  {
+    title: "Generate Dashboard",
+    desc: "Once you've discussed your goals with the AI, simply click 'Generate Dashboard' to automatically build a custom, interactive report tailored to your data.",
+    img: "/static/tutorial_images/step2.png"
+  },
+  {
+    title: "Explore & Refine",
+    desc: "Your dashboard isn't static! Continue chatting with the AI to instantly generate new widgets, drill down into specific metrics, and discover deeper insights.",
+    img: "/static/tutorial_images/step3.png"
+  },
+  {
+    title: "Edit & Resize",
+    desc: "Take full control of your layout. Click on any widget to adjust its settings, change the visualization type, or seamlessly drag and resize to fit your needs.",
+    img: "/static/tutorial_images/step4.png"
+  }
+];
+
+let currentTutorialStep = 0;
+
+function initTutorial() {
+  if (localStorage.getItem("onyx_tutorial_seen")) return;
+
+  const overlay = document.getElementById("tutorial-overlay");
+  if (!overlay) return;
+
+  document.getElementById("tutorial-close")?.addEventListener("click", closeTutorial);
+  document.getElementById("tutorial-next")?.addEventListener("click", nextTutorialStep);
+  document.getElementById("tutorial-prev")?.addEventListener("click", prevTutorialStep);
+  
+  const dots = document.querySelectorAll(".tutorial-dot");
+  dots.forEach((dot, index) => {
+    dot.addEventListener("click", () => showTutorialStep(index));
+  });
+
+  setTimeout(() => {
+    overlay.classList.remove("hidden");
+    showTutorialStep(0);
+  }, 2000);
+}
+
+function showTutorialStep(index) {
+  currentTutorialStep = index;
+  const step = tutorialSteps[index];
+  
+  const imgEl = document.getElementById("tutorial-image");
+  const titleEl = document.getElementById("tutorial-title");
+  const descEl = document.getElementById("tutorial-desc");
+  
+  if (imgEl) imgEl.src = step.img;
+  if (titleEl) titleEl.textContent = step.title;
+  if (descEl) descEl.textContent = step.desc;
+
+  const dots = document.querySelectorAll(".tutorial-dot");
+  dots.forEach((dot, i) => {
+    dot.classList.toggle("active", i === index);
+  });
+
+  const prevBtn = document.getElementById("tutorial-prev");
+  const nextBtn = document.getElementById("tutorial-next");
+  if (prevBtn) prevBtn.disabled = index === 0;
+  if (nextBtn) {
+    if (index === tutorialSteps.length - 1) {
+      nextBtn.innerHTML = "&#10003;"; // checkmark
+    } else {
+      nextBtn.innerHTML = "&#10095;"; // right arrow
+    }
+  }
+}
+
+function nextTutorialStep() {
+  if (currentTutorialStep < tutorialSteps.length - 1) {
+    showTutorialStep(currentTutorialStep + 1);
+  } else {
+    closeTutorial();
+  }
+}
+
+function prevTutorialStep() {
+  if (currentTutorialStep > 0) {
+    showTutorialStep(currentTutorialStep - 1);
+  }
+}
+
+function closeTutorial() {
+  const overlay = document.getElementById("tutorial-overlay");
+  if (overlay) overlay.classList.add("hidden");
+  localStorage.setItem("onyx_tutorial_seen", "true");
+}
+
 async function init() {
   /* Handle Google OAuth redirect — pick up token from URL */
   const urlParams = new URLSearchParams(window.location.search);
@@ -5751,6 +5959,9 @@ async function init() {
   if (!restored) {
     setStep("upload");
   }
+
+  // Show tutorial on app start
+  initTutorial();
 }
 
 init();

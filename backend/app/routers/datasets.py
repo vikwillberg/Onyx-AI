@@ -513,7 +513,10 @@ def ai_chat_stream(
 
     profile_summary = build_profile_summary(dataset.profile_json, dataset.dictionary_json)
     dictionary_section = build_dictionary_section(dataset.dictionary_json)
-    system = DATA_ANALYST_SYSTEM.format(profile_summary=profile_summary, dictionary_section=dictionary_section)
+    
+    from app.services.llm import DATA_ANALYST_SYSTEM, DASHBOARD_REFINE_SYSTEM
+    system_prompt = DASHBOARD_REFINE_SYSTEM if payload.mode == "refine" else DATA_ANALYST_SYSTEM
+    system = system_prompt.format(profile_summary=profile_summary, dictionary_section=dictionary_section)
 
     conv_messages: list[dict[str, str]] = []
     for msg in history:

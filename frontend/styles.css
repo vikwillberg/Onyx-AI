@@ -511,7 +511,12 @@ select[multiple] { min-height: 110px; }
 .grid-stack > .grid-stack-item { transition: none; padding: 8px; }
 .grid-stack > .grid-stack-item.ui-draggable-dragging { z-index: 10; opacity: 0.88; box-shadow: 0 12px 28px rgba(0,0,0,0.15); }
 /* Resize handles — invisible, aligned with border, cursor-only feedback */
-.grid-stack > .grid-stack-item > .ui-resizable-handle { opacity: 0 !important; }
+.grid-stack > .grid-stack-item > .ui-resizable-handle { 
+  opacity: 0 !important; 
+  pointer-events: none; 
+}
+.grid-stack > .grid-stack-item.tile-focused > .ui-resizable-handle { pointer-events: auto; }
+.grid-stack > .grid-stack-item.tile-focused > .ui-resizable-handle:hover { opacity: 1 !important; background: rgba(132, 204, 22, 0.4); border-radius: 4px; }
 .grid-stack > .grid-stack-item > .ui-resizable-handle::after { display: none !important; }
 /* Edge handles — sit on the content border (z-index above content) */
 .grid-stack > .grid-stack-item > .ui-resizable-e  { width: 10px; right: 2px;   cursor: ew-resize; z-index: 15; }
@@ -573,7 +578,7 @@ body[data-theme="light"] .grid-stack-item-content { background: #ffffff; }
 
 /* ===== WIDGET INSIGHTS ===== */
 .tile-insight-container {
-  display: flex;
+    display: flex; flex-shrink: 0;
   align-items: flex-start;
   padding: 8px 16px;
   background: var(--bg-secondary);
@@ -673,9 +678,9 @@ body[data-theme="light"] .grid-stack-item-content { background: #ffffff; }
 
 /* ===== FILTER BAR ===== */
 .filter-bar {
-  display: flex; flex-direction: column; gap: 8px; padding: 10px 14px;
-  background: var(--surface); border: 1px solid var(--outline); border-radius: 16px;
-  margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+  display: flex; flex-direction: column; gap: 8px; padding: 0;
+  background: transparent; border: none; border-radius: 0;
+  margin-bottom: 0; box-shadow: none;
 }
 .filter-bar.hidden { display: none; }
 .filter-bar-row {
@@ -992,6 +997,110 @@ body[data-theme="light"] .grid-stack-item-content { background: #ffffff; }
 }
 .auth-social-btn:hover:not(:disabled) { background: var(--surface-hover); border-color: var(--outline-hover); }
 .auth-social-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ===== TUTORIAL OVERLAY ===== */
+.tutorial-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  display: flex; justify-content: center; align-items: center;
+  transition: opacity 0.3s ease, visibility 0.3s;
+}
+
+.tutorial-overlay.hidden {
+  opacity: 0; visibility: hidden; pointer-events: none;
+}
+
+.tutorial-modal {
+  position: relative;
+  background: var(--surface);
+  width: 95vw;
+  max-width: 900px;
+  max-height: 90vh;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  animation: modal-pop 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modal-pop {
+  0% { transform: scale(0.95); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.tutorial-close-btn {
+  position: absolute; top: 16px; right: 20px;
+  background: transparent; border: none;
+  font-size: 28px; line-height: 1;
+  color: var(--text-muted); cursor: pointer;
+  z-index: 10; padding: 4px;
+  transition: color 0.2s;
+}
+.tutorial-close-btn:hover { color: var(--text); }
+
+.tutorial-nav-btn {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  background: var(--bg-hover); border: none;
+  color: var(--text); font-size: 20px;
+  width: 48px; height: 48px; border-radius: 50%;
+  cursor: pointer; z-index: 10;
+  display: grid; place-items: center;
+  transition: background 0.2s, transform 0.2s;
+  box-shadow: var(--shadow-sm);
+}
+.tutorial-nav-btn:hover { background: var(--bg-active); transform: translateY(-50%) scale(1.05); }
+.tutorial-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: translateY(-50%); }
+.prev-btn { left: 16px; }
+.next-btn { right: 16px; }
+
+.tutorial-content {
+  flex: 1; overflow-y: auto;
+  padding: 40px 48px 24px;
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center;
+}
+
+.tutorial-content img {
+  width: 100%; max-height: 55vh;
+  object-fit: contain;
+  margin-bottom: 24px;
+  border-radius: var(--radius);
+  /* Fallback styling before images load */
+  background: var(--bg-hover);
+  min-height: 200px;
+}
+
+.tutorial-content h2 {
+  font-size: 1.25rem; color: var(--text); margin-bottom: 12px; font-weight: 600;
+}
+.tutorial-content p {
+  font-size: 0.95rem; color: var(--text-muted); line-height: 1.5;
+  max-width: 650px;
+}
+
+.tutorial-dots {
+  display: flex; justify-content: center; gap: 8px;
+  padding: 20px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.tutorial-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--border); cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+.tutorial-dot.active {
+  background: var(--primary);
+  transform: scale(1.2);
+}
+
+@media (max-width: 768px) {
+  .tutorial-modal { width: 90vw; }
+  .tutorial-content { padding: 40px 20px 20px; }
+  .tutorial-nav-btn { display: none; /* Hide side arrows on small screens, users can click dots */ }
+}
 
 /* ===== TRANSITION OVERLAY ===== */
 .transition-overlay {
@@ -2267,15 +2376,24 @@ body[data-theme="dark"] .home-chat-bubble.user > div {
 /* ChatGPT-style input bar — floats as an overlay above content */
 .home-input-wrap {
   position: absolute;
-  bottom: 20px;
+  bottom: 0;
   left: 0;
   right: 0;
-  margin: 0 auto;
-  width: min(760px, calc(100% - 48px));
-  padding: 0;
+  width: 100%;
+  padding: 24px 24px 20px;
   border-top: none;
-  background: transparent;
+  background: var(--bg);
   z-index: 50;
+}
+.home-input-wrap::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: linear-gradient(to top, var(--bg), transparent);
+  pointer-events: none;
 }
 .home-file-chips { margin: 0 0 8px; }
 .home-input-box {
@@ -2516,6 +2634,9 @@ body[data-theme="dark"] .home-chat-bubble.user > div {
   left: auto;
   z-index: auto;
 }
+.app-main.dashboard-active .home-input-wrap::before {
+  display: none;
+}
 .app-main.dashboard-active .home-input-box {
   max-width: 100%;
 }
@@ -2698,7 +2819,7 @@ body[data-theme="light"] .sidebar-icon-moon { display: none !important; }
 
 /* Focus overlay icons — top-right corner */
 .tile-focus-overlay {
-  position: absolute; top: 10px; right: 10px; z-index: 10;
+    position: absolute; top: 14px; right: 14px; z-index: 10;
   display: flex; gap: 4px;
   opacity: 0; pointer-events: none;
   transition: opacity 0.15s ease;

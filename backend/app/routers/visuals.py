@@ -224,6 +224,7 @@ def ai_generate_visual(
         visual_id=build_visual_id(visual_type),
         type=visual_type,
         title=spec_dict.get("title", "AI Generated Chart"),
+        insight=spec_dict.get("insight", None),
         x=spec_dict.get("x"),
         y=spec_dict.get("y"),
         values=spec_dict.get("values"),

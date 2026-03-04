@@ -244,6 +244,7 @@ class AiChatRequest(BaseModel):
     message: str
     history: list[AiChatMessage] = []
     model_key: Optional[str] = None  # registry key e.g. "claude-3-7-sonnet"
+    mode: Optional[str] = "initial"
 
 
 class AiChatResponse(BaseModel):
